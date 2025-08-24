@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['favicon-64x64.png', 'apple-touch-icon.png', 'icon.svg'],
       manifest: {
         name: 'Vinyl Companion',
         short_name: 'Vinyl',
