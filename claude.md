@@ -28,7 +28,7 @@ Building a Progressive Web App (PWA) for tracking a personal vinyl record collec
 - **Framework**: React with Vite for fast development
 - **App Type**: Progressive Web App (PWA)
 - **Storage**: IndexedDB for local data persistence
-- **Styling**: Tailwind CSS for rapid UI development
+- **Styling**: Tailwind CSS v4+ for rapid UI development (CRITICAL: See Tailwind v4 section below)
 - **Deployment**: Netlify or Vercel (free tier)
 
 ### Key Dependencies
@@ -312,6 +312,68 @@ const cacheStrategy = {
 - **Reliable offline access** to full collection
 - **Cross-device synchronization** via export/import
 - **Intuitive mobile interface** for record store use
+
+## 🚨 CRITICAL: Tailwind CSS v4 Configuration
+
+**THIS PROJECT USES TAILWIND CSS v4.x - CONFIGURATION IS COMPLETELY DIFFERENT FROM v3!**
+
+### Required Configuration (MUST FOLLOW EXACTLY)
+
+#### 1. CSS Import (src/index.css)
+```css
+@import "tailwindcss";
+```
+**❌ DO NOT USE v3 syntax:**
+```css
+/* WRONG - This is v3 syntax, will NOT work */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+#### 2. PostCSS Configuration (postcss.config.js)
+```javascript
+import tailwindcss from '@tailwindcss/postcss';
+import autoprefixer from 'autoprefixer';
+
+export default {
+  plugins: [
+    tailwindcss(),
+    autoprefixer(),
+  ],
+};
+```
+
+#### 3. NO tailwind.config.js File Needed
+- **Tailwind v4 does NOT use tailwind.config.js for basic setup**
+- **Delete tailwind.config.js if it exists**
+- Configuration is done through CSS, not JavaScript
+
+#### 4. Package Dependencies
+```json
+{
+  "devDependencies": {
+    "tailwindcss": "^4.x",
+    "@tailwindcss/postcss": "^4.x",
+    "autoprefixer": "^10.x"
+  }
+}
+```
+
+### Common Issues & Solutions
+- **Grey buttons instead of colored**: Tailwind CSS not loading properly
+  - Check CSS import syntax in `src/index.css`
+  - Verify PostCSS configuration
+  - Remove any old `tailwind.config.js` files
+- **Build failures**: Usually caused by mixing v3 and v4 syntax
+- **CSS not updating**: Restart dev server after configuration changes
+
+### Verification Steps
+1. CSS bundle size should be ~18KB (not ~6KB) when Tailwind is working
+2. `bg-blue-600` should render as actual blue, not grey
+3. Dev tools should show Tailwind classes applied to elements
+
+**⚠️ ALWAYS USE TAILWIND V4 SYNTAX - DO NOT REVERT TO V3 CONFIGURATION**
 
 ## Additional Resources
 
