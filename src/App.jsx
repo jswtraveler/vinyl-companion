@@ -4,13 +4,14 @@ import AlbumCard from './components/AlbumCard'
 // import SearchBar from './components/SearchBar'
 // import CameraCapture from './components/CameraCapture'
 // import IdentificationWizard from './components/IdentificationWizard'
-import { initDatabase, getAllAlbums, addAlbum } from './services/database'
+import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum } from './services/database'
 
 function App() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [albums, setAlbums] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [editingAlbum, setEditingAlbum] = useState(null)
 
   // Initialize database and load albums on app start
   useEffect(() => {
@@ -49,16 +50,29 @@ function App() {
 
   const handleSaveAlbum = async (albumData) => {
     try {
-      console.log('Saving album to database:', albumData);
+      const isEditing = editingAlbum !== null;
+      console.log(isEditing ? 'Updating album:' : 'Saving new album:', albumData);
       
-      // Save to database
-      const savedAlbum = await addAlbum(albumData);
+      let savedAlbum;
+      if (isEditing) {
+        // Update existing album
+        savedAlbum = await updateAlbum(albumData);
+        // Update local state
+        setAlbums(prevAlbums => 
+          prevAlbums.map(album => 
+            album.id === savedAlbum.id ? savedAlbum : album
+          )
+        );
+      } else {
+        // Add new album
+        savedAlbum = await addAlbum(albumData);
+        // Update local state
+        setAlbums(prevAlbums => [savedAlbum, ...prevAlbums]);
+      }
       
-      // Update local state
-      setAlbums(prevAlbums => [savedAlbum, ...prevAlbums]);
-      
-      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} saved successfully!`);
+      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} ${isEditing ? 'updated' : 'saved'} successfully!`);
       setShowAddForm(false);
+      setEditingAlbum(null);
       setError(null); // Clear any previous errors
     } catch (err) {
       console.error('Failed to save album:', err);
@@ -69,6 +83,31 @@ function App() {
 
   const handleCancelForm = () => {
     setShowAddForm(false);
+    setEditingAlbum(null);
+  };
+
+  const handleEditAlbum = (album) => {
+    setEditingAlbum(album);
+    setShowAddForm(true);
+  };
+
+  const handleDeleteAlbum = async (album) => {
+    if (!confirm(`Are you sure you want to delete "${album.title}" by ${album.artist}?`)) {
+      return;
+    }
+
+    try {
+      await deleteAlbum(album.id);
+      
+      // Update local state
+      setAlbums(prevAlbums => prevAlbums.filter(a => a.id !== album.id));
+      
+      alert(`Album "${album.title}" deleted successfully!`);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to delete album:', err);
+      alert(`Failed to delete album: ${err.message}`);
+    }
   };
 
   return (
@@ -139,7 +178,12 @@ function App() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {albums.map((album) => (
-              <AlbumCard key={album.id} album={album} />
+              <AlbumCard 
+                key={album.id} 
+                album={album} 
+                onEdit={handleEditAlbum}
+                onDelete={handleDeleteAlbum}
+              />
             ))}
           </div>
         )}
@@ -167,9 +211,11 @@ function App() {
               overflowY: 'auto'
             }}>
               <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '16px'}}>
-                Add Album Manually
+                {editingAlbum ? 'Edit Album' : 'Add Album Manually'}
               </h2>
               <AlbumForm
+                album={editingAlbum}
+                mode={editingAlbum ? 'edit' : 'add'}
                 onSave={handleSaveAlbum}
                 onCancel={handleCancelForm}
               />
