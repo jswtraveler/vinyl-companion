@@ -32,16 +32,54 @@ export default defineConfig({
         ]
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
         runtimeCaching: [
+          // API responses cache with network-first strategy for fresh data when online
           {
             urlPattern: /^https:\/\/api\./,
-            handler: 'CacheFirst',
+            handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+              },
+              networkTimeoutSeconds: 3
+            }
+          },
+          // MusicBrainz API cache
+          {
+            urlPattern: /^https:\/\/musicbrainz\.org\/ws\/2\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'musicbrainz-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              }
+            }
+          },
+          // Discogs API cache
+          {
+            urlPattern: /^https:\/\/api\.discogs\.com\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'discogs-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              }
+            }
+          },
+          // Cover Art Archive images
+          {
+            urlPattern: /^https:\/\/coverartarchive\.org\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'cover-art-cache',
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 60 * 60 * 24 * 90 // 90 days
               }
             }
           }
