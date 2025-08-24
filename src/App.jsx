@@ -4,7 +4,7 @@ import AlbumCard from './components/AlbumCard'
 // import SearchBar from './components/SearchBar'
 // import CameraCapture from './components/CameraCapture'
 // import IdentificationWizard from './components/IdentificationWizard'
-import { initDatabase, getAllAlbums, addAlbum, searchAlbums } from './services/database'
+import { initDatabase, getAllAlbums, addAlbum } from './services/database'
 
 function App() {
   const [showAddForm, setShowAddForm] = useState(false)

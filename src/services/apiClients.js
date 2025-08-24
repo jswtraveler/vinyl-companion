@@ -96,7 +96,7 @@ export class MusicBrainzClient {
 // Discogs API client
 export class DiscogsClient {
   static BASE_URL = 'https://api.discogs.com';
-  static TOKEN = process.env.VITE_DISCOGS_TOKEN; // Will be set later
+  static TOKEN = import.meta.env.VITE_DISCOGS_TOKEN; // Will be set later
   
   static async searchReleases(query) {
     if (!this.TOKEN) {

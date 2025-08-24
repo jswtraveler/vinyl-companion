@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 
 const IdentificationWizard = ({ onComplete, onCancel }) => {
   const [currentStep, setCurrentStep] = useState(1);
-  const [results, setResults] = useState(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [_results, _setResults] = useState(null);
+  const [_isProcessing, _setIsProcessing] = useState(false);
 
   const steps = [
     'Capture Image',

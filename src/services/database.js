@@ -3,12 +3,13 @@ import { openDB } from 'idb';
 const DB_NAME = 'VinylCollection';
 const DB_VERSION = 1;
 
-const dbSchema = {
-  albums: 'id, title, artist, year, genre',
-  cache: 'key, data, timestamp',
-  images: 'albumId, imageData',
-  audio: 'albumId, fingerprint'
-};
+// Database schema documentation
+// const dbSchema = {
+//   albums: 'id, title, artist, year, genre',
+//   cache: 'key, data, timestamp', 
+//   images: 'albumId, imageData',
+//   audio: 'albumId, fingerprint'
+// };
 
 let dbInstance = null;
 
@@ -35,12 +36,12 @@ export const initDatabase = async () => {
 
         // Images store for album covers
         if (!db.objectStoreNames.contains('images')) {
-          const imageStore = db.createObjectStore('images', { keyPath: 'albumId' });
+          db.createObjectStore('images', { keyPath: 'albumId' });
         }
 
         // Audio fingerprints store
         if (!db.objectStoreNames.contains('audio')) {
-          const audioStore = db.createObjectStore('audio', { keyPath: 'albumId' });
+          db.createObjectStore('audio', { keyPath: 'albumId' });
         }
       },
     });
