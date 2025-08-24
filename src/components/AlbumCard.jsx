@@ -27,7 +27,7 @@ const AlbumCard = ({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group">
+    <article className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group">
       {/* Cover Image */}
       <div className="aspect-square bg-gray-200 relative">
         {album.coverImage ? (
@@ -123,7 +123,7 @@ const AlbumCard = ({
           </p>
         </div>
       </div>
-    </div>
+    </article>
   );
 };
 
