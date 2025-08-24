@@ -55,43 +55,125 @@ export const initDatabase = async () => {
 
 // Album CRUD operations
 export const addAlbum = async (album) => {
-  const db = await initDatabase();
-  const tx = db.transaction('albums', 'readwrite');
-  await tx.objectStore('albums').add({
-    ...album,
-    dateAdded: album.dateAdded || new Date().toISOString()
-  });
-  await tx.complete;
-  return album;
+  try {
+    if (!album || !album.title || !album.artist) {
+      throw new Error('Album must have title and artist');
+    }
+
+    const db = await initDatabase();
+    const tx = db.transaction('albums', 'readwrite');
+    
+    const albumToSave = {
+      ...album,
+      id: album.id || `album_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      dateAdded: album.dateAdded || new Date().toISOString()
+    };
+
+    await tx.objectStore('albums').add(albumToSave);
+    await tx.complete;
+    
+    console.log('Album added successfully:', albumToSave.title);
+    return albumToSave;
+  } catch (error) {
+    console.error('Failed to add album:', error);
+    if (error.name === 'ConstraintError') {
+      throw new Error('Album with this ID already exists');
+    }
+    throw new Error(`Failed to add album: ${error.message}`);
+  }
 };
 
 export const getAlbum = async (id) => {
-  const db = await initDatabase();
-  return await db.get('albums', id);
+  try {
+    if (!id) throw new Error('Album ID is required');
+    
+    const db = await initDatabase();
+    const album = await db.get('albums', id);
+    
+    if (!album) {
+      console.warn(`Album with ID ${id} not found`);
+    }
+    
+    return album;
+  } catch (error) {
+    console.error('Failed to get album:', error);
+    throw new Error(`Failed to retrieve album: ${error.message}`);
+  }
 };
 
 export const getAllAlbums = async () => {
-  const db = await initDatabase();
-  return await db.getAll('albums');
+  try {
+    const db = await initDatabase();
+    const albums = await db.getAll('albums');
+    
+    console.log(`Retrieved ${albums.length} albums from database`);
+    return albums.sort((a, b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+  } catch (error) {
+    console.error('Failed to get all albums:', error);
+    throw new Error(`Failed to retrieve albums: ${error.message}`);
+  }
 };
 
 export const updateAlbum = async (album) => {
-  const db = await initDatabase();
-  const tx = db.transaction('albums', 'readwrite');
-  await tx.objectStore('albums').put(album);
-  await tx.complete;
-  return album;
+  try {
+    if (!album || !album.id) {
+      throw new Error('Album must have an ID for updates');
+    }
+    if (!album.title || !album.artist) {
+      throw new Error('Album must have title and artist');
+    }
+
+    const db = await initDatabase();
+    
+    // Check if album exists
+    const existing = await db.get('albums', album.id);
+    if (!existing) {
+      throw new Error('Album not found');
+    }
+
+    const tx = db.transaction('albums', 'readwrite');
+    const updatedAlbum = {
+      ...album,
+      dateModified: new Date().toISOString()
+    };
+    
+    await tx.objectStore('albums').put(updatedAlbum);
+    await tx.complete;
+    
+    console.log('Album updated successfully:', updatedAlbum.title);
+    return updatedAlbum;
+  } catch (error) {
+    console.error('Failed to update album:', error);
+    throw new Error(`Failed to update album: ${error.message}`);
+  }
 };
 
 export const deleteAlbum = async (id) => {
-  const db = await initDatabase();
-  const tx = db.transaction(['albums', 'images', 'audio'], 'readwrite');
-  
-  await tx.objectStore('albums').delete(id);
-  await tx.objectStore('images').delete(id);
-  await tx.objectStore('audio').delete(id);
-  
-  await tx.complete;
+  try {
+    if (!id) throw new Error('Album ID is required');
+    
+    const db = await initDatabase();
+    
+    // Check if album exists
+    const existing = await db.get('albums', id);
+    if (!existing) {
+      throw new Error('Album not found');
+    }
+
+    const tx = db.transaction(['albums', 'images', 'audio'], 'readwrite');
+    
+    await tx.objectStore('albums').delete(id);
+    await tx.objectStore('images').delete(id);
+    await tx.objectStore('audio').delete(id);
+    
+    await tx.complete;
+    
+    console.log('Album deleted successfully:', existing.title);
+    return existing;
+  } catch (error) {
+    console.error('Failed to delete album:', error);
+    throw new Error(`Failed to delete album: ${error.message}`);
+  }
 };
 
 // Search functionality

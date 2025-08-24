@@ -4,13 +4,39 @@ import AlbumCard from './components/AlbumCard'
 // import SearchBar from './components/SearchBar'
 // import CameraCapture from './components/CameraCapture'
 // import IdentificationWizard from './components/IdentificationWizard'
-// import { initDatabase, getAllAlbums, addAlbum, searchAlbums } from './services/database'
+import { initDatabase, getAllAlbums, addAlbum, searchAlbums } from './services/database'
 
 function App() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [albums, setAlbums] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
-  // TODO: Add database integration later
+  // Initialize database and load albums on app start
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        setLoading(true)
+        setError(null)
+        
+        console.log('Initializing database...')
+        await initDatabase()
+        
+        console.log('Loading albums from database...')
+        const storedAlbums = await getAllAlbums()
+        setAlbums(storedAlbums)
+        
+        console.log(`Loaded ${storedAlbums.length} albums from database`)
+      } catch (err) {
+        console.error('Failed to initialize app:', err)
+        setError('Failed to load your vinyl collection. Please refresh the page.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initializeApp()
+  }, [])
 
   // Handlers
   const handleAddManually = () => {
@@ -21,15 +47,24 @@ function App() {
     alert('Camera feature coming soon! Use "Add Manually" for now.');
   };
 
-  const handleSaveAlbum = (albumData) => {
-    console.log('Album saved:', albumData);
-    
-    // Add the album to the collection
-    setAlbums(prevAlbums => [...prevAlbums, albumData]);
-    
-    alert(`Album "${albumData.title}" by ${albumData.artist} saved successfully!`);
-    setShowAddForm(false);
-    // TODO: Save to database later
+  const handleSaveAlbum = async (albumData) => {
+    try {
+      console.log('Saving album to database:', albumData);
+      
+      // Save to database
+      const savedAlbum = await addAlbum(albumData);
+      
+      // Update local state
+      setAlbums(prevAlbums => [savedAlbum, ...prevAlbums]);
+      
+      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} saved successfully!`);
+      setShowAddForm(false);
+      setError(null); // Clear any previous errors
+    } catch (err) {
+      console.error('Failed to save album:', err);
+      alert(`Failed to save album: ${err.message}`);
+      // Don't close the form so user can try again
+    }
   };
 
   const handleCancelForm = () => {
@@ -70,13 +105,29 @@ function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <p className="text-red-800">{error}</p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Your Collection ({albums.length} albums)
+            Your Collection ({loading ? '...' : albums.length} albums)
           </h2>
         </div>
 
-        {albums.length === 0 ? (
+        {loading ? (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading your vinyl collection...</p>
+          </div>
+        ) : albums.length === 0 ? (
           <div className="text-center py-12">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
