@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import AlbumForm from './components/AlbumForm'
 import AlbumCard from './components/AlbumCard'
-// import SearchBar from './components/SearchBar'
+import SearchBar from './components/SearchBar'
 // import CameraCapture from './components/CameraCapture'
 // import IdentificationWizard from './components/IdentificationWizard'
 import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum } from './services/database'
@@ -12,6 +12,10 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [editingAlbum, setEditingAlbum] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortBy, setSortBy] = useState('dateAdded')
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [showStats, setShowStats] = useState(false)
 
   // Initialize database and load albums on app start
   useEffect(() => {
@@ -39,6 +43,92 @@ function App() {
     initializeApp()
   }, [])
 
+  // Search and sort functionality
+  const filteredAndSortedAlbums = useMemo(() => {
+    let filtered = albums
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      filtered = albums.filter(album => 
+        album.title.toLowerCase().includes(query) ||
+        album.artist.toLowerCase().includes(query) ||
+        (album.genre && album.genre.some(g => g.toLowerCase().includes(query))) ||
+        (album.label && album.label.toLowerCase().includes(query)) ||
+        (album.year && album.year.toString().includes(query))
+      )
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue = a[sortBy]
+      let bValue = b[sortBy]
+
+      // Handle special cases
+      if (sortBy === 'dateAdded') {
+        aValue = new Date(aValue).getTime()
+        bValue = new Date(bValue).getTime()
+      } else if (sortBy === 'title' || sortBy === 'artist') {
+        aValue = aValue?.toLowerCase() || ''
+        bValue = bValue?.toLowerCase() || ''
+      } else if (sortBy === 'year') {
+        aValue = aValue || 0
+        bValue = bValue || 0
+      }
+
+      if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1
+      if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+
+    return filtered
+  }, [albums, searchQuery, sortBy, sortOrder])
+
+  // Statistics calculation
+  const stats = useMemo(() => {
+    if (albums.length === 0) return null
+
+    const totalAlbums = albums.length
+    const genreCount = {}
+    const formatCount = {}
+    const decadeCount = {}
+    let totalValue = 0
+
+    albums.forEach(album => {
+      // Genre statistics
+      if (album.genre && Array.isArray(album.genre)) {
+        album.genre.forEach(genre => {
+          genreCount[genre] = (genreCount[genre] || 0) + 1
+        })
+      }
+
+      // Format statistics
+      if (album.format) {
+        formatCount[album.format] = (formatCount[album.format] || 0) + 1
+      }
+
+      // Decade statistics
+      if (album.year) {
+        const decade = Math.floor(album.year / 10) * 10
+        decadeCount[decade] = (decadeCount[decade] || 0) + 1
+      }
+
+      // Value calculation
+      if (album.purchasePrice) {
+        totalValue += album.purchasePrice
+      }
+    })
+
+    return {
+      totalAlbums,
+      totalValue,
+      averageValue: totalValue / totalAlbums,
+      topGenres: Object.entries(genreCount).sort((a, b) => b[1] - a[1]).slice(0, 5),
+      formats: Object.entries(formatCount).sort((a, b) => b[1] - a[1]),
+      decades: Object.entries(decadeCount).sort((a, b) => a[0] - b[0])
+    }
+  }, [albums])
+
   // Handlers
   const handleAddManually = () => {
     setShowAddForm(true);
@@ -46,6 +136,23 @@ function App() {
 
   const handleCameraClick = () => {
     alert('Camera feature coming soon! Use "Add Manually" for now.');
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  };
+
+  const handleSortChange = (field) => {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const toggleStats = () => {
+    setShowStats(!showStats);
   };
 
   const handleSaveAlbum = async (albumData) => {
@@ -156,9 +263,151 @@ function App() {
         )}
 
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Your Collection ({loading ? '...' : albums.length} albums)
-          </h2>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Your Collection ({loading ? '...' : `${filteredAndSortedAlbums.length} of ${albums.length}`} albums)
+            </h2>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleStats}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  showStats 
+                    ? 'bg-blue-600 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Stats
+              </button>
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          {albums.length > 0 && (
+            <div className="mb-4">
+              <SearchBar 
+                onSearch={handleSearch} 
+                placeholder="Search by title, artist, genre, label, or year..."
+              />
+            </div>
+          )}
+
+          {/* Sort Controls */}
+          {albums.length > 0 && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-2 items-center">
+                <span className="text-sm font-medium text-gray-600">Sort by:</span>
+                {[
+                  { key: 'dateAdded', label: 'Date Added' },
+                  { key: 'title', label: 'Title' },
+                  { key: 'artist', label: 'Artist' },
+                  { key: 'year', label: 'Year' }
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => handleSortChange(key)}
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      sortBy === key
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {label}
+                    {sortBy === key && (
+                      <span className="ml-1">
+                        {sortOrder === 'asc' ? '↑' : '↓'}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Statistics Section */}
+          {showStats && stats && (
+            <div className="mb-6 bg-white rounded-lg shadow-md p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Collection Statistics</h3>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div className="bg-blue-50 p-4 rounded-lg">
+                  <h4 className="text-sm font-medium text-blue-600">Total Albums</h4>
+                  <p className="text-2xl font-bold text-blue-900">{stats.totalAlbums}</p>
+                </div>
+                
+                {stats.totalValue > 0 && (
+                  <>
+                    <div className="bg-green-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium text-green-600">Total Value</h4>
+                      <p className="text-2xl font-bold text-green-900">${stats.totalValue.toFixed(2)}</p>
+                    </div>
+                    
+                    <div className="bg-yellow-50 p-4 rounded-lg">
+                      <h4 className="text-sm font-medium text-yellow-600">Average Value</h4>
+                      <p className="text-2xl font-bold text-yellow-900">${stats.averageValue.toFixed(2)}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Top Genres */}
+                {stats.topGenres.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800 mb-2">Top Genres</h4>
+                    <div className="space-y-2">
+                      {stats.topGenres.map(([genre, count]) => (
+                        <div key={genre} className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">{genre}</span>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Formats */}
+                {stats.formats.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800 mb-2">Formats</h4>
+                    <div className="space-y-2">
+                      {stats.formats.map(([format, count]) => (
+                        <div key={format} className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">{format}</span>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Decades */}
+                {stats.decades.length > 0 && (
+                  <div>
+                    <h4 className="text-md font-semibold text-gray-800 mb-2">By Decade</h4>
+                    <div className="space-y-2">
+                      {stats.decades.map(([decade, count]) => (
+                        <div key={decade} className="flex justify-between items-center">
+                          <span className="text-sm text-gray-600">{decade}s</span>
+                          <span className="text-sm font-medium text-gray-900">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Search Results Info */}
+          {searchQuery && (
+            <div className="mb-4 text-sm text-gray-600">
+              {filteredAndSortedAlbums.length === 0 ? (
+                <>No albums found for "{searchQuery}"</>
+              ) : filteredAndSortedAlbums.length < albums.length ? (
+                <>Showing {filteredAndSortedAlbums.length} of {albums.length} albums for "{searchQuery}"</>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {loading ? (
@@ -175,9 +424,23 @@ function App() {
             <p className="text-gray-500 mb-6">Start building your collection by adding your first vinyl record!</p>
             <p className="text-gray-500">Use the "Add Manually" button in the header above to add your first album.</p>
           </div>
+        ) : filteredAndSortedAlbums.length === 0 ? (
+          <div className="text-center py-12">
+            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No albums found</h3>
+            <p className="text-gray-500 mb-4">No albums match your search criteria.</p>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Clear Search
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {albums.map((album) => (
+            {filteredAndSortedAlbums.map((album) => (
               <AlbumCard 
                 key={album.id} 
                 album={album} 
