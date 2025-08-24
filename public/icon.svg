@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Outer vinyl record -->
+  <circle cx="256" cy="256" r="240" fill="#1a1a1a" stroke="#2d2d2d" stroke-width="8"/>
+  
+  <!-- Vinyl grooves -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="#333" stroke-width="1" opacity="0.3"/>
+  <circle cx="256" cy="256" r="180" fill="none" stroke="#333" stroke-width="1" opacity="0.3"/>
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#333" stroke-width="1" opacity="0.3"/>
+  <circle cx="256" cy="256" r="140" fill="none" stroke="#333" stroke-width="1" opacity="0.3"/>
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#333" stroke-width="1" opacity="0.3"/>
+  <circle cx="256" cy="256" r="100" fill="none" stroke="#333" stroke-width="1" opacity="0.3"/>
+  
+  <!-- Center label -->
+  <circle cx="256" cy="256" r="80" fill="#7c3aed" stroke="#6d28d9" stroke-width="3"/>
+  
+  <!-- Center hole -->
+  <circle cx="256" cy="256" r="15" fill="#1a1a1a"/>
+  
+  <!-- Label text -->
+  <text x="256" y="240" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="white">VINYL</text>
+  <text x="256" y="280" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="white">COMPANION</text>
+</svg>
