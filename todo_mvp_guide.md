@@ -168,6 +168,35 @@
 
 ---
 
+## Testing Framework Setup (Recommended: Week 8+)
+
+### Unit Testing with Vitest
+- [ ] Install Vitest and testing dependencies (@testing-library/react, @testing-library/jest-dom)
+- [ ] Configure Vitest in vite.config.js for component and utility testing
+- [ ] Set up test environment with jsdom for DOM testing
+- [ ] Create test utilities and mock helpers
+
+### Test Coverage Implementation  
+- [ ] **Album Schema Tests**: Validate createNewAlbum(), validateAlbum(), and enum values
+- [ ] **Database Service Tests**: Test CRUD operations, error handling, and edge cases
+- [ ] **Component Tests**: AlbumCard, AlbumForm render tests and user interactions
+- [ ] **API Client Tests**: Mock API responses and test error handling
+- [ ] **Utility Function Tests**: Image processing, OCR, and identification workflows
+
+### Integration Testing
+- [ ] Database integration tests with real IndexedDB operations
+- [ ] Form submission workflows (add/edit/delete albums)
+- [ ] PWA functionality tests (offline capability, service worker)
+- [ ] Search and filtering integration tests
+
+### Testing Scripts
+- [ ] Add npm test script for running all tests
+- [ ] Add npm test:watch script for development
+- [ ] Add npm test:coverage script for coverage reports
+- [ ] Configure CI-friendly test runner settings
+
+---
+
 ## Quality Assurance & Testing Checklist
 
 ### Functional Testing
