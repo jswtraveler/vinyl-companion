@@ -2,9 +2,13 @@ import { useState, useEffect, useMemo } from 'react'
 import AlbumForm from './components/AlbumForm'
 import AlbumCard from './components/AlbumCard'
 import SearchBar from './components/SearchBar'
-// import CameraCapture from './components/CameraCapture'
-// import IdentificationWizard from './components/IdentificationWizard'
-import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum } from './services/database'
+import CameraCapture from './components/CameraCapture'
+import SimpleCameraCapture from './components/SimpleCameraCapture'
+import IdentificationLoader from './components/IdentificationLoader'
+import IdentificationResults from './components/IdentificationResults'
+import { AlbumIdentifier } from './services/albumIdentifier'
+import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage } from './services/database'
+import { createNewAlbum } from './models/Album'
 
 function App() {
   const [showAddForm, setShowAddForm] = useState(false)
@@ -16,6 +20,14 @@ function App() {
   const [sortBy, setSortBy] = useState('dateAdded')
   const [sortOrder, setSortOrder] = useState('desc')
   const [showStats, setShowStats] = useState(false)
+  const [showCamera, setShowCamera] = useState(false)
+  
+  // Album identification state
+  const [isIdentifying, setIsIdentifying] = useState(false)
+  const [identificationStage, setIdentificationStage] = useState('searching')
+  const [identificationProgress, setIdentificationProgress] = useState(0)
+  const [identificationResults, setIdentificationResults] = useState(null)
+  const [identifyingImage, setIdentifyingImage] = useState(null)
 
   // Initialize database and load albums on app start
   useEffect(() => {
@@ -135,7 +147,203 @@ function App() {
   };
 
   const handleCameraClick = () => {
-    alert('Camera feature coming soon! Use "Add Manually" for now.');
+    setShowCamera(true);
+  };
+
+  const handleCameraClose = () => {
+    setShowCamera(false);
+  };
+
+  const handleIdentifyAlbum = async (imageData) => {
+    try {
+      console.log('Starting album identification with mobile proxy support...');
+      setShowCamera(false);
+      
+      // Test environment variable first
+      const apiKey = import.meta.env.VITE_SERPAPI_KEY;
+      if (!apiKey) {
+        console.error('SerpAPI key not found');
+        openManualFormWithError('SerpAPI key not configured', imageData);
+        return;
+      }
+      
+      // Show identification progress UI
+      setIsIdentifying(true);
+      setIdentificationStage('initializing');
+      setIdentificationProgress(10);
+      setIdentifyingImage(imageData);
+      
+      try {
+        // Step 1: Initialize SerpAPI client with mobile proxy support
+        setIdentificationStage('initializing');
+        const { SerpApiClient } = await import('./services/serpApiClient.js');
+        const serpClient = new SerpApiClient(apiKey);
+        
+        const debugInfo = serpClient.getDebugInfo();
+        console.log('SerpAPI Client Debug Info:', debugInfo);
+        
+        setIdentificationProgress(20);
+        
+        // Step 2: Process image for optimal API results
+        setIdentificationStage('processing');
+        const { ImageProcessor } = await import('./utils/imageProcessing.js');
+        
+        let processedImage;
+        try {
+          processedImage = await ImageProcessor.optimizeForAPI(imageData);
+          console.log('Image processed successfully');
+        } catch (processingError) {
+          console.warn('Image processing failed, using original:', processingError);
+          processedImage = imageData; // Fallback to original
+        }
+        
+        setIdentificationProgress(40);
+        
+        // Step 3: Perform album identification with timeout
+        setIdentificationStage('searching');
+        const identificationTimeout = 30000; // 30 seconds timeout
+        
+        const identificationPromise = serpClient.identifyAlbum(processedImage);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Identification timeout - taking too long')), identificationTimeout)
+        );
+        
+        const result = await Promise.race([identificationPromise, timeoutPromise]);
+        
+        setIdentificationProgress(80);
+        
+        if (result.success && result.candidates && result.candidates.length > 0) {
+          // Success! Show results
+          console.log('Album identification successful:', result);
+          setIdentificationStage('complete');
+          setIdentificationProgress(100);
+          setIdentificationResults(result);
+          
+          // Wait a moment to show completion, then open form
+          setTimeout(() => {
+            const topResult = result.candidates[0];
+            const albumData = {
+              title: topResult.title || 'Unknown Title',
+              artist: topResult.artist || 'Unknown Artist',
+              year: topResult.year || null,
+              coverImage: imageData,
+              notes: `Identified via SerpAPI (${result.requestMethod}) - Confidence: ${Math.round((topResult.confidence || 0.5) * 100)}%`,
+              identificationMethod: 'serpapi-' + result.requestMethod,
+              genre: [],
+              purchasePrice: null,
+              purchaseLocation: ''
+            };
+            
+            setIsIdentifying(false);
+            setEditingAlbum(albumData);
+            setShowAddForm(true);
+          }, 1000);
+          
+          return;
+          
+        } else {
+          // No results found
+          console.warn('No album matches found:', result);
+          setIdentificationStage('no-results');
+          setIdentificationProgress(100);
+          
+          setTimeout(() => {
+            openManualFormWithMessage('No matches found for this album cover', imageData);
+          }, 2000);
+          return;
+        }
+        
+      } catch (error) {
+        console.error('Album identification error:', error);
+        
+        // Determine error type and provide appropriate feedback
+        let errorMessage = 'Identification failed';
+        if (error.message.includes('timeout')) {
+          errorMessage = 'Request timed out - please try again';
+        } else if (error.message.includes('CORS') || error.message.includes('Network')) {
+          errorMessage = 'Network error - using manual entry';
+        } else if (error.type === 'PROXY_ERROR') {
+          errorMessage = 'Service temporarily unavailable';
+        }
+        
+        setIdentificationStage('error');
+        setTimeout(() => {
+          openManualFormWithError(errorMessage, imageData, error);
+        }, 1000);
+      }
+      
+    } catch (error) {
+      console.error('Critical identification error:', error);
+      openManualFormWithError('Identification system error', imageData, error);
+    }
+  };
+
+  // Helper method to open manual form with error context
+  const openManualFormWithError = (message, imageData, error = null) => {
+    console.log('Opening manual form due to error:', message);
+    setIsIdentifying(false);
+    
+    const albumWithImage = {
+      coverImage: imageData,
+      identificationMethod: 'camera-manual',
+      genre: [],
+      notes: `Automatic identification failed: ${message}`,
+      purchasePrice: null,
+      purchaseLocation: ''
+    };
+    setEditingAlbum(albumWithImage);
+    setShowAddForm(true);
+  };
+
+  // Helper method to open manual form with informational message
+  const openManualFormWithMessage = (message, imageData) => {
+    console.log('Opening manual form:', message);
+    setIsIdentifying(false);
+    
+    const albumWithImage = {
+      coverImage: imageData,
+      identificationMethod: 'camera-manual',
+      genre: [],
+      notes: message,
+      purchasePrice: null,
+      purchaseLocation: ''
+    };
+    setEditingAlbum(albumWithImage);
+    setShowAddForm(true);
+  };
+
+  const handleCameraCapture = async (imageData) => {
+    console.log('Image captured:', imageData);
+  };
+
+  const handleCameraSave = async (imageData) => {
+    try {
+      console.log('User chose to manually add album with captured photo');
+      
+      // Close camera
+      setShowCamera(false);
+      
+      // Create a partial album object for the form with the captured image
+      const albumWithImage = {
+        // Don't set title/artist - let user fill these in manually
+        coverImage: imageData,
+        identificationMethod: 'camera',
+        // Set defaults for other fields
+        genre: [],
+        notes: 'Album cover captured with camera',
+        purchasePrice: null,
+        purchaseLocation: ''
+      };
+      
+      // Open the add form with the captured image pre-loaded
+      setEditingAlbum(albumWithImage);
+      setShowAddForm(true);
+      
+      console.log('Opening add form with captured image');
+    } catch (err) {
+      console.error('Failed to prepare camera capture for manual entry:', err);
+      setError(`Failed to prepare photo for manual entry: ${err.message}`);
+    }
   };
 
   const handleSearch = (query) => {
@@ -484,6 +692,14 @@ function App() {
               />
             </div>
           </div>
+        )}
+
+        {/* Camera Capture */}
+        {showCamera && (
+          <SimpleCameraCapture
+            onCapture={handleCameraCapture}
+            onClose={handleCameraClose}
+          />
         )}
 
       </main>
