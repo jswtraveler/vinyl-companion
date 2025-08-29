@@ -131,21 +131,35 @@ export class DiscogsClient {
   }
 
   static normalizeReleaseData(releases) {
-    return releases.map(release => ({
-      id: release.id,
-      title: release.title,
-      artist: release.artist || 'Unknown Artist',
-      year: release.year,
-      label: release.label?.[0],
-      catalogNumber: release.catno,
-      format: release.format?.[0],
-      country: release.country,
-      genre: release.genre,
-      style: release.style,
-      coverImage: release.cover_image,
-      source: 'discogs',
-      confidence: 0.9
-    }));
+    return releases.map(release => {
+      let title = release.title;
+      let artist = release.artist;
+      
+      // Parse "Artist - Album" format from Discogs title
+      if (title && (!artist || artist === 'Unknown Artist')) {
+        const match = title.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+        if (match) {
+          artist = match[1].trim();
+          title = match[2].trim();
+        }
+      }
+      
+      return {
+        id: release.id,
+        title: title,
+        artist: artist || 'Unknown Artist',
+        year: release.year,
+        label: release.label?.[0],
+        catalogNumber: release.catno,
+        format: release.format?.[0],
+        country: release.country,
+        genre: release.genre,
+        style: release.style,
+        coverImage: release.cover_image,
+        source: 'discogs',
+        confidence: 0.9
+      };
+    });
   }
 }
 
