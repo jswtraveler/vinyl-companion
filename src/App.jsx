@@ -8,7 +8,7 @@ import IdentificationLoader from './components/IdentificationLoader'
 import IdentificationResults from './components/IdentificationResults'
 import { AlbumIdentifier } from './services/albumIdentifier'
 import { ImageProcessor } from './utils/imageProcessing'
-import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage } from './services/database'
+import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage, exportData, importData } from './services/database'
 import { createNewAlbum } from './models/Album'
 
 function App() {
@@ -439,11 +439,12 @@ function App() {
 
   const handleSaveAlbum = async (albumData) => {
     try {
-      const isEditing = editingAlbum !== null;
-      console.log(isEditing ? 'Updating album:' : 'Saving new album:', albumData);
+      // Check if this is editing an existing album in our database
+      const isExistingAlbum = editingAlbum && albums.some(album => album.id === editingAlbum.id);
+      console.log(isExistingAlbum ? 'Updating existing album:' : 'Saving new album:', albumData);
       
       let savedAlbum;
-      if (isEditing) {
+      if (isExistingAlbum) {
         // Update existing album
         savedAlbum = await updateAlbum(albumData);
         // Update local state
@@ -459,7 +460,7 @@ function App() {
         setAlbums(prevAlbums => [savedAlbum, ...prevAlbums]);
       }
       
-      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} ${isEditing ? 'updated' : 'saved'} successfully!`);
+      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} ${isExistingAlbum ? 'updated' : 'saved'} successfully!`);
       setShowAddForm(false);
       setEditingAlbum(null);
       setError(null); // Clear any previous errors
@@ -847,7 +848,23 @@ function App() {
             onClose={() => setShowAlbumSearch(false)}
             onSelectAlbum={(album) => {
               setShowAlbumSearch(false);
-              setEditingAlbum(album);
+              // Convert search result to new album format (remove external ID)
+              const newAlbum = createNewAlbum({
+                title: album.title,
+                artist: album.artist,
+                year: album.year,
+                format: album.format,
+                genre: album.genre,
+                label: album.label,
+                catalogNumber: album.catalogNumber,
+                coverImage: album.coverImage,
+                country: album.country,
+                identificationMethod: 'discogs-search',
+                metadata: {
+                  discogsId: album.id
+                }
+              });
+              setEditingAlbum(newAlbum);
               setShowAddForm(true);
             }}
           />
