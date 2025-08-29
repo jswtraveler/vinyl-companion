@@ -11,59 +11,59 @@
 ### Week 1: Project Setup & Infrastructure
 
 #### Day 1-2: Development Environment
-- [ ] Create new React + Vite project
-- [ ] Install core dependencies (React, Tailwind CSS, IDB)
-- [ ] Set up Git repository and initial commit
-- [ ] Configure development environment and tooling
-- [ ] Create basic folder structure following claude.md architecture
+- [X] Create new React + Vite project
+- [X] Install core dependencies (React, Tailwind CSS, IDB)
+- [X] Set up Git repository and initial commit
+- [X] Configure development environment and tooling
+- [X] Create basic folder structure following claude.md architecture
 
 #### Day 3-4: PWA Configuration
-- [ ] Create `manifest.json` with app metadata
-- [ ] Configure PWA icons (generate 192x192, 512x512 variants)
-- [ ] Set up basic Service Worker with Workbox
-- [ ] Test PWA installation prompt in browser
-- [ ] Verify offline page loads correctly
+- [X] Create `manifest.json` with app metadata
+- [X] Configure PWA icons (generate 192x192, 512x512 variants)
+- [X] Set up basic Service Worker with Workbox
+- [X] Test PWA installation prompt in browser
+- [X] Verify offline page loads correctly
 
 #### Day 5-7: Database Setup
-- [ ] Install and configure IDB library for IndexedDB
-- [ ] Create database schema (albums, cache, images, audio tables)
-- [ ] Implement basic CRUD operations for albums
-- [ ] Create database initialization and upgrade logic
-- [ ] Add error handling for database operations
+- [X] Install and configure IDB library for IndexedDB
+- [X] Create database schema (albums, cache, images, audio tables)
+- [X] Implement basic CRUD operations for albums
+- [X] Create database initialization and upgrade logic
+- [X] Add error handling for database operations
 
 ### Week 2: Core Album Management
 
 #### Day 8-10: Data Models & Components
-- [ ] Define Album schema with all required fields
-- [ ] Create AlbumCard component for display
-- [ ] Create AlbumForm component for add/edit operations
-- [ ] Implement basic collection view with grid layout
-- [ ] Add form validation and error states
+- [X] Define Album schema with all required fields
+- [X] Create AlbumCard component for display
+- [X] Create AlbumForm component for add/edit operations
+- [X] Implement basic collection view with grid layout
+- [X] Add form validation and error states
 
 #### Day 11-14: Basic CRUD Operations
-- [ ] Implement "Add Album" functionality with manual entry
-- [ ] Create "Edit Album" modal/page
-- [ ] Add "Delete Album" with confirmation dialog
-- [ ] Implement local search functionality
-- [ ] Add sorting options (title, artist, year, date added)
-- [ ] Create basic statistics view (total albums, genres, etc.)
+- [X] Implement "Add Album" functionality with manual entry
+- [X] Create "Edit Album" modal/page
+- [X] Add "Delete Album" with confirmation dialog
+- [X] Implement local search functionality
+- [X] Add sorting options (title, artist, year, date added)
+- [X] Create basic statistics view (total albums, genres, etc.)
 
 ### Week 3: Camera Integration & UI Polish
 
 #### Day 15-17: Camera Functionality
-- [ ] Implement camera access with `getUserMedia`
-- [ ] Create CameraCapture component with photo taking
-- [ ] Add image preview and retake functionality
-- [ ] Implement image storage in IndexedDB
-- [ ] Handle camera permissions and error states
+- [X] Implement camera access with `getUserMedia`
+- [X] Create CameraCapture component with photo taking
+- [X] Add image preview and retake functionality
+- [X] Implement image storage in IndexedDB
+- [X] Handle camera permissions and error states
 
 #### Day 18-21: UI/UX Improvements
-- [ ] Refine mobile-first responsive design
-- [ ] Add loading states and skeleton screens
-- [ ] Implement proper error boundaries
-- [ ] Add toast notifications for user feedback
-- [ ] Create basic navigation structure
-- [ ] Test app functionality on mobile devices
+- [X] Refine mobile-first responsive design
+- [X] Add loading states and skeleton screens
+- [X] Implement proper error boundaries
+- [X] Add toast notifications for user feedback
+- [X] Create basic navigation structure
+- [X] Test app functionality on mobile devices
 
 ---
 
@@ -123,12 +123,20 @@
 - [ ] Add confidence scoring for results
 - [ ] Implement result ranking and selection
 
-#### Day 39-42: Fallback Strategies
+#### Day 39-42: Fallback Strategies & Manual Entry Enhancement
 - [ ] Create API priority and fallback logic
 - [ ] Implement manual search assistance
 - [ ] Add partial match handling
 - [ ] Create "Unknown Album" workflow
 - [ ] Add manual data entry override options
+- [ ] **Manual Entry Auto-Enrichment Feature**:
+  - [ ] Add metadata lookup when user clicks "Add" in manual form
+  - [ ] Search MusicBrainz/Discogs APIs using entered title + artist
+  - [ ] Display dropdown suggestions with album covers and metadata
+  - [ ] Allow user to select match to auto-populate form fields
+  - [ ] Integrate Cover Art Archive for album artwork
+  - [ ] Maintain manual override capability for all fields
+  - [ ] Add "Skip Suggestions" option to proceed with manual data
 - [ ] Test identification accuracy with various albums
 
 ### Week 7: Audio Fingerprinting & Batch Operations
@@ -171,15 +179,16 @@
 ## Testing Framework Setup (Recommended: Week 8+)
 
 ### Unit Testing with Vitest
-- [ ] Install Vitest and testing dependencies (@testing-library/react, @testing-library/jest-dom)
-- [ ] Configure Vitest in vite.config.js for component and utility testing
-- [ ] Set up test environment with jsdom for DOM testing
-- [ ] Create test utilities and mock helpers
+- [X] Install Vitest and testing dependencies (@testing-library/react, @testing-library/jest-dom)
+- [X] Configure Vitest in vite.config.js for component and utility testing
+- [X] Set up test environment with jsdom for DOM testing
+- [X] Create test utilities and mock helpers
 
 ### Test Coverage Implementation  
-- [ ] **Album Schema Tests**: Validate createNewAlbum(), validateAlbum(), and enum values
+- [X] **Album Schema Tests**: Validate createNewAlbum(), validateAlbum(), and enum values
 - [ ] **Database Service Tests**: Test CRUD operations, error handling, and edge cases
-- [ ] **Component Tests**: AlbumCard, AlbumForm render tests and user interactions
+- [X] **Component Tests**: AlbumCard, AlbumForm render tests and user interactions
+- [X] **Camera Integration Tests**: Complete test suite for camera functionality
 - [ ] **API Client Tests**: Mock API responses and test error handling
 - [ ] **Utility Function Tests**: Image processing, OCR, and identification workflows
 
@@ -190,30 +199,30 @@
 - [ ] Search and filtering integration tests
 
 ### Testing Scripts
-- [ ] Add npm test script for running all tests
-- [ ] Add npm test:watch script for development
-- [ ] Add npm test:coverage script for coverage reports
-- [ ] Configure CI-friendly test runner settings
+- [X] Add npm test script for running all tests
+- [X] Add npm test:watch script for development
+- [X] Add npm test:coverage script for coverage reports
+- [X] Configure CI-friendly test runner settings
 
 ---
 
 ## Quality Assurance & Testing Checklist
 
 ### Functional Testing
-- [ ] All CRUD operations work correctly
-- [ ] Camera capture and image storage functional
+- [X] All CRUD operations work correctly
+- [X] Camera capture and image storage functional
 - [ ] Album identification works with sample records
-- [ ] Search and filtering operate as expected
+- [X] Search and filtering operate as expected
 - [ ] Export/import preserves data integrity
-- [ ] PWA installs and works offline
+- [X] PWA installs and works offline
 
 ### Cross-Platform Testing
-- [ ] Test on Chrome (Android/Desktop)
+- [X] Test on Chrome (Android/Desktop)
 - [ ] Test on Safari (iOS/Desktop)
 - [ ] Test on Firefox (Desktop)
-- [ ] Verify mobile responsiveness
-- [ ] Test PWA installation process
-- [ ] Verify offline functionality
+- [X] Verify mobile responsiveness
+- [X] Test PWA installation process
+- [X] Verify offline functionality
 
 ### Performance Testing
 - [ ] Collection loads quickly with 100+ albums
