@@ -32,9 +32,23 @@ export class AlbumIdentifier {
         var finalImage = processedImage;
       }
       
-      // Step 2: Use SerpAPI for Google reverse image search
+      // Step 2: Try to upload image to get a real URL for SerpAPI
       const imageUrl = await this.uploadImageToTempStorage(finalImage);
-      const serpResult = await serpApiClient.identifyAlbum(imageUrl);
+      
+      // Check if upload was successful (should be an http URL, not data URL)
+      const isRealUrl = imageUrl.startsWith('http');
+      console.log('AlbumIdentifier: Image URL type:', isRealUrl ? 'Real URL (uploaded)' : 'Data URL (upload failed)');
+      
+      let serpResult;
+      if (isRealUrl) {
+        // Step 2a: Use SerpAPI with real URL
+        console.log('AlbumIdentifier: Attempting SerpAPI with uploaded image...');
+        serpResult = await serpApiClient.identifyAlbum(imageUrl);
+      } else {
+        // Step 2b: SerpAPI won't work with data URLs, skip to OCR
+        console.log('AlbumIdentifier: Skipping SerpAPI (no uploaded URL), going to OCR fallback...');
+        serpResult = { success: false, error: { message: 'No uploaded image URL available for SerpAPI' } };
+      }
       
       if (!serpResult.success) {
         console.error('SerpAPI identification failed, trying OCR fallback...');
@@ -380,9 +394,53 @@ export class AlbumIdentifier {
   }
 
   static async uploadImageToTempStorage(imageData) {
-    // For now, return the data URL directly
-    // In production, you might want to upload to a temporary storage service
-    return imageData;
+    try {
+      console.log('AlbumIdentifier: Uploading image to temporary storage...');
+      
+      // Convert base64 to blob for ImgBB upload
+      const base64Data = imageData.replace(/^data:image\/[a-z]+;base64,/, '');
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const blob = new Blob([bytes], { type: 'image/jpeg' });
+
+      // Upload to ImgBB with provided API key
+      const formData = new FormData();
+      formData.append('image', blob);
+      formData.append('expiration', '3600'); // Auto-delete after 1 hour for privacy
+      
+      const response = await fetch('https://api.imgbb.com/1/upload?key=8a905a9698e8c7b923adb320ae329c47', {
+        method: 'POST',
+        body: formData
+      });
+
+      console.log('ImgBB upload response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`ImgBB upload failed: ${response.status} - ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('ImgBB upload result success:', result.success);
+      
+      if (!result.success) {
+        throw new Error('ImgBB upload failed: ' + JSON.stringify(result));
+      }
+
+      const imageUrl = result.data.url;
+      console.log('AlbumIdentifier: Image uploaded successfully to ImgBB:', imageUrl);
+      return imageUrl;
+
+    } catch (error) {
+      console.warn('AlbumIdentifier: ImgBB upload failed, falling back to data URL:', error.message);
+      console.warn('AlbumIdentifier: This will skip SerpAPI and use OCR fallback');
+      
+      // Fallback to original behavior if upload fails
+      return imageData;
+    }
   }
 
   static async getAlbumCover(result) {

@@ -237,7 +237,7 @@ export class SerpApiClient {
     // Extract from image results
     if (searchResults.image_results) {
       searchResults.image_results.forEach((result, index) => {
-        const albumInfo = this.extractAlbumFromTitle(result.title);
+        const albumInfo = this.extractAlbumFromTitle(result.title, result.link);
         if (albumInfo) {
           candidates.push({
             source: 'image_results',
@@ -249,6 +249,19 @@ export class SerpApiClient {
             originalTitle: result.title,
             position: result.position
           });
+        } else {
+          // Even if we can't parse the title, include the raw result for manual review
+          candidates.push({
+            source: 'image_results_raw',
+            confidence: Math.max(0.6 - (index * 0.1), 0.2), // Lower confidence for unparsed
+            title: result.title || 'Unknown Album',
+            artist: 'Unknown Artist',
+            url: result.link,
+            thumbnail: result.thumbnail,
+            originalTitle: result.title,
+            position: result.position,
+            rawResult: true
+          });
         }
       });
     }
@@ -256,7 +269,7 @@ export class SerpApiClient {
     // Extract from inline images
     if (searchResults.inline_images) {
       searchResults.inline_images.forEach((result, index) => {
-        const albumInfo = this.extractAlbumFromTitle(result.title);
+        const albumInfo = this.extractAlbumFromTitle(result.title, result.link);
         if (albumInfo) {
           candidates.push({
             source: 'inline_images',
@@ -279,9 +292,10 @@ export class SerpApiClient {
   /**
    * Extract album information from result titles using pattern matching
    * @param {string} title - Result title to parse
+   * @param {string} sourceUrl - Source URL for domain-based parsing
    * @returns {Object|null} Extracted album info or null
    */
-  extractAlbumFromTitle(title) {
+  extractAlbumFromTitle(title, sourceUrl = '') {
     if (!title) return null;
 
     // Common album title patterns
@@ -329,7 +343,60 @@ export class SerpApiClient {
   }
 
   /**
-   * Remove duplicates and sort by confidence
+   * Get domain weight for source-based prioritization
+   * @param {string} url - The source URL
+   * @returns {number} Weight score (higher = better)
+   */
+  getDomainWeight(url) {
+    if (!url) return 5; // Default weight
+
+    try {
+      const domain = new URL(url).hostname.toLowerCase();
+      
+      const sourceWeights = {
+        'discogs.com': 10,        // Best for vinyl-specific data
+        'musicbrainz.org': 9,     // Comprehensive music database
+        'allmusic.com': 8,        // Professional music database
+        'last.fm': 7,             // Community music database
+        'spotify.com': 6,         // Streaming service metadata
+        'genius.com': 6,          // Lyrics and album info
+        'rateyourmusic.com': 7,   // Music community database
+        'bandcamp.com': 6,        // Artist direct sales
+        'amazon.com': 3,          // Marketplace (lower priority)
+        'amazon.co.uk': 3,
+        'amazon.de': 3,
+        'ebay.com': 2,            // Auction site (lowest priority)
+        'ebay.co.uk': 2,
+        'ebay.de': 2,
+        'mercari.com': 2,         // Marketplace
+        'etsy.com': 4,            // Handmade/vintage marketplace
+        'reverblp.com': 5,        // Music gear marketplace
+        'popsike.com': 4          // Record price database
+      };
+
+      // Check for exact domain matches first
+      if (sourceWeights[domain]) {
+        return sourceWeights[domain];
+      }
+
+      // Check for partial matches (subdomains)
+      for (const [key, weight] of Object.entries(sourceWeights)) {
+        if (domain.includes(key)) {
+          return weight;
+        }
+      }
+
+      // Default weight for unknown domains
+      return 5;
+
+    } catch (error) {
+      // Invalid URL, return default weight
+      return 5;
+    }
+  }
+
+  /**
+   * Remove duplicates and sort by source quality + confidence
    * @param {Array} candidates - Array of album candidates
    * @returns {Array} Sorted and deduplicated candidates
    */
@@ -341,14 +408,30 @@ export class SerpApiClient {
       const key = `${candidate.artist || ''}|${candidate.title || ''}`.toLowerCase();
       const existing = seen.get(key);
       
-      if (!existing || candidate.confidence > existing.confidence) {
+      // Calculate composite score: domain weight + confidence
+      const domainWeight = this.getDomainWeight(candidate.url);
+      candidate.domainWeight = domainWeight;
+      candidate.compositeScore = (domainWeight / 10) * 0.6 + candidate.confidence * 0.4;
+      
+      if (!existing || candidate.compositeScore > existing.compositeScore) {
         seen.set(key, candidate);
       }
     });
 
-    // Convert back to array and sort by confidence
+    // Convert back to array and sort by composite score (domain quality + confidence)
     return Array.from(seen.values())
-      .sort((a, b) => b.confidence - a.confidence)
+      .sort((a, b) => {
+        // Primary sort: composite score
+        if (Math.abs(b.compositeScore - a.compositeScore) > 0.1) {
+          return b.compositeScore - a.compositeScore;
+        }
+        // Secondary sort: domain weight
+        if (b.domainWeight !== a.domainWeight) {
+          return b.domainWeight - a.domainWeight;
+        }
+        // Tertiary sort: confidence
+        return b.confidence - a.confidence;
+      })
       .slice(0, 5); // Return top 5 candidates
   }
 
