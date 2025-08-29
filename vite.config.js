@@ -5,6 +5,14 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    host: true,
+    allowedHosts: [
+      '.ngrok.io',
+      '.ngrok-free.app',
+      'localhost'
+    ]
+  },
   plugins: [
     react(),
     VitePWA({
@@ -34,6 +42,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+        maximumFileSizeToCacheInBytes: 15 * 1024 * 1024, // 15MB to handle OpenCV.js bundle
         runtimeCaching: [
           // API responses cache with network-first strategy for fresh data when online
           {
