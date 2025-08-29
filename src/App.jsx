@@ -346,6 +346,78 @@ function App() {
     }
   };
 
+  const handleCameraIdentify = async (imageData) => {
+    try {
+      console.log('User chose to identify album with captured photo');
+      
+      // Close camera
+      setShowCamera(false);
+      
+      // Start identification process using existing file upload logic
+      setIsIdentifying(true);
+      setIdentificationResults(null);
+      
+      // Convert base64 to file object for consistency with existing upload logic
+      const response = await fetch(imageData);
+      const blob = await response.blob();
+      const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+      
+      // Process the image (compress/resize)
+      console.log('Processing captured image...');
+      const processedImage = await processImage(file);
+      
+      if (!processedImage) {
+        throw new Error('Failed to process captured image');
+      }
+      
+      // Start identification
+      console.log('Starting album identification...');
+      const serpClient = await getSerpApiClient();
+      
+      try {
+        const identificationPromise = serpClient.identifyAlbum(processedImage);
+        const result = await identificationPromise;
+        
+        if (result && result.albums && result.albums.length > 0) {
+          console.log('Identification successful:', result);
+          setIdentificationResults(result);
+          setShowIdentificationResults(true);
+        } else {
+          console.log('No albums found in identification');
+          // Fallback to manual entry with the captured image
+          const albumWithImage = {
+            coverImage: imageData,
+            identificationMethod: 'camera',
+            genre: [],
+            notes: 'Album cover captured with camera - identification found no results',
+            purchasePrice: null,
+            purchaseLocation: ''
+          };
+          setEditingAlbum(albumWithImage);
+          setShowAddForm(true);
+        }
+      } catch (identError) {
+        console.error('Identification failed:', identError);
+        // Fallback to manual entry with the captured image
+        const albumWithImage = {
+          coverImage: imageData,
+          identificationMethod: 'camera',
+          genre: [],
+          notes: 'Album cover captured with camera - identification failed',
+          purchasePrice: null,
+          purchaseLocation: ''
+        };
+        setEditingAlbum(albumWithImage);
+        setShowAddForm(true);
+      }
+    } catch (err) {
+      console.error('Failed to identify camera capture:', err);
+      setError(`Failed to identify album: ${err.message}`);
+    } finally {
+      setIsIdentifying(false);
+    }
+  };
+
   const handleSearch = (query) => {
     setSearchQuery(query);
   };
@@ -696,9 +768,11 @@ function App() {
 
         {/* Camera Capture */}
         {showCamera && (
-          <SimpleCameraCapture
+          <CameraCapture
             onCapture={handleCameraCapture}
             onClose={handleCameraClose}
+            onSaveToAlbum={handleCameraSave}
+            onIdentifyAlbum={handleCameraIdentify}
           />
         )}
 
