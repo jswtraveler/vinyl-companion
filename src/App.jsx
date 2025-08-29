@@ -7,6 +7,7 @@ import SimpleCameraCapture from './components/SimpleCameraCapture'
 import IdentificationLoader from './components/IdentificationLoader'
 import IdentificationResults from './components/IdentificationResults'
 import { AlbumIdentifier } from './services/albumIdentifier'
+import { ImageProcessor } from './utils/imageProcessing'
 import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage } from './services/database'
 import { createNewAlbum } from './models/Album'
 
@@ -21,6 +22,7 @@ function App() {
   const [sortOrder, setSortOrder] = useState('desc')
   const [showStats, setShowStats] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
+  const [showAlbumSearch, setShowAlbumSearch] = useState(false)
   
   // Album identification state
   const [isIdentifying, setIsIdentifying] = useState(false)
@@ -28,6 +30,7 @@ function App() {
   const [identificationProgress, setIdentificationProgress] = useState(0)
   const [identificationResults, setIdentificationResults] = useState(null)
   const [identifyingImage, setIdentifyingImage] = useState(null)
+  const [showIdentificationResults, setShowIdentificationResults] = useState(false)
 
   // Initialize database and load albums on app start
   useEffect(() => {
@@ -142,6 +145,10 @@ function App() {
   }, [albums])
 
   // Handlers
+  const handleFindByName = () => {
+    setShowAlbumSearch(true);
+  };
+
   const handleAddManually = () => {
     setShowAddForm(true);
   };
@@ -356,29 +363,24 @@ function App() {
       // Start identification process using existing file upload logic
       setIsIdentifying(true);
       setIdentificationResults(null);
+      setIdentifyingImage(imageData); // Store the captured image
       
-      // Convert base64 to file object for consistency with existing upload logic
-      const response = await fetch(imageData);
-      const blob = await response.blob();
-      const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-      
-      // Process the image (compress/resize)
+      // Process the image for identification
       console.log('Processing captured image...');
-      const processedImage = await processImage(file);
+      const processedImage = await ImageProcessor.processForIdentification(imageData);
       
       if (!processedImage) {
         throw new Error('Failed to process captured image');
       }
       
-      // Start identification
+      // Start identification using comprehensive album identifier
       console.log('Starting album identification...');
-      const serpClient = await getSerpApiClient();
+      const { AlbumIdentifier } = await import('./services/albumIdentifier.js');
       
       try {
-        const identificationPromise = serpClient.identifyAlbum(processedImage);
-        const result = await identificationPromise;
+        const result = await AlbumIdentifier.identifyFromImage(processedImage);
         
-        if (result && result.albums && result.albums.length > 0) {
+        if (result && result.candidates && result.candidates.length > 0) {
           console.log('Identification successful:', result);
           setIdentificationResults(result);
           setShowIdentificationResults(true);
@@ -497,6 +499,45 @@ function App() {
     }
   };
 
+  const handleSelectIdentifiedAlbum = async (selectedAlbum) => {
+    try {
+      console.log('User selected identified album:', selectedAlbum);
+      
+      // Close identification results
+      setShowIdentificationResults(false);
+      
+      // Prepare album data with the captured image and selected metadata
+      const albumWithMetadata = {
+        ...selectedAlbum,
+        coverImage: identifyingImage, // Use the captured image
+        identificationMethod: 'camera-serpapi',
+        notes: selectedAlbum.notes || 'Album identified from camera capture',
+        // Preserve user-editable fields as empty for user input
+        purchasePrice: null,
+        purchaseLocation: '',
+        // Let user edit condition if they want
+        condition: selectedAlbum.condition || 'Near Mint'
+      };
+      
+      // Open the add form with pre-filled data
+      setEditingAlbum(albumWithMetadata);
+      setShowAddForm(true);
+      
+      console.log('Opening add form with identified album data');
+    } catch (err) {
+      console.error('Failed to handle selected album:', err);
+      setError(`Failed to process selected album: ${err.message}`);
+    }
+  };
+
+  const handleCloseIdentificationResults = () => {
+    console.log('Closing identification results');
+    setShowIdentificationResults(false);
+    setIdentificationResults(null);
+    setIdentifyingImage(null);
+    setIsIdentifying(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm">
@@ -514,6 +555,16 @@ function App() {
                 </svg>
                 <span className="hidden sm:inline">Identify Album</span>
                 <span className="sm:hidden">Camera</span>
+              </button>
+              <button
+                onClick={handleFindByName}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span className="hidden sm:inline">Find by Name</span>
+                <span className="sm:hidden">Search</span>
               </button>
               <button
                 onClick={handleAddManually}
@@ -776,9 +827,202 @@ function App() {
           />
         )}
 
+        {/* Identification Results */}
+        {showIdentificationResults && identificationResults && (
+          <IdentificationResults
+            results={identificationResults}
+            onSelectResult={handleSelectIdentifiedAlbum}
+            onRetry={() => {
+              // Retry identification with the same image
+              handleCameraIdentify(identifyingImage);
+            }}
+            onCancel={handleCloseIdentificationResults}
+            originalImage={identifyingImage}
+          />
+        )}
+
+        {/* Album Search by Name Modal */}
+        {showAlbumSearch && (
+          <AlbumSearchModal 
+            onClose={() => setShowAlbumSearch(false)}
+            onSelectAlbum={(album) => {
+              setShowAlbumSearch(false);
+              setEditingAlbum(album);
+              setShowAddForm(true);
+            }}
+          />
+        )}
+
       </main>
     </div>
   )
 }
+
+// Simple Album Search Modal Component
+const AlbumSearchModal = ({ onClose, onSelectAlbum }) => {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    setHasSearched(true);
+    
+    try {
+      // Use Discogs client directly for album-only search
+      const { DiscogsClient } = await import('./services/apiClients.js');
+      const results = await DiscogsClient.searchReleases(searchQuery.trim());
+      
+      // Transform results to include source info
+      const transformedResults = results.map(result => ({
+        ...result,
+        source: 'discogs',
+        identificationMethod: 'manual-discogs-search'
+      }));
+      
+      setSearchResults(transformedResults);
+    } catch (error) {
+      console.error('Album search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
+        {/* Header */}
+        <div className="p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-gray-900">Find Album by Name</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Search Input */}
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Enter album name (e.g., 'Dark Side of the Moon')"
+              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              autoFocus
+            />
+            <button
+              onClick={handleSearch}
+              disabled={!searchQuery.trim() || isSearching}
+              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSearching ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">
+            Search Discogs database for vinyl records by album name
+          </p>
+        </div>
+
+        {/* Results */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {isSearching && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+              <span className="ml-3 text-gray-600">Searching Discogs...</span>
+            </div>
+          )}
+
+          {!isSearching && hasSearched && searchResults.length === 0 && (
+            <div className="text-center py-8">
+              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-3-8v0M7 4h10" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No albums found</h3>
+              <p className="text-gray-500">Try a different search term or check spelling</p>
+            </div>
+          )}
+
+          {!isSearching && searchResults.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600 mb-4">
+                Found {searchResults.length} results from Discogs:
+              </p>
+              {searchResults.map((album, index) => (
+                <div
+                  key={index}
+                  className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:bg-gray-50 cursor-pointer transition-colors"
+                  onClick={() => onSelectAlbum(album)}
+                >
+                  <div className="flex items-start space-x-4">
+                    {album.coverImage && (
+                      <img
+                        src={album.coverImage}
+                        alt={album.title}
+                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                      />
+                    )}
+                    <div className="flex-1">
+                      <h3 className="font-medium text-gray-900">{album.title}</h3>
+                      <p className="text-gray-600">{album.artist}</p>
+                      {album.year && <p className="text-sm text-gray-500">{album.year}</p>}
+                      {album.format && <p className="text-sm text-purple-600">Format: {album.format}</p>}
+                      {album.label && <p className="text-sm text-gray-500">Label: {album.label}</p>}
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                        Discogs
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!hasSearched && (
+            <div className="text-center py-8">
+              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Search for Albums</h3>
+              <p className="text-gray-500">Enter an album name to search Discogs database</p>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-between items-center">
+            <p className="text-xs text-gray-500">
+              Powered by Discogs - the vinyl marketplace database
+            </p>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default App
