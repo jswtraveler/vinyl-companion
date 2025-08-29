@@ -144,6 +144,54 @@ export class DiscogsClient {
         }
       }
       
+      // Map Discogs format to our album schema format
+      const mapDiscogsFormat = (discogsFormat) => {
+        if (!discogsFormat) return 'LP';
+        
+        const formatMap = {
+          'Vinyl': 'LP',
+          'LP': 'LP', 
+          'EP': 'EP',
+          'Single': 'Single',
+          '7"': 'Single',
+          '10"': '10"',
+          '12"': 'LP',
+          'Box Set': 'Box Set',
+          'Picture Disc': 'Picture Disc',
+          'Compilation': 'Compilation'
+        };
+        
+        return formatMap[discogsFormat] || 'LP';
+      };
+      
+      // Map Discogs genres to our schema genres
+      const mapDiscogsGenres = (discogsGenres) => {
+        if (!Array.isArray(discogsGenres)) return [];
+        
+        const validGenres = [
+          'Rock', 'Pop', 'Jazz', 'Blues', 'Classical', 'Folk', 'Country', 'R&B/Soul', 
+          'Hip Hop', 'Electronic', 'Punk', 'Metal', 'Alternative', 'Indie', 'World', 'Soundtrack'
+        ];
+        
+        const genreMap = {
+          'Hip-Hop': 'Hip Hop',
+          'R&B': 'R&B/Soul',
+          'Soul': 'R&B/Soul',
+          'Electronic': 'Electronic',
+          'Prog Rock': 'Rock',
+          'Progressive Rock': 'Rock',
+          'Classic Rock': 'Rock',
+          'Psychedelic Rock': 'Rock',
+          'Hard Rock': 'Rock',
+          'Pop Rock': 'Rock'
+        };
+        
+        return discogsGenres
+          .map(genre => genreMap[genre] || (validGenres.includes(genre) ? genre : null))
+          .filter(Boolean)
+          .slice(0, 3); // Limit to 3 genres max
+      };
+      
       return {
         id: release.id,
         title: title,
@@ -151,9 +199,9 @@ export class DiscogsClient {
         year: release.year,
         label: release.label?.[0],
         catalogNumber: release.catno,
-        format: release.format?.[0],
+        format: mapDiscogsFormat(release.format?.[0] || release.format),
         country: release.country,
-        genre: release.genre,
+        genre: mapDiscogsGenres(release.genre),
         style: release.style,
         coverImage: release.cover_image,
         source: 'discogs',
