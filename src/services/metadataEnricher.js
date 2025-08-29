@@ -40,8 +40,8 @@ export class MetadataEnricher {
         DiscogsClient.searchReleases(query)
       ]);
 
-      // Combine and rank results
-      const allResults = [...musicBrainzResults, ...discogsResults];
+      // Combine and rank results (prioritize Discogs for vinyl collection)
+      const allResults = [...discogsResults, ...musicBrainzResults];
       const rankedResults = this.rankResults(allResults, title, artist);
 
       // Get album covers for top results
@@ -71,12 +71,21 @@ export class MetadataEnricher {
    */
   static rankResults(results, searchTitle, searchArtist) {
     return results
-      .map(result => ({
-        ...result,
-        relevanceScore: this.calculateRelevance(result, searchTitle, searchArtist)
-      }))
+      .map(result => {
+        let relevanceScore = this.calculateRelevance(result, searchTitle, searchArtist);
+        
+        // Give Discogs results a bonus for vinyl collections (prioritize vinyl marketplace)
+        if (result.source === 'discogs') {
+          relevanceScore += 0.1; // 10% bonus for Discogs results
+        }
+        
+        return {
+          ...result,
+          relevanceScore
+        };
+      })
       .sort((a, b) => {
-        // Sort by relevance score first, then confidence
+        // Sort by relevance score first (now includes Discogs bonus), then confidence
         if (b.relevanceScore !== a.relevanceScore) {
           return b.relevanceScore - a.relevanceScore;
         }

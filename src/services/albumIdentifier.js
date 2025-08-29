@@ -102,30 +102,8 @@ export class AlbumIdentifier {
         });
       }
 
-      // Step 2: Enrich top candidates with MusicBrainz data
+      // Step 2: Enrich with Discogs vinyl-specific data first (prioritize vinyl database)
       for (const result of results.slice(0, 3)) {
-        if (result.artist && result.title) {
-          try {
-            const query = `${result.artist} ${result.title}`;
-            const mbResults = await MusicBrainzClient?.searchReleases?.(query) || [];
-            
-            if (mbResults.length > 0) {
-              const mbData = mbResults[0];
-              result.year = result.year || mbData.year;
-              result.label = mbData.label;
-              result.catalogNumber = mbData.catalogNumber;
-              result.genre = mbData.genre;
-              result.metadata.musicbrainzId = mbData.id;
-              result.metadata.enrichedWithMB = true;
-            }
-          } catch (mbError) {
-            console.warn('MusicBrainz enrichment failed:', mbError.message);
-          }
-        }
-      }
-
-      // Step 3: Enrich with Discogs vinyl-specific data
-      for (const result of results.slice(0, 2)) {
         if (result.artist && result.title) {
           try {
             const query = `${result.artist} ${result.title}`;
@@ -133,13 +111,41 @@ export class AlbumIdentifier {
             
             if (discogsResults.length > 0) {
               const discogsData = discogsResults[0];
+              // Discogs data takes priority for vinyl records
+              result.year = discogsData.year || result.year;
+              result.label = discogsData.label;
+              result.catalogNumber = discogsData.catalogNumber;
               result.format = discogsData.format;
               result.pressing = discogsData.pressing;
+              result.genre = discogsData.genre;
               result.metadata.discogsId = discogsData.id;
               result.metadata.enrichedWithDiscogs = true;
             }
           } catch (discogsError) {
             console.warn('Discogs enrichment failed:', discogsError.message);
+          }
+        }
+      }
+
+      // Step 3: Fill gaps with MusicBrainz data (secondary enrichment)
+      for (const result of results.slice(0, 2)) {
+        if (result.artist && result.title) {
+          try {
+            const query = `${result.artist} ${result.title}`;
+            const mbResults = await MusicBrainzClient?.searchReleases?.(query) || [];
+            
+            if (mbResults.length > 0) {
+              const mbData = mbResults[0];
+              // Only fill missing fields, don't override Discogs data
+              result.year = result.year || mbData.year;
+              result.label = result.label || mbData.label;
+              result.catalogNumber = result.catalogNumber || mbData.catalogNumber;
+              result.genre = result.genre || mbData.genre;
+              result.metadata.musicbrainzId = mbData.id;
+              result.metadata.enrichedWithMB = true;
+            }
+          } catch (mbError) {
+            console.warn('MusicBrainz enrichment failed:', mbError.message);
           }
         }
       }
