@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   ALBUM_FORMATS, 
   RECORD_SPEEDS, 
@@ -7,6 +7,7 @@ import {
   createNewAlbum,
   validateAlbum 
 } from '../models/Album';
+import { MetadataEnricher, createAlbumFromMetadata } from '../services/metadataEnricher.js';
 
 const AlbumForm = ({ 
   album, 
@@ -23,6 +24,11 @@ const AlbumForm = ({
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [metadataSuggestions, setMetadataSuggestions] = useState([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searchAttempted, setSearchAttempted] = useState(false);
+  const debounceTimer = useRef(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,6 +54,11 @@ const AlbumForm = ({
         [name]: undefined
       }));
     }
+
+    // Trigger metadata search when title or artist changes
+    if ((name === 'title' || name === 'artist') && mode === 'add') {
+      debouncedMetadataSearch(name === 'title' ? processedValue : formData.title, name === 'artist' ? processedValue : formData.artist);
+    }
   };
 
   const handleGenreChange = (genre) => {
@@ -61,6 +72,83 @@ const AlbumForm = ({
       genre: newGenres
     }));
   };
+
+  // Debounced metadata search to avoid too many API calls
+  const debouncedMetadataSearch = (title, artist) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    debounceTimer.current = setTimeout(() => {
+      searchMetadata(title, artist);
+    }, 1000); // Wait 1 second after user stops typing
+  };
+
+  const searchMetadata = async (title, artist) => {
+    if (!title?.trim() || !artist?.trim() || searchAttempted) {
+      return;
+    }
+
+    setIsLoadingSuggestions(true);
+    setSearchAttempted(true);
+
+    try {
+      const suggestions = await MetadataEnricher.searchAlbumMetadata(title, artist);
+      setMetadataSuggestions(suggestions);
+      setShowSuggestions(suggestions.length > 0);
+    } catch (error) {
+      console.error('Metadata search error:', error);
+      setMetadataSuggestions([]);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  };
+
+  const handleSelectSuggestion = async (suggestion) => {
+    try {
+      // Get detailed metadata if needed
+      const detailedMetadata = await MetadataEnricher.getDetailedMetadata(suggestion);
+      
+      // Create album data from metadata, preserving user's existing data
+      const enrichedData = createAlbumFromMetadata(detailedMetadata, {
+        // Preserve manually entered data that user might want to keep
+        purchasePrice: formData.purchasePrice,
+        purchaseLocation: formData.purchaseLocation,
+        notes: formData.notes,
+        condition: formData.condition,
+        speed: formData.speed
+      });
+
+      setFormData(enrichedData);
+      setShowSuggestions(false);
+      setMetadataSuggestions([]);
+    } catch (error) {
+      console.error('Error applying metadata:', error);
+    }
+  };
+
+  const handleSkipSuggestions = () => {
+    setShowSuggestions(false);
+    setMetadataSuggestions([]);
+  };
+
+  // Clear search state when switching between add/edit modes
+  useEffect(() => {
+    if (mode === 'edit') {
+      setSearchAttempted(true); // Don't search for existing albums
+      setShowSuggestions(false);
+      setMetadataSuggestions([]);
+    }
+  }, [mode]);
+
+  // Cleanup debounce timer
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -186,6 +274,98 @@ const AlbumForm = ({
             </div>
           </div>
         </div>
+
+        {/* Metadata Suggestions */}
+        {mode === 'add' && (showSuggestions || isLoadingSuggestions) && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Album Suggestions
+              </h3>
+              {!isLoadingSuggestions && (
+                <button
+                  type="button"
+                  onClick={handleSkipSuggestions}
+                  className="text-sm text-gray-500 hover:text-gray-700"
+                >
+                  Skip suggestions
+                </button>
+              )}
+            </div>
+            
+            {isLoadingSuggestions ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center space-x-3">
+                  <svg className="animate-spin h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25"></circle>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" className="opacity-75"></path>
+                  </svg>
+                  <span className="text-gray-600">Searching for album metadata...</span>
+                </div>
+              </div>
+            ) : metadataSuggestions.length > 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600 mb-3">
+                  We found some matches for your album. Click on one to auto-fill the form:
+                </p>
+                <div className="grid gap-3">
+                  {metadataSuggestions.map((suggestion, index) => (
+                    <div
+                      key={`${suggestion.source}-${suggestion.id}-${index}`}
+                      onClick={() => handleSelectSuggestion(suggestion)}
+                      className="flex items-start p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 cursor-pointer transition-colors"
+                    >
+                      {suggestion.coverUrl && (
+                        <img
+                          src={suggestion.coverUrl}
+                          alt={`${suggestion.title} cover`}
+                          className="w-16 h-16 rounded-lg object-cover mr-4 flex-shrink-0"
+                          onError={(e) => {
+                            e.target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div className="flex-grow min-w-0">
+                        <h4 className="font-medium text-gray-900 truncate">
+                          {suggestion.title}
+                        </h4>
+                        <p className="text-sm text-gray-600 truncate">
+                          by {suggestion.artist}
+                        </p>
+                        <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                          {suggestion.year && <span>{suggestion.year}</span>}
+                          {suggestion.label && <span>{suggestion.label}</span>}
+                          {suggestion.format && <span>{suggestion.format}</span>}
+                          <span className="capitalize bg-gray-100 px-2 py-1 rounded">
+                            {suggestion.source}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0 ml-2">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-3">
+                  You can still modify any field after selecting a suggestion.
+                </p>
+              </div>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-gray-600">No matches found for this album.</p>
+                <p className="text-sm text-gray-500 mt-1">
+                  Continue filling out the form manually.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Physical Details */}
         <div className="bg-white p-6 rounded-lg border">
