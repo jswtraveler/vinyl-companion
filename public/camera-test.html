@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Camera Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #000;
+            color: white;
+        }
+        video {
+            width: 100%;
+            max-width: 400px;
+            height: auto;
+            border: 2px solid #00ff00;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 10px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        #error {
+            background: #dc3545;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        #info {
+            background: #28a745;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Simple Camera Test</h1>
+    
+    <div id="info">
+        <p>This is a basic camera test to debug mobile camera issues.</p>
+        <p>Status: <span id="status">Not started</span></p>
+    </div>
+    
+    <div id="error"></div>
+    
+    <video id="video" autoplay playsinline muted></video>
+    
+    <div>
+        <button id="startBtn">Start Camera</button>
+        <button id="stopBtn" disabled>Stop Camera</button>
+    </div>
+    
+    <div id="details">
+        <h3>Browser Details:</h3>
+        <p>User Agent: <span id="userAgent"></span></p>
+        <p>HTTPS: <span id="isHttps"></span></p>
+        <p>MediaDevices Support: <span id="mediaSupport"></span></p>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const error = document.getElementById('error');
+        let currentStream = null;
+
+        // Show browser details
+        document.getElementById('userAgent').textContent = navigator.userAgent;
+        document.getElementById('isHttps').textContent = location.protocol === 'https:' ? 'YES' : 'NO';
+        document.getElementById('mediaSupport').textContent = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) ? 'YES' : 'NO';
+
+        function showError(message) {
+            error.style.display = 'block';
+            error.textContent = message;
+            console.error(message);
+        }
+
+        function hideError() {
+            error.style.display = 'none';
+        }
+
+        function updateStatus(message) {
+            status.textContent = message;
+            console.log('Status:', message);
+        }
+
+        async function startCamera() {
+            try {
+                hideError();
+                updateStatus('Requesting camera access...');
+                
+                // Check if getUserMedia is supported
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    throw new Error('getUserMedia is not supported in this browser');
+                }
+
+                console.log('Requesting camera with constraints...');
+                const constraints = {
+                    video: {
+                        facingMode: 'environment', // Try rear camera
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                };
+
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                console.log('Got media stream:', stream);
+
+                video.srcObject = stream;
+                currentStream = stream;
+
+                video.addEventListener('loadedmetadata', () => {
+                    console.log('Video metadata loaded');
+                    updateStatus('Camera active');
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                });
+
+                video.addEventListener('playing', () => {
+                    console.log('Video is playing');
+                    updateStatus('Camera streaming');
+                });
+
+            } catch (err) {
+                console.error('Camera error:', err);
+                let errorMsg = 'Camera access failed: ';
+                
+                switch(err.name) {
+                    case 'NotAllowedError':
+                        errorMsg += 'Permission denied. Please allow camera access.';
+                        break;
+                    case 'NotFoundError':
+                        errorMsg += 'No camera found on this device.';
+                        break;
+                    case 'NotReadableError':
+                        errorMsg += 'Camera is being used by another application.';
+                        break;
+                    default:
+                        errorMsg += err.message || 'Unknown error';
+                }
+                
+                showError(errorMsg);
+                updateStatus('Failed');
+            }
+        }
+
+        function stopCamera() {
+            if (currentStream) {
+                const tracks = currentStream.getTracks();
+                tracks.forEach(track => track.stop());
+                video.srcObject = null;
+                currentStream = null;
+                updateStatus('Camera stopped');
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+                console.log('Camera stopped');
+            }
+        }
+
+        startBtn.addEventListener('click', startCamera);
+        stopBtn.addEventListener('click', stopCamera);
+
+        // Auto-start for easier testing
+        setTimeout(() => {
+            console.log('Auto-starting camera test...');
+            startCamera();
+        }, 1000);
+    </script>
+</body>
+</html>
