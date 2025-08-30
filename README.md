@@ -1,4 +1,6 @@
-# React + Vite
+# Vinyl Companion - React + Vite
+
+A progressive web app for managing your vinyl record collection with automatic album identification and cloud sync.
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
