@@ -6,10 +6,13 @@ import CameraCapture from './components/CameraCapture'
 import SimpleCameraCapture from './components/SimpleCameraCapture'
 import IdentificationLoader from './components/IdentificationLoader'
 import IdentificationResults from './components/IdentificationResults'
+import AuthModal from './components/AuthModal'
 import { AlbumIdentifier } from './services/albumIdentifier'
 import { ImageProcessor } from './utils/imageProcessing'
 import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage, exportData, importData } from './services/database'
 import { createNewAlbum } from './models/Album'
+import { supabase } from './services/supabase'
+import SupabaseDatabase from './services/supabaseDatabase'
 
 function App() {
   const [showAddForm, setShowAddForm] = useState(false)
@@ -24,6 +27,12 @@ function App() {
   const [showCamera, setShowCamera] = useState(false)
   const [showAlbumSearch, setShowAlbumSearch] = useState(false)
   
+  // Authentication state
+  const [user, setUser] = useState(null)
+  const [authLoading, setAuthLoading] = useState(true)
+  const [showAuth, setShowAuth] = useState(false)
+  const [useCloudDatabase, setUseCloudDatabase] = useState(false)
+  
   // Album identification state
   const [isIdentifying, setIsIdentifying] = useState(false)
   const [identificationStage, setIdentificationStage] = useState('searching')
@@ -32,31 +41,86 @@ function App() {
   const [identifyingImage, setIdentifyingImage] = useState(null)
   const [showIdentificationResults, setShowIdentificationResults] = useState(false)
 
-  // Initialize database and load albums on app start
+  // Authentication effect - check for existing session
   useEffect(() => {
-    const initializeApp = async () => {
+    const initAuth = async () => {
       try {
-        setLoading(true)
-        setError(null)
+        const { data: { session }, error } = await supabase.auth.getSession()
         
-        console.log('Initializing database...')
-        await initDatabase()
-        
-        console.log('Loading albums from database...')
-        const storedAlbums = await getAllAlbums()
-        setAlbums(storedAlbums)
-        
-        console.log(`Loaded ${storedAlbums.length} albums from database`)
-      } catch (err) {
-        console.error('Failed to initialize app:', err)
-        setError('Failed to load your vinyl collection. Please refresh the page.')
+        if (error) {
+          console.error('Auth session error:', error)
+        } else if (session?.user) {
+          console.log('User already logged in:', session.user.email)
+          setUser(session.user)
+          setUseCloudDatabase(true)
+        } else {
+          console.log('No active session - using local database')
+          setUseCloudDatabase(false)
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error)
       } finally {
-        setLoading(false)
+        setAuthLoading(false)
       }
     }
 
-    initializeApp()
+    initAuth()
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event, session?.user?.email)
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user)
+        setUseCloudDatabase(true)
+        setShowAuth(false)
+        // Reload albums from cloud database
+        loadAlbums(true)
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null)
+        setUseCloudDatabase(false)
+        // Reload albums from local database
+        loadAlbums(false)
+      }
+    })
+
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
+
+  // Initialize database and load albums
+  useEffect(() => {
+    if (!authLoading) {
+      loadAlbums(useCloudDatabase)
+    }
+  }, [authLoading, useCloudDatabase])
+
+  const loadAlbums = async (useCloud = false) => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      let storedAlbums = []
+      
+      if (useCloud && user) {
+        console.log('Loading albums from Supabase...')
+        storedAlbums = await SupabaseDatabase.getAllAlbums()
+      } else {
+        console.log('Loading albums from local IndexedDB...')
+        await initDatabase()
+        storedAlbums = await getAllAlbums()
+      }
+      
+      setAlbums(storedAlbums)
+      console.log(`Loaded ${storedAlbums.length} albums from ${useCloud ? 'cloud' : 'local'} database`)
+    } catch (err) {
+      console.error('Failed to load albums:', err)
+      setError(`Failed to load your vinyl collection. ${useCloud ? 'Cloud database error.' : 'Local database error.'} Please refresh the page.`)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Search and sort functionality
   const filteredAndSortedAlbums = useMemo(() => {
@@ -444,29 +508,48 @@ function App() {
       console.log(isExistingAlbum ? 'Updating existing album:' : 'Saving new album:', albumData);
       
       let savedAlbum;
+      
+      if (useCloudDatabase && user) {
+        // Use Supabase database
+        if (isExistingAlbum) {
+          savedAlbum = await SupabaseDatabase.updateAlbum(editingAlbum.id, albumData);
+        } else {
+          savedAlbum = await SupabaseDatabase.addAlbum(albumData);
+        }
+      } else {
+        // Use local IndexedDB
+        if (isExistingAlbum) {
+          savedAlbum = await updateAlbum(albumData);
+        } else {
+          savedAlbum = await addAlbum(albumData);
+        }
+      }
+      
+      // Update local state
       if (isExistingAlbum) {
-        // Update existing album
-        savedAlbum = await updateAlbum(albumData);
-        // Update local state
         setAlbums(prevAlbums => 
           prevAlbums.map(album => 
             album.id === savedAlbum.id ? savedAlbum : album
           )
         );
       } else {
-        // Add new album
-        savedAlbum = await addAlbum(albumData);
-        // Update local state
         setAlbums(prevAlbums => [savedAlbum, ...prevAlbums]);
       }
       
-      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} ${isExistingAlbum ? 'updated' : 'saved'} successfully!`);
+      const dbType = useCloudDatabase ? 'cloud' : 'local';
+      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} ${isExistingAlbum ? 'updated' : 'saved'} successfully to ${dbType} database!`);
       setShowAddForm(false);
       setEditingAlbum(null);
       setError(null); // Clear any previous errors
     } catch (err) {
       console.error('Failed to save album:', err);
-      alert(`Failed to save album: ${err.message}`);
+      
+      if (err.message.includes('not authenticated')) {
+        alert('Please sign in to save albums to the cloud database.');
+        setShowAuth(true);
+      } else {
+        alert(`Failed to save album: ${err.message}`);
+      }
       // Don't close the form so user can try again
     }
   };
@@ -487,17 +570,47 @@ function App() {
     }
 
     try {
-      await deleteAlbum(album.id);
+      if (useCloudDatabase && user) {
+        // Use Supabase database
+        await SupabaseDatabase.deleteAlbum(album.id);
+      } else {
+        // Use local IndexedDB
+        await deleteAlbum(album.id);
+      }
       
       // Update local state
       setAlbums(prevAlbums => prevAlbums.filter(a => a.id !== album.id));
       
-      alert(`Album "${album.title}" deleted successfully!`);
+      const dbType = useCloudDatabase ? 'cloud' : 'local';
+      alert(`Album "${album.title}" deleted successfully from ${dbType} database!`);
       setError(null);
     } catch (err) {
       console.error('Failed to delete album:', err);
       alert(`Failed to delete album: ${err.message}`);
     }
+  };
+
+  // Authentication handlers
+  const handleSignIn = () => {
+    setShowAuth(true);
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      alert('Signed out successfully!');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      alert('Failed to sign out: ' + error.message);
+    }
+  };
+
+  const handleAuthSuccess = (user) => {
+    console.log('Authentication successful:', user.email);
+    setUser(user);
+    setShowAuth(false);
   };
 
   const handleSelectIdentifiedAlbum = async (selectedAlbum) => {
@@ -544,8 +657,55 @@ function App() {
       <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Vinyl Companion</h1>
-            <div className="flex gap-3">
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Vinyl Companion</h1>
+              {/* Database Status Indicator */}
+              <div className="flex items-center gap-2">
+                {authLoading ? (
+                  <span className="text-sm text-gray-500">Loading...</span>
+                ) : useCloudDatabase && user ? (
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Cloud ({user.email})</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-sm text-gray-600">Local</span>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap gap-3">
+              {/* Auth Controls */}
+              {!authLoading && (
+                <>
+                  {user ? (
+                    <button
+                      onClick={handleSignOut}
+                      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-1 text-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <span>Sign Out</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSignIn}
+                      className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-1 text-sm"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span>Sign In</span>
+                    </button>
+                  )}
+                </>
+              )}
+              
+              {/* Main Action Buttons */}
               <button
                 onClick={handleCameraClick}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
@@ -867,6 +1027,15 @@ function App() {
               setEditingAlbum(newAlbum);
               setShowAddForm(true);
             }}
+          />
+        )}
+
+        {/* Authentication Modal */}
+        {showAuth && (
+          <AuthModal
+            isOpen={showAuth}
+            onClose={() => setShowAuth(false)}
+            onAuthSuccess={handleAuthSuccess}
           />
         )}
 

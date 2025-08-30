@@ -1,0 +1,52 @@
+functionsDirectory = "C:\\Users\\jswtr\\Documents\\claude-code-vinyl\\vinyl-companion\\netlify\\functions"
+functionsDirectoryOrigin = "config-v1"
+headersOrigin = "config"
+redirectsOrigin = "config"
+plugins = []
+
+[build]
+publish = "C:\\Users\\jswtr\\Documents\\claude-code-vinyl\\vinyl-companion\\dist"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "npm run build"
+functions = "C:\\Users\\jswtr\\Documents\\claude-code-vinyl\\vinyl-companion\\netlify\\functions"
+
+[build.environment]
+VITE_SERPAPI_KEY = "65edc1b550acec4b06ce11202d76c1ffe07932854e39c79479558cabc40120e6"
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[functions]
+
+[functions."*"]
+node_bundler = "esbuild"
+
+[[headers]]
+for = "/.netlify/functions/*"
+
+[headers.values]
+Access-Control-Allow-Origin = "*"
+Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+Access-Control-Allow-Headers = "Content-Type"
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
