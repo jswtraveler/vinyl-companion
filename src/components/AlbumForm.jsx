@@ -156,7 +156,7 @@ const AlbumForm = ({
     setErrors({});
     
     // Validate form data
-    const validation = validateAlbum(formData);
+    const validation = validateAlbum(formData, mode);
     
     if (!validation.isValid) {
       const fieldErrors = {};

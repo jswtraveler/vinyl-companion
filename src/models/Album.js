@@ -282,7 +282,7 @@ export const createNewAlbum = (overrides = {}) => {
 /**
  * Validate album data against schema
  */
-export const validateAlbum = (album) => {
+export const validateAlbum = (album, mode = 'add') => {
   const errors = [];
   
   // Required fields
@@ -294,8 +294,9 @@ export const validateAlbum = (album) => {
     errors.push('Artist name is required');
   }
   
-  if (!album.id) {
-    errors.push('Album ID is required');
+  // Only require ID for updates, not for new albums
+  if (mode === 'edit' && !album.id) {
+    errors.push('Album ID is required for updates');
   }
   
   // Field length validations
