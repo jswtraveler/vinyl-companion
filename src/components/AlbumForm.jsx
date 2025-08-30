@@ -30,6 +30,14 @@ const AlbumForm = ({
   const [searchAttempted, setSearchAttempted] = useState(false);
   const [lastSearchFields, setLastSearchFields] = useState({ title: '', artist: '' });
   const debounceTimer = useRef(null);
+  
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState({
+    basic: true,      // Always expanded
+    physical: false,  // Minimized by default
+    genres: false,    // Minimized by default
+    collection: false // Minimized by default
+  });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -71,6 +79,13 @@ const AlbumForm = ({
     setFormData(prev => ({
       ...prev,
       genre: newGenres
+    }));
+  };
+
+  const toggleSection = (sectionName) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [sectionName]: !prev[sectionName]
     }));
   };
 
@@ -398,8 +413,24 @@ const AlbumForm = ({
         )}
 
         {/* Physical Details */}
-        <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Physical Details</h3>
+        <div className="bg-white rounded-lg border">
+          <button
+            type="button"
+            onClick={() => toggleSection('physical')}
+            className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <h3 className="text-lg font-semibold text-gray-900">Physical Details</h3>
+            <svg 
+              className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedSections.physical ? 'rotate-180' : ''}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {expandedSections.physical && (
+            <div className="px-6 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -463,11 +494,29 @@ const AlbumForm = ({
               />
             </div>
           </div>
+            </div>
+          )}
         </div>
 
         {/* Genres */}
-        <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Genres</h3>
+        <div className="bg-white rounded-lg border">
+          <button
+            type="button"
+            onClick={() => toggleSection('genres')}
+            className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <h3 className="text-lg font-semibold text-gray-900">Genres</h3>
+            <svg 
+              className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedSections.genres ? 'rotate-180' : ''}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {expandedSections.genres && (
+            <div className="px-6 pb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {MUSIC_GENRES.map(genre => (
               <label key={genre} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
@@ -481,11 +530,29 @@ const AlbumForm = ({
               </label>
             ))}
           </div>
+            </div>
+          )}
         </div>
 
         {/* Collection Details */}
-        <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Collection Details</h3>
+        <div className="bg-white rounded-lg border">
+          <button
+            type="button"
+            onClick={() => toggleSection('collection')}
+            className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
+          >
+            <h3 className="text-lg font-semibold text-gray-900">Collection Details</h3>
+            <svg 
+              className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedSections.collection ? 'rotate-180' : ''}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {expandedSections.collection && (
+            <div className="px-6 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -538,6 +605,8 @@ const AlbumForm = ({
               {(formData.notes || '').length}/1000 characters
             </p>
           </div>
+            </div>
+          )}
         </div>
 
         {/* Form Actions */}
