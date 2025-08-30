@@ -50,7 +50,24 @@ export class SupabaseDatabase {
       
       if (error) throw error;
       console.log(`Retrieved ${data?.length || 0} albums from Supabase`);
-      return data || [];
+      
+      // Map Supabase field names to frontend expected field names
+      const mappedData = (data || []).map(album => ({
+        ...album,
+        coverImage: album.cover_image_url, // Map cover_image_url to coverImage
+        catalogNumber: album.catalog_number, // Map catalog_number to catalogNumber
+        purchasePrice: album.purchase_price, // Map purchase_price to purchasePrice
+        purchaseDate: album.purchase_date, // Map purchase_date to purchaseDate
+        purchaseLocation: album.purchase_location, // Map purchase_location to purchaseLocation
+        identificationMethod: album.identification_method, // Map identification_method to identificationMethod
+        identificationConfidence: album.identification_confidence, // Map identification_confidence to identificationConfidence
+        listeningCount: album.listening_count, // Map listening_count to listeningCount
+        lastPlayed: album.last_played, // Map last_played to lastPlayed
+        createdAt: album.created_at, // Map created_at to createdAt
+        updatedAt: album.updated_at // Map updated_at to updatedAt
+      }));
+      
+      return mappedData;
     } catch (error) {
       console.error('Error fetching albums:', error);
       throw error;
@@ -80,7 +97,24 @@ export class SupabaseDatabase {
         .single();
 
       if (error) throw error;
-      return data;
+      
+      // Map Supabase field names to frontend expected field names
+      const mappedData = {
+        ...data,
+        coverImage: data.cover_image_url,
+        catalogNumber: data.catalog_number,
+        purchasePrice: data.purchase_price,
+        purchaseDate: data.purchase_date,
+        purchaseLocation: data.purchase_location,
+        identificationMethod: data.identification_method,
+        identificationConfidence: data.identification_confidence,
+        listeningCount: data.listening_count,
+        lastPlayed: data.last_played,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+      
+      return mappedData;
     } catch (error) {
       console.error('Error fetching album:', error);
       throw error;
