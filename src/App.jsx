@@ -653,25 +653,25 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm">
+    <div className="min-h-screen bg-black">
+      <header className="bg-gray-900 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Vinyl Companion</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-white">Vinyl Companion</h1>
               {/* Database Status Indicator */}
               <div className="flex items-center gap-2">
                 {authLoading ? (
-                  <span className="text-sm text-gray-500">Loading...</span>
+                  <span className="text-sm text-gray-400">Loading...</span>
                 ) : useCloudDatabase && user ? (
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Cloud ({user.email})</span>
+                    <span className="text-sm text-gray-300">Cloud ({user.email})</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-1">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-gray-600">Local</span>
+                    <span className="text-sm text-gray-300">Local</span>
                   </div>
                 )}
               </div>
@@ -756,7 +756,7 @@ function App() {
 
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-white">
               Your Collection ({loading ? '...' : `${filteredAndSortedAlbums.length} of ${albums.length}`} albums)
             </h2>
             <div className="flex items-center gap-2">
@@ -787,7 +787,7 @@ function App() {
           {albums.length > 0 && (
             <div className="mb-4">
               <div className="flex flex-wrap gap-2 items-center">
-                <span className="text-sm font-medium text-gray-600">Sort by:</span>
+                <span className="text-sm font-medium text-gray-300">Sort by:</span>
                 {[
                   { key: 'dateAdded', label: 'Date Added' },
                   { key: 'title', label: 'Title' },
@@ -892,7 +892,7 @@ function App() {
 
           {/* Search Results Info */}
           {searchQuery && (
-            <div className="mb-4 text-sm text-gray-600">
+            <div className="mb-4 text-sm text-gray-400">
               {filteredAndSortedAlbums.length === 0 ? (
                 <>No albums found for "{searchQuery}"</>
               ) : filteredAndSortedAlbums.length < albums.length ? (
@@ -905,24 +905,24 @@ function App() {
         {loading ? (
           <div className="text-center py-12">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-500">Loading your vinyl collection...</p>
+            <p className="text-gray-400">Loading your vinyl collection...</p>
           </div>
         ) : albums.length === 0 ? (
           <div className="text-center py-12">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
             </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No albums yet</h3>
-            <p className="text-gray-500 mb-6">Start building your collection by adding your first vinyl record!</p>
-            <p className="text-gray-500">Use the "Add Manually" button in the header above to add your first album.</p>
+            <h3 className="text-lg font-medium text-white mb-2">No albums yet</h3>
+            <p className="text-gray-400 mb-6">Start building your collection by adding your first vinyl record!</p>
+            <p className="text-gray-400">Use the "Add Manually" button in the header above to add your first album.</p>
           </div>
         ) : filteredAndSortedAlbums.length === 0 ? (
           <div className="text-center py-12">
             <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No albums found</h3>
-            <p className="text-gray-500 mb-4">No albums match your search criteria.</p>
+            <h3 className="text-lg font-medium text-white mb-2">No albums found</h3>
+            <p className="text-gray-400 mb-4">No albums match your search criteria.</p>
             <button
               onClick={() => setSearchQuery('')}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"

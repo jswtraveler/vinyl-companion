@@ -21,7 +21,8 @@
       "Read(/C:\\c\\Users\\jswtr\\Documents\\claude-code-vinyl/**)",
       "Bash(ipconfig)",
       "Bash(ngrok:*)",
-      "Bash(netlify deploy:*)"
+      "Bash(netlify deploy:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": [],

@@ -27,9 +27,9 @@ const AlbumCard = ({
   };
 
   return (
-    <article className="bg-white rounded-lg shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group">
+    <article className="bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group">
       {/* Cover Image */}
-      <div className="aspect-square bg-gray-200 relative">
+      <div className="aspect-square bg-gray-700 relative">
         {album.coverImage ? (
           <img 
             src={album.coverImage} 
@@ -84,18 +84,18 @@ const AlbumCard = ({
       {/* Album Information */}
       <div className="p-4">
         {/* Title and Artist */}
-        <h3 className="font-semibold text-lg text-gray-900 truncate" title={album.title}>
+        <h3 className="font-semibold text-lg text-white truncate" title={album.title}>
           {album.title}
         </h3>
-        <p className="text-gray-600 truncate mb-2" title={album.artist}>
+        <p className="text-gray-300 truncate mb-2" title={album.artist}>
           {album.artist}
         </p>
 
         {/* Album Details */}
-        <div className="space-y-1 text-sm text-gray-500">
+        <div className="space-y-1 text-sm text-gray-400">
           <div className="flex items-center justify-between">
             <span>{album.year || 'Unknown Year'}</span>
-            <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+            <span className="text-xs bg-gray-600 text-gray-200 px-2 py-1 rounded">
               {album.format || 'LP'}
             </span>
           </div>
@@ -118,7 +118,7 @@ const AlbumCard = ({
             </p>
           )}
           
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-500">
             Added {formatDate(album.dateAdded)}
           </p>
         </div>
