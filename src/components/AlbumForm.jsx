@@ -28,6 +28,7 @@ const AlbumForm = ({
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchAttempted, setSearchAttempted] = useState(false);
+  const [lastSearchFields, setLastSearchFields] = useState({ title: '', artist: '' });
   const debounceTimer = useRef(null);
 
   const handleChange = (e) => {
@@ -85,12 +86,28 @@ const AlbumForm = ({
   };
 
   const searchMetadata = async (title, artist) => {
-    if ((!title?.trim() && !artist?.trim()) || searchAttempted) {
+    const currentTitle = title?.trim() || '';
+    const currentArtist = artist?.trim() || '';
+    
+    // Don't search if no fields are filled
+    if (!currentTitle && !currentArtist) {
+      return;
+    }
+
+    // Check if this is a new search worth doing
+    const hasNewInfo = (
+      currentTitle !== lastSearchFields.title || 
+      currentArtist !== lastSearchFields.artist
+    );
+
+    // Skip if no new information and we already searched
+    if (!hasNewInfo && searchAttempted) {
       return;
     }
 
     setIsLoadingSuggestions(true);
     setSearchAttempted(true);
+    setLastSearchFields({ title: currentTitle, artist: currentArtist });
 
     try {
       const suggestions = await MetadataEnricher.searchAlbumMetadata(title, artist);
@@ -122,6 +139,10 @@ const AlbumForm = ({
       setFormData(enrichedData);
       setShowSuggestions(false);
       setMetadataSuggestions([]);
+      
+      // Reset search state to allow future searches if user modifies fields
+      setSearchAttempted(false);
+      setLastSearchFields({ title: '', artist: '' });
     } catch (error) {
       console.error('Error applying metadata:', error);
     }
@@ -130,6 +151,10 @@ const AlbumForm = ({
   const handleSkipSuggestions = () => {
     setShowSuggestions(false);
     setMetadataSuggestions([]);
+    
+    // Reset search state to allow future searches if user modifies fields
+    setSearchAttempted(false);
+    setLastSearchFields({ title: '', artist: '' });
   };
 
   // Clear search state when switching between add/edit modes
@@ -138,6 +163,11 @@ const AlbumForm = ({
       setSearchAttempted(true); // Don't search for existing albums
       setShowSuggestions(false);
       setMetadataSuggestions([]);
+      setLastSearchFields({ title: '', artist: '' });
+    } else {
+      // Reset everything for add mode
+      setSearchAttempted(false);
+      setLastSearchFields({ title: '', artist: '' });
     }
   }, [mode]);
 
