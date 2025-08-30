@@ -15,11 +15,15 @@ export class MetadataEnricher {
    * @returns {Promise<Array>} Array of enriched album suggestions
    */
   static async searchAlbumMetadata(title, artist) {
-    if (!title?.trim() || !artist?.trim()) {
+    // Allow search with either title or artist (or both)
+    if (!title?.trim() && !artist?.trim()) {
       return [];
     }
 
-    const cacheKey = `${artist.toLowerCase()}_${title.toLowerCase()}`;
+    // Create cache key from available fields
+    const titlePart = title?.trim() ? title.toLowerCase() : 'no-title';
+    const artistPart = artist?.trim() ? artist.toLowerCase() : 'no-artist';
+    const cacheKey = `${artistPart}_${titlePart}`;
     
     // Check cache first
     if (this.cache.has(cacheKey)) {
@@ -31,8 +35,13 @@ export class MetadataEnricher {
     }
 
     try {
-      const query = `${artist} ${title}`.trim();
-      console.log(`Searching metadata for: "${query}"`);
+      // Build query from available fields
+      const queryParts = [];
+      if (artist?.trim()) queryParts.push(artist.trim());
+      if (title?.trim()) queryParts.push(title.trim());
+      const query = queryParts.join(' ');
+      
+      console.log(`Searching metadata for: "${query}" (artist: ${artist?.trim() || 'none'}, title: ${title?.trim() || 'none'})`);
 
       // Search both APIs in parallel
       const [musicBrainzResults, discogsResults] = await Promise.all([
@@ -105,15 +114,24 @@ export class MetadataEnricher {
     
     const resultTitle = normalize(result.title || '');
     const resultArtist = normalize(result.artist || '');
-    const queryTitle = normalize(searchTitle);
-    const queryArtist = normalize(searchArtist);
+    const queryTitle = normalize(searchTitle || '');
+    const queryArtist = normalize(searchArtist || '');
 
     // Calculate similarity scores
-    const titleScore = this.stringSimilarity(resultTitle, queryTitle);
-    const artistScore = this.stringSimilarity(resultArtist, queryArtist);
+    const titleScore = queryTitle ? this.stringSimilarity(resultTitle, queryTitle) : 0;
+    const artistScore = queryArtist ? this.stringSimilarity(resultArtist, queryArtist) : 0;
 
-    // Weight artist match more heavily than title
-    return (artistScore * 0.6) + (titleScore * 0.4);
+    // Handle cases where only one field is available
+    if (!queryTitle && queryArtist) {
+      // Only artist provided - weight artist match heavily
+      return artistScore;
+    } else if (queryTitle && !queryArtist) {
+      // Only title provided - weight title match heavily
+      return titleScore;
+    } else {
+      // Both fields provided - use weighted scoring
+      return (artistScore * 0.6) + (titleScore * 0.4);
+    }
   }
 
   /**
