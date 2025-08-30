@@ -85,7 +85,7 @@ const AlbumForm = ({
   };
 
   const searchMetadata = async (title, artist) => {
-    if (!title?.trim() || !artist?.trim() || searchAttempted) {
+    if ((!title?.trim() && !artist?.trim()) || searchAttempted) {
       return;
     }
 
