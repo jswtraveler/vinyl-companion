@@ -13,10 +13,15 @@ dist-ssr
 *.local
 
 # Environment variables
-.env
+.env*
 .env.local
 .env.production
 .env.development
+
+# Sensitive files with API keys
+vite_supabase.txt
+netlify.toml
+.claude/settings.local.json
 
 # Editor directories and files
 .vscode/*
