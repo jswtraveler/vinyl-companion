@@ -7,6 +7,7 @@ import SimpleCameraCapture from './components/SimpleCameraCapture'
 import IdentificationLoader from './components/IdentificationLoader'
 import IdentificationResults from './components/IdentificationResults'
 import AuthModal from './components/AuthModal'
+import SuggestionsSection from './components/SuggestionsSection'
 import { AlbumIdentifier } from './services/albumIdentifier'
 import { ImageProcessor } from './utils/imageProcessing'
 import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage, exportData, importData } from './services/database'
@@ -888,6 +889,11 @@ function App() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Suggestions Section */}
+          {albums.length > 0 && (
+            <SuggestionsSection albums={filteredAndSortedAlbums} />
           )}
 
           {/* Search Results Info */}
