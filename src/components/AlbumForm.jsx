@@ -232,27 +232,27 @@ const AlbumForm = ({
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
+        <h2 className="text-2xl font-bold text-white">
           {mode === 'edit' ? 'Edit Album' : 'Add New Album'}
         </h2>
-        <p className="text-gray-600">
+        <p className="text-gray-400">
           {mode === 'edit' ? 'Update your album details' : 'Add a new record to your collection'}
         </p>
       </div>
 
       {errors.general && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-800 text-sm">{errors.general}</p>
+        <div className="mb-4 p-3 bg-red-900 border border-red-700 rounded-md">
+          <p className="text-red-200 text-sm">{errors.general}</p>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Basic Information */}
-        <div className="bg-white p-6 rounded-lg border">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h3>
+        <div className="bg-gray-800 p-6 rounded-lg border border-gray-600">
+          <h3 className="text-lg font-semibold text-white mb-4">Basic Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Album Title *
               </label>
               <input
@@ -260,8 +260,8 @@ const AlbumForm = ({
                 name="title"
                 value={formData.title || ''}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.title ? 'border-red-300' : 'border-gray-300'
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white ${
+                  errors.title ? 'border-red-500' : 'border-gray-500'
                 }`}
                 placeholder="Enter album title"
               />
@@ -269,7 +269,7 @@ const AlbumForm = ({
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Artist *
               </label>
               <input
@@ -277,7 +277,7 @@ const AlbumForm = ({
                 name="artist"
                 value={formData.artist || ''}
                 onChange={handleChange}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white ${
                   errors.artist ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="Enter artist name"
@@ -286,7 +286,7 @@ const AlbumForm = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Release Year
               </label>
               <input
@@ -296,7 +296,7 @@ const AlbumForm = ({
                 onChange={handleChange}
                 min="1877"
                 max={new Date().getFullYear() + 1}
-                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white ${
                   errors.year ? 'border-red-300' : 'border-gray-300'
                 }`}
                 placeholder="e.g. 1973"
@@ -305,7 +305,7 @@ const AlbumForm = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Record Label
               </label>
               <input
@@ -313,7 +313,7 @@ const AlbumForm = ({
                 name="label"
                 value={formData.label || ''}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
                 placeholder="e.g. Harvest Records"
               />
             </div>
@@ -413,13 +413,13 @@ const AlbumForm = ({
         )}
 
         {/* Physical Details */}
-        <div className="bg-white rounded-lg border">
+        <div className="bg-gray-800 rounded-lg border border-gray-600">
           <button
             type="button"
             onClick={() => toggleSection('physical')}
             className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900">Physical Details</h3>
+            <h3 className="text-lg font-semibold text-white">Physical Details</h3>
             <svg 
               className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedSections.physical ? 'rotate-180' : ''}`}
               fill="none" 
@@ -433,14 +433,14 @@ const AlbumForm = ({
             <div className="px-6 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Format
               </label>
               <select
                 name="format"
                 value={formData.format || 'LP'}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
               >
                 {ALBUM_FORMATS.map(format => (
                   <option key={format} value={format}>{format}</option>
@@ -449,14 +449,14 @@ const AlbumForm = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Speed
               </label>
               <select
                 name="speed"
                 value={formData.speed || '33⅓ RPM'}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
               >
                 {RECORD_SPEEDS.map(speed => (
                   <option key={speed} value={speed}>{speed}</option>
@@ -465,14 +465,14 @@ const AlbumForm = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Condition
               </label>
               <select
                 name="condition"
                 value={formData.condition || 'Very Good (VG)'}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
               >
                 {CONDITION_GRADES.map(condition => (
                   <option key={condition} value={condition}>{condition}</option>
@@ -481,7 +481,7 @@ const AlbumForm = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Catalog Number
               </label>
               <input
@@ -489,7 +489,7 @@ const AlbumForm = ({
                 name="catalogNumber"
                 value={formData.catalogNumber || ''}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
                 placeholder="e.g. SHVL 804"
               />
             </div>
@@ -499,13 +499,13 @@ const AlbumForm = ({
         </div>
 
         {/* Genres */}
-        <div className="bg-white rounded-lg border">
+        <div className="bg-gray-800 rounded-lg border border-gray-600">
           <button
             type="button"
             onClick={() => toggleSection('genres')}
             className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900">Genres</h3>
+            <h3 className="text-lg font-semibold text-white">Genres</h3>
             <svg 
               className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedSections.genres ? 'rotate-180' : ''}`}
               fill="none" 
@@ -519,14 +519,14 @@ const AlbumForm = ({
             <div className="px-6 pb-6">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
             {MUSIC_GENRES.map(genre => (
-              <label key={genre} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 cursor-pointer">
+              <label key={genre} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={(formData.genre || []).includes(genre)}
                   onChange={() => handleGenreChange(genre)}
                   className="text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-sm text-gray-700">{genre}</span>
+                <span className="text-sm text-gray-300">{genre}</span>
               </label>
             ))}
           </div>
@@ -535,13 +535,13 @@ const AlbumForm = ({
         </div>
 
         {/* Collection Details */}
-        <div className="bg-white rounded-lg border">
+        <div className="bg-gray-800 rounded-lg border border-gray-600">
           <button
             type="button"
             onClick={() => toggleSection('collection')}
             className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
-            <h3 className="text-lg font-semibold text-gray-900">Collection Details</h3>
+            <h3 className="text-lg font-semibold text-white">Collection Details</h3>
             <svg 
               className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedSections.collection ? 'rotate-180' : ''}`}
               fill="none" 
@@ -555,7 +555,7 @@ const AlbumForm = ({
             <div className="px-6 pb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Purchase Price
               </label>
               <div className="relative">
@@ -574,7 +574,7 @@ const AlbumForm = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Purchase Location
               </label>
               <input
@@ -582,7 +582,7 @@ const AlbumForm = ({
                 name="purchaseLocation"
                 value={formData.purchaseLocation || ''}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-500 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-700 text-white"
                 placeholder="e.g. Downtown Records, NYC"
               />
             </div>
@@ -601,7 +601,7 @@ const AlbumForm = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Personal notes, pressing details, condition notes..."
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               {(formData.notes || '').length}/1000 characters
             </p>
           </div>

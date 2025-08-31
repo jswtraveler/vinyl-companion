@@ -730,10 +730,10 @@ function App() {
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleStats}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
                   showStats 
-                    ? 'bg-blue-600 text-white' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    ? 'bg-black border-gray-500 text-white' 
+                    : 'bg-black border-gray-600 text-white hover:border-gray-400'
                 }`}
               >
                 Stats
@@ -765,10 +765,10 @@ function App() {
                   <button
                     key={key}
                     onClick={() => handleSortChange(key)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
                       sortBy === key
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        ? 'bg-black border-gray-500 text-white'
+                        : 'bg-black border-gray-600 text-white hover:border-gray-400'
                     }`}
                   >
                     {label}
@@ -898,7 +898,7 @@ function App() {
             <p className="text-gray-400 mb-4">No albums match your search criteria.</p>
             <button
               onClick={() => setSearchQuery('')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              className="px-4 py-2 bg-black border border-gray-600 text-white rounded-lg hover:border-gray-400"
             >
               Clear Search
             </button>
@@ -930,7 +930,7 @@ function App() {
             justifyContent: 'center'
           }}>
             <div style={{
-              backgroundColor: 'white',
+              backgroundColor: '#1f2937',
               padding: '24px',
               borderRadius: '8px',
               maxWidth: '600px',
@@ -938,7 +938,7 @@ function App() {
               maxHeight: '90vh',
               overflowY: 'auto'
             }}>
-              <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '16px'}}>
+              <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', color: 'white'}}>
                 {editingAlbum ? 'Edit Album' : 'Add Album Manually'}
               </h2>
               <AlbumForm
@@ -1040,7 +1040,7 @@ const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
               onCamera();
               setIsOpen(false);
             }}
-            className="flex items-center space-x-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
+            className="flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
           >
             <span className="text-sm font-medium">Identify Album</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1054,7 +1054,7 @@ const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
               onSearch();
               setIsOpen(false);
             }}
-            className="flex items-center space-x-3 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
+            className="flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
           >
             <span className="text-sm font-medium">Find by Name</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1067,7 +1067,7 @@ const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
               onAdd();
               setIsOpen(false);
             }}
-            className="flex items-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
+            className="flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
           >
             <span className="text-sm font-medium">Add Manually</span>
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1080,7 +1080,7 @@ const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
       {/* Main FAB */}
       <button
         onClick={toggleOpen}
-        className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
+        className={`w-14 h-14 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
           isOpen ? 'rotate-45' : 'rotate-0'
         }`}
       >
