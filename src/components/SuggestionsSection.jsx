@@ -29,11 +29,11 @@ const SuggestionsSection = ({ albums = [] }) => {
   }
   
   return (
-    <div className="mb-6">
+    <div className="mb-6 border-t border-gray-700 pt-6">
       {/* Header */}
       <button
         onClick={toggleExpanded}
-        className="w-full flex items-center justify-between p-4 bg-gray-800 rounded-lg hover:bg-gray-700 transition-colors"
+        className="w-full flex items-center justify-between py-4 hover:bg-black hover:bg-opacity-20 transition-colors rounded-lg px-2"
       >
         <h2 className="text-lg font-semibold text-white">Suggestions</h2>
         <svg 
@@ -48,7 +48,7 @@ const SuggestionsSection = ({ albums = [] }) => {
       
       {/* Expanded Content */}
       {isExpanded && (
-        <div className="mt-4 bg-gray-800 rounded-lg p-6">
+        <div className="mt-4 px-2">
           {/* Mood Filters */}
           <div className="mb-6">
             <h3 className="text-white font-medium mb-3">Mood Filters</h3>
@@ -114,7 +114,7 @@ const SuggestionsSection = ({ albums = [] }) => {
 // Individual suggestion card component
 const SuggestionCard = ({ album }) => {
   return (
-    <div className="flex-shrink-0 w-32 bg-gray-700 rounded-lg overflow-hidden hover:bg-gray-600 transition-colors cursor-pointer group">
+    <div className="flex-shrink-0 w-32 bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors cursor-pointer group">
       {/* Album Cover */}
       <div className="aspect-square bg-gray-600 relative">
         {album.coverImage ? (

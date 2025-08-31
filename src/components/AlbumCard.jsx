@@ -91,36 +91,13 @@ const AlbumCard = ({
           {album.artist}
         </p>
 
-        {/* Album Details */}
-        <div className="space-y-1 text-sm text-gray-400">
-          <div className="flex items-center justify-between">
-            <span>{album.year || 'Unknown Year'}</span>
-            <span className="text-xs bg-gray-600 text-gray-200 px-2 py-1 rounded">
-              {album.format || 'LP'}
-            </span>
-          </div>
-          
-          {album.genre && album.genre.length > 0 && (
-            <p className="truncate" title={album.genre.join(', ')}>
-              {formatGenres(album.genre)}
+        {/* Album Details - Simplified */}
+        <div className="text-sm text-gray-400">
+          {album.year && (
+            <p className="text-xs mt-1">
+              {album.year}
             </p>
           )}
-          
-          {album.condition && (
-            <p className="text-xs">
-              Condition: {album.condition}
-            </p>
-          )}
-          
-          {album.label && (
-            <p className="truncate text-xs" title={album.label}>
-              {album.label}
-            </p>
-          )}
-          
-          <p className="text-xs text-gray-500">
-            Added {formatDate(album.dateAdded)}
-          </p>
         </div>
       </div>
     </article>

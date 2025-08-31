@@ -678,8 +678,8 @@ function App() {
               </div>
             </div>
             
-            <div className="flex flex-wrap gap-3">
-              {/* Auth Controls */}
+            {/* Auth Controls Only */}
+            <div className="flex items-center gap-3">
               {!authLoading && (
                 <>
                   {user ? (
@@ -705,39 +705,6 @@ function App() {
                   )}
                 </>
               )}
-              
-              {/* Main Action Buttons */}
-              <button
-                onClick={handleCameraClick}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                <span className="hidden sm:inline">Identify Album</span>
-                <span className="sm:hidden">Camera</span>
-              </button>
-              <button
-                onClick={handleFindByName}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center space-x-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                <span className="hidden sm:inline">Find by Name</span>
-                <span className="sm:hidden">Search</span>
-              </button>
-              <button
-                onClick={handleAddManually}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                <span className="hidden sm:inline">Add Manually</span>
-                <span className="sm:hidden">Add</span>
-              </button>
             </div>
           </div>
         </div>
@@ -1046,9 +1013,84 @@ function App() {
         )}
 
       </main>
+
+      {/* Floating Action Button */}
+      <FloatingActionButton 
+        onCamera={handleCameraClick}
+        onSearch={handleFindByName}
+        onAdd={handleAddManually}
+      />
     </div>
   )
 }
+
+// Floating Action Button Component
+const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const toggleOpen = () => setIsOpen(!isOpen);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-50">
+      {/* Action buttons */}
+      {isOpen && (
+        <div className="flex flex-col items-end space-y-3 mb-3">
+          <button
+            onClick={() => {
+              onCamera();
+              setIsOpen(false);
+            }}
+            className="flex items-center space-x-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
+          >
+            <span className="text-sm font-medium">Identify Album</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={() => {
+              onSearch();
+              setIsOpen(false);
+            }}
+            className="flex items-center space-x-3 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
+          >
+            <span className="text-sm font-medium">Find by Name</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+          
+          <button
+            onClick={() => {
+              onAdd();
+              setIsOpen(false);
+            }}
+            className="flex items-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
+          >
+            <span className="text-sm font-medium">Add Manually</span>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Main FAB */}
+      <button
+        onClick={toggleOpen}
+        className={`w-14 h-14 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
+          isOpen ? 'rotate-45' : 'rotate-0'
+        }`}
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        </svg>
+      </button>
+    </div>
+  );
+};
 
 // Simple Album Search Modal Component
 const AlbumSearchModal = ({ onClose, onSelectAlbum }) => {
