@@ -1039,9 +1039,6 @@ function App() {
               maxHeight: '90vh',
               overflowY: 'auto'
             }}>
-              <h2 style={{fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', color: 'white'}}>
-                {editingAlbum ? 'Edit Album' : 'Add Album Manually'}
-              </h2>
               <AlbumForm
                 album={editingAlbum}
                 mode={editingAlbum ? 'edit' : 'add'}
