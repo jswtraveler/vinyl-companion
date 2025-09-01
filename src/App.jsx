@@ -8,12 +8,15 @@ import IdentificationLoader from './components/IdentificationLoader'
 import IdentificationResults from './components/IdentificationResults'
 import AuthModal from './components/AuthModal'
 import SuggestionsSection from './components/SuggestionsSection'
+import AIAnalysisModal from './components/AIAnalysisModal'
+import AlbumSearchModal from './components/AlbumSearchModal'
 import { AlbumIdentifier } from './services/albumIdentifier'
 import { ImageProcessor } from './utils/imageProcessing'
 import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage, exportData, importData } from './services/database'
 import { createNewAlbum } from './models/Album'
 import { supabase } from './services/supabase'
 import SupabaseDatabase from './services/supabaseDatabase'
+import { MOOD_CATEGORIES } from './utils/moodUtils'
 
 function App() {
   const [showAddForm, setShowAddForm] = useState(false)
@@ -27,6 +30,7 @@ function App() {
   const [showStats, setShowStats] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const [showAlbumSearch, setShowAlbumSearch] = useState(false)
+  const [showAIAnalysis, setShowAIAnalysis] = useState(false)
   
   // Authentication state
   const [user, setUser] = useState(null)
@@ -89,6 +93,36 @@ function App() {
       subscription.unsubscribe()
     }
   }, [])
+
+  // Handle mobile app lifecycle - reload albums when app becomes visible again
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !authLoading) {
+        console.log('App became visible - reloading albums...')
+        loadAlbums(useCloudDatabase)
+      }
+    }
+
+    const handleFocus = () => {
+      if (!authLoading) {
+        console.log('App focused - reloading albums...')
+        loadAlbums(useCloudDatabase)
+      }
+    }
+
+    // Listen for mobile app lifecycle events
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    window.addEventListener('focus', handleFocus)
+    
+    // iOS Safari specific - handles when user switches back to browser
+    window.addEventListener('pageshow', handleFocus)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('focus', handleFocus)
+      window.removeEventListener('pageshow', handleFocus)
+    }
+  }, [authLoading, useCloudDatabase])
 
   // Initialize database and load albums
   useEffect(() => {
@@ -224,6 +258,53 @@ function App() {
 
   const handleCameraClose = () => {
     setShowCamera(false);
+  };
+
+  const handleAIAnalysis = () => {
+    setShowAIAnalysis(true);
+  };
+
+  const handleApplyAIResults = async (analysisResults) => {
+    try {
+      // Apply AI-suggested mood tags to albums
+      const updatedAlbums = [...albums];
+      
+      for (const result of analysisResults) {
+        const albumIndex = updatedAlbums.findIndex(album => album.id === result.albumId);
+        if (albumIndex !== -1) {
+          // Add AI suggestions to existing moods (don't replace)  
+          const existingMoods = updatedAlbums[albumIndex].moods || [];
+          const newMoods = [...new Set([...existingMoods, ...result.suggestedMoods])];
+          
+          const updatedAlbum = {
+            ...updatedAlbums[albumIndex],
+            moods: newMoods,
+            aiAnalysis: {
+              suggestedMoods: result.suggestedMoods,
+              reasoning: result.reasoning,
+              confidence: result.confidence,
+              timestamp: new Date().toISOString()
+            }
+          };
+
+          // Update in database
+          if (useCloudDatabase && user) {
+            await SupabaseDatabase.updateAlbum(updatedAlbum.id, updatedAlbum);
+          } else {
+            await updateAlbum(updatedAlbum);
+          }
+          
+          updatedAlbums[albumIndex] = updatedAlbum;
+        }
+      }
+      
+      setAlbums(updatedAlbums);
+      console.log(`Applied AI analysis to ${analysisResults.length} albums`);
+      
+    } catch (err) {
+      console.error('Failed to apply AI analysis:', err);
+      setError('Failed to save AI analysis results. Please try again.');
+    }
   };
 
   const handleIdentifyAlbum = async (imageData) => {
@@ -537,8 +618,7 @@ function App() {
         setAlbums(prevAlbums => [savedAlbum, ...prevAlbums]);
       }
       
-      const dbType = useCloudDatabase ? 'cloud' : 'local';
-      alert(`Album "${savedAlbum.title}" by ${savedAlbum.artist} ${isExistingAlbum ? 'updated' : 'saved'} successfully to ${dbType} database!`);
+      // Success - no popup needed, just close the form
       setShowAddForm(false);
       setEditingAlbum(null);
       setError(null); // Clear any previous errors
@@ -657,53 +737,21 @@ function App() {
     <div className="min-h-screen bg-black">
       <header className="bg-gray-900 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <h1 className="text-2xl sm:text-3xl font-bold text-white">Vinyl Companion</h1>
-              {/* Database Status Indicator */}
-              <div className="flex items-center gap-2">
-                {authLoading ? (
-                  <span className="text-sm text-gray-400">Loading...</span>
-                ) : useCloudDatabase && user ? (
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-sm text-gray-300">Cloud ({user.email})</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-sm text-gray-300">Local</span>
-                  </div>
-                )}
-              </div>
-            </div>
-            
-            {/* Auth Controls Only */}
-            <div className="flex items-center gap-3">
-              {!authLoading && (
-                <>
-                  {user ? (
-                    <button
-                      onClick={handleSignOut}
-                      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-1 text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      <span>Sign Out</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSignIn}
-                      className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-1 text-sm"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span>Sign In</span>
-                    </button>
-                  )}
-                </>
+          <div className="flex items-center gap-4">
+            {/* Database Status Indicator */}
+            <div className="flex items-center gap-2">
+              {authLoading ? (
+                <span className="text-sm text-gray-400">Loading...</span>
+              ) : useCloudDatabase && user ? (
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-sm text-gray-300">Cloud ({user.email})</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm text-gray-300">Local</span>
+                </div>
               )}
             </div>
           </div>
@@ -727,34 +775,87 @@ function App() {
             <h2 className="text-xl font-semibold text-white">
               Your Collection ({loading ? '...' : `${filteredAndSortedAlbums.length} of ${albums.length}`} albums)
             </h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={toggleStats}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-                  showStats 
-                    ? 'bg-black border-gray-500 text-white' 
-                    : 'bg-black border-gray-600 text-white hover:border-gray-400'
-                }`}
-              >
-                Stats
-              </button>
-            </div>
           </div>
 
-          {/* Search Bar */}
+          {/* Search Bar with Auth Button */}
           {albums.length > 0 && (
-            <div className="mb-4">
-              <SearchBar 
-                onSearch={handleSearch} 
-                placeholder="Search by title, artist, genre, label, or year..."
-              />
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex-1">
+                <SearchBar 
+                  onSearch={handleSearch} 
+                  placeholder="Search by title, artist, genre, label, or year..."
+                />
+              </div>
+              {/* Auth Controls */}
+              {!authLoading && (
+                <>
+                  {user ? (
+                    <button
+                      onClick={handleSignOut}
+                      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-1 text-sm flex-shrink-0"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      <span>Sign Out</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSignIn}
+                      className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-1 text-sm flex-shrink-0"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span>Sign In</span>
+                    </button>
+                  )}
+                </>
+              )}
             </div>
           )}
 
-          {/* Sort Controls */}
+          {/* Auth button when no albums */}
+          {albums.length === 0 && !authLoading && (
+            <div className="mb-4 flex justify-end">
+              {user ? (
+                <button
+                  onClick={handleSignOut}
+                  className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-1 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>Sign Out</span>
+                </button>
+              ) : (
+                <button
+                  onClick={handleSignIn}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-1 text-sm"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  <span>Sign In</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Sort Controls with Stats Button */}
           {albums.length > 0 && (
             <div className="mb-4">
               <div className="flex flex-wrap gap-2 items-center">
+                <button
+                  onClick={toggleStats}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
+                    showStats 
+                      ? 'bg-black border-gray-500 text-white' 
+                      : 'bg-black border-gray-600 text-white hover:border-gray-400'
+                  }`}
+                >
+                  Stats
+                </button>
                 <span className="text-sm font-medium text-gray-300">Sort by:</span>
                 {[
                   { key: 'dateAdded', label: 'Date Added' },
@@ -1003,6 +1104,16 @@ function App() {
           />
         )}
 
+        {/* AI Analysis Modal */}
+        {showAIAnalysis && (
+          <AIAnalysisModal
+            albums={albums}
+            availableMoods={MOOD_CATEGORIES}
+            onClose={() => setShowAIAnalysis(false)}
+            onApplyResults={handleApplyAIResults}
+          />
+        )}
+
         {/* Authentication Modal */}
         {showAuth && (
           <AuthModal
@@ -1019,13 +1130,15 @@ function App() {
         onCamera={handleCameraClick}
         onSearch={handleFindByName}
         onAdd={handleAddManually}
+        onAIAnalysis={handleAIAnalysis}
+        hasAlbums={albums.length > 0}
       />
     </div>
   )
 }
 
 // Floating Action Button Component
-const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
+const FloatingActionButton = ({ onCamera, onSearch, onAdd, onAIAnalysis, hasAlbums }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleOpen = () => setIsOpen(!isOpen);
@@ -1035,6 +1148,22 @@ const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
       {/* Action buttons */}
       {isOpen && (
         <div className="flex flex-col items-end space-y-3 mb-3">
+          {/* AI Analysis Button - only show if user has albums */}
+          {hasAlbums && (
+            <button
+              onClick={() => {
+                onAIAnalysis();
+                setIsOpen(false);
+              }}
+              className="flex items-center space-x-3 bg-purple-600 hover:bg-purple-700 border border-purple-500 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
+            >
+              <span className="text-sm font-medium">✨ AI Analysis</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </button>
+          )}
+          
           <button
             onClick={() => {
               onCamera();
@@ -1092,171 +1221,5 @@ const FloatingActionButton = ({ onCamera, onSearch, onAdd }) => {
   );
 };
 
-// Simple Album Search Modal Component
-const AlbumSearchModal = ({ onClose, onSelectAlbum }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
-
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) return;
-
-    setIsSearching(true);
-    setHasSearched(true);
-    
-    try {
-      // Use Discogs client directly for album-only search
-      const { DiscogsClient } = await import('./services/apiClients.js');
-      const results = await DiscogsClient.searchReleases(searchQuery.trim());
-      
-      // Transform results to include source info
-      const transformedResults = results.map(result => ({
-        ...result,
-        source: 'discogs',
-        identificationMethod: 'manual-discogs-search'
-      }));
-      
-      setSearchResults(transformedResults);
-    } catch (error) {
-      console.error('Album search failed:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Find Album by Name</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          
-          {/* Search Input */}
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter album name (e.g., 'Dark Side of the Moon')"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              autoFocus
-            />
-            <button
-              onClick={handleSearch}
-              disabled={!searchQuery.trim() || isSearching}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSearching ? 'Searching...' : 'Search'}
-            </button>
-          </div>
-          <p className="text-sm text-gray-500 mt-2">
-            Search Discogs database for vinyl records by album name
-          </p>
-        </div>
-
-        {/* Results */}
-        <div className="flex-1 overflow-y-auto p-6">
-          {isSearching && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-              <span className="ml-3 text-gray-600">Searching Discogs...</span>
-            </div>
-          )}
-
-          {!isSearching && hasSearched && searchResults.length === 0 && (
-            <div className="text-center py-8">
-              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-3-8v0M7 4h10" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No albums found</h3>
-              <p className="text-gray-500">Try a different search term or check spelling</p>
-            </div>
-          )}
-
-          {!isSearching && searchResults.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 mb-4">
-                Found {searchResults.length} results from Discogs:
-              </p>
-              {searchResults.map((album, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => onSelectAlbum(album)}
-                >
-                  <div className="flex items-start space-x-4">
-                    {album.coverImage && (
-                      <img
-                        src={album.coverImage}
-                        alt={album.title}
-                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{album.title}</h3>
-                      <p className="text-gray-600">{album.artist}</p>
-                      {album.year && <p className="text-sm text-gray-500">{album.year}</p>}
-                      {album.format && <p className="text-sm text-purple-600">Format: {album.format}</p>}
-                      {album.label && <p className="text-sm text-gray-500">Label: {album.label}</p>}
-                    </div>
-                    <div className="text-right">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        Discogs
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {!hasSearched && (
-            <div className="text-center py-8">
-              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Search for Albums</h3>
-              <p className="text-gray-500">Enter an album name to search Discogs database</p>
-            </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-gray-500">
-              Powered by Discogs - the vinyl marketplace database
-            </p>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default App
