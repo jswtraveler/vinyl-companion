@@ -176,7 +176,7 @@ const IdentificationResults = ({
               <div className="text-sm font-medium text-gray-700 mb-3">
                 Other possible matches:
               </div>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 max-h-48 overflow-y-auto overflow-x-hidden" style={{WebkitOverflowScrolling: 'touch'}}>
                 {results.candidates.map((candidate, index) => (
                   <button
                     key={index}
