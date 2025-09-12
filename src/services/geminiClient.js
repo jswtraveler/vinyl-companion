@@ -158,11 +158,57 @@ export class GeminiClient {
   }
 
   /**
+   * Filter albums that need mood tag analysis
+   */
+  filterAlbumsForAnalysis(albums, options = {}) {
+    const { onlyUntagged = true, minTagCount = 1 } = options;
+    
+    if (!onlyUntagged) {
+      return { toAnalyze: albums, alreadyTagged: [] };
+    }
+    
+    const toAnalyze = [];
+    const alreadyTagged = [];
+    
+    albums.forEach(album => {
+      const moodCount = album.moods ? album.moods.length : 0;
+      
+      if (moodCount === 0 || (moodCount < minTagCount && options.includePartial)) {
+        toAnalyze.push(album);
+      } else {
+        alreadyTagged.push(album);
+      }
+    });
+    
+    return { toAnalyze, alreadyTagged };
+  }
+
+  /**
    * Analyze a collection of albums and suggest mood tags
    */
-  async analyzeCollection(albums, availableMoods = []) {
+  async analyzeCollection(albums, availableMoods = [], options = {}) {
     if (!albums || albums.length === 0) {
       throw new GeminiError('No albums provided for analysis', 400, 'NO_ALBUMS');
+    }
+
+    // Filter albums based on analysis options
+    const { toAnalyze, alreadyTagged } = this.filterAlbumsForAnalysis(albums, options);
+    
+    if (toAnalyze.length === 0) {
+      return {
+        success: true,
+        analysis: [],
+        skippedAlbums: alreadyTagged.map(album => ({
+          albumId: album.id,
+          title: album.title,
+          artist: album.artist,
+          existingMoods: album.moods || [],
+          skippedReason: 'Already has mood tags'
+        })),
+        totalAnalyzed: 0,
+        totalSkipped: alreadyTagged.length,
+        timestamp: new Date().toISOString()
+      };
     }
 
     const moodList = availableMoods.length > 0 
@@ -170,7 +216,8 @@ export class GeminiClient {
       : 'Nostalgic, Energetic, Chill, Upbeat, Melancholic, Road Trip, Late Night, Sunday Morning, Dreamy, Raw, Comfort, Party';
 
     // Create a structured prompt for mood analysis
-    const albumList = albums.slice(0, 50) // Limit to 50 albums per request
+    const albumsToAnalyze = toAnalyze.slice(0, 50); // Limit to 50 albums per request
+    const albumList = albumsToAnalyze
       .map((album, index) => 
         `${index + 1}. "${album.title}" by ${album.artist}${album.genre ? ` (${album.genre.join(', ')})` : ''}${album.year ? ` [${album.year}]` : ''}`
       ).join('\n');
@@ -197,16 +244,28 @@ Please respond in this exact JSON format:
   ]
 }
 
-Ensure the response is valid JSON and includes all ${Math.min(albums.length, 50)} albums.`;
+Ensure the response is valid JSON and includes all ${Math.min(albumsToAnalyze.length, 50)} albums.`;
 
     try {
       const result = await this.generateContent(prompt);
-      const analysis = this.parseAnalysisResponse(result.content, albums.slice(0, 50));
+      const analysis = this.parseAnalysisResponse(result.content, albumsToAnalyze);
+      
+      // Combine analysis results with skipped albums info
+      const skippedAlbums = alreadyTagged.map(album => ({
+        albumId: album.id,
+        title: album.title,
+        artist: album.artist,
+        existingMoods: album.moods || [],
+        skippedReason: 'Already has mood tags'
+      }));
       
       return {
         success: true,
         analysis,
-        totalAlbums: Math.min(albums.length, 50),
+        skippedAlbums,
+        totalAnalyzed: albumsToAnalyze.length,
+        totalSkipped: alreadyTagged.length,
+        totalAlbums: albums.length,
         timestamp: result.timestamp,
         usage: result.usage
       };
@@ -221,7 +280,10 @@ Ensure the response is valid JSON and includes all ${Math.min(albums.length, 50)
           type: error.type || 'ANALYSIS_ERROR'
         },
         analysis: [],
-        totalAlbums: 0,
+        skippedAlbums: [],
+        totalAnalyzed: 0,
+        totalSkipped: 0,
+        totalAlbums: albums.length,
         timestamp: new Date().toISOString()
       };
     }
