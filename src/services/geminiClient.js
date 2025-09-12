@@ -15,7 +15,7 @@ class GeminiError extends Error {
 export class GeminiClient {
   constructor(apiKey = null) {
     this.apiKey = apiKey || (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GEMINI_API_KEY : null);
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent';
+    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
     this.requestCount = 0;
     this.lastRequestTime = null;
   }
@@ -101,10 +101,11 @@ export class GeminiClient {
     console.log('Gemini API: Generating content...');
     
     try {
-      const response = await fetch(`${this.baseUrl}?key=${this.apiKey}`, {
+      const response = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-goog-api-key': this.apiKey
         },
         body: JSON.stringify(requestBody)
       });
