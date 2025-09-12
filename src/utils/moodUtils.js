@@ -91,37 +91,13 @@ export const getMoodsForGenre = (genre) => {
 };
 
 /**
- * Get all moods for an album based on its genres
- * @param {string[]} genres - Array of genre names
- * @returns {string[]} Array of unique mood IDs
+ * Get all moods for an album (only from explicit AI-generated moods)
+ * @param {Object} album - Album object
+ * @returns {string[]} Array of mood IDs from AI analysis
  */
 export const getMoodsForAlbum = (album) => {
-  if (!album || !album.genre) return [];
-  
-  const genres = Array.isArray(album.genre) ? album.genre : [album.genre];
-  const allMoods = new Set();
-  
-  // Add moods based on genres
-  genres.forEach(genre => {
-    const genreMoods = getMoodsForGenre(genre);
-    genreMoods.forEach(mood => allMoods.add(mood));
-  });
-  
-  // Add year-based nostalgic boost for older albums
-  if (album.year && album.year < 2000) {
-    allMoods.add('nostalgic');
-  }
-  
-  // Add comfort mood for albums in collection longer (if we have dateAdded)
-  if (album.dateAdded) {
-    const addedDate = new Date(album.dateAdded);
-    const monthsOwned = (Date.now() - addedDate.getTime()) / (1000 * 60 * 60 * 24 * 30);
-    if (monthsOwned > 6) {
-      allMoods.add('comfort');
-    }
-  }
-  
-  return Array.from(allMoods);
+  if (!album || !album.moods) return [];
+  return Array.isArray(album.moods) ? album.moods : [];
 };
 
 /**
@@ -140,7 +116,7 @@ export const filterAlbumsByMood = (albums, moodId) => {
 };
 
 /**
- * Get mood statistics for a collection
+ * Get mood statistics for a collection (only from AI-generated moods)
  * @param {Object[]} albums - Array of album objects
  * @returns {Object} Mood counts and percentages
  */
@@ -154,9 +130,9 @@ export const getMoodStatistics = (albums) => {
     moodCounts[mood.id] = 0;
   });
   
-  // Count albums per mood
+  // Count albums per mood (only explicit moods from AI analysis)
   albums.forEach(album => {
-    const albumMoods = getMoodsForAlbum(album);
+    const albumMoods = getMoodsForAlbum(album); // Only returns explicit album.moods
     albumMoods.forEach(moodId => {
       if (moodCounts[moodId] !== undefined) {
         moodCounts[moodId]++;
@@ -164,13 +140,16 @@ export const getMoodStatistics = (albums) => {
     });
   });
   
-  // Calculate percentages
+  // Calculate percentages based on albums that have moods
+  const albumsWithMoods = albums.filter(album => album.moods && album.moods.length > 0);
+  const totalWithMoods = albumsWithMoods.length;
+  
   const statistics = {};
   Object.entries(moodCounts).forEach(([moodId, count]) => {
     const mood = MOOD_CATEGORIES.find(m => m.id === moodId);
     statistics[moodId] = {
       count,
-      percentage: Math.round((count / albums.length) * 100),
+      percentage: totalWithMoods > 0 ? Math.round((count / totalWithMoods) * 100) : 0,
       label: mood?.label || moodId
     };
   });
@@ -179,7 +158,7 @@ export const getMoodStatistics = (albums) => {
 };
 
 /**
- * Get recommended albums for a specific mood (sorted by relevance)
+ * Get recommended albums for a specific mood (only AI-tagged albums)
  * @param {Object[]} albums - Array of album objects
  * @param {string} moodId - Selected mood ID
  * @param {number} limit - Maximum number of albums to return
@@ -188,16 +167,16 @@ export const getMoodStatistics = (albums) => {
 export const getRecommendedAlbumsForMood = (albums, moodId, limit = 10) => {
   const matchingAlbums = filterAlbumsByMood(albums, moodId);
   
-  // Sort by relevance (albums with more matching moods first)
+  // Sort by relevance (albums with more AI-generated moods first, then by date added)
   const sortedAlbums = matchingAlbums
     .map(album => ({
       ...album,
-      moodRelevance: getMoodsForAlbum(album).length
+      moodCount: (album.moods || []).length
     }))
     .sort((a, b) => {
-      // Primary sort: more moods = more versatile/relevant
-      if (b.moodRelevance !== a.moodRelevance) {
-        return b.moodRelevance - a.moodRelevance;
+      // Primary sort: more AI-generated moods = more versatile
+      if (b.moodCount !== a.moodCount) {
+        return b.moodCount - a.moodCount;
       }
       // Secondary sort: newer additions first (if dateAdded available)
       if (a.dateAdded && b.dateAdded) {
