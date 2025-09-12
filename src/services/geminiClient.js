@@ -232,13 +232,31 @@ Ensure the response is valid JSON and includes all ${Math.min(albums.length, 50)
    */
   parseAnalysisResponse(content, originalAlbums) {
     try {
-      // Try to extract JSON from the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
+      console.log('Raw Gemini response:', content);
+      
+      // Try multiple approaches to extract JSON from the response
+      let jsonString = null;
+      
+      // Try to find JSON block with markdown code fence
+      const markdownJsonMatch = content.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i);
+      if (markdownJsonMatch) {
+        jsonString = markdownJsonMatch[1];
+      } else {
+        // Try to find any JSON object
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[0];
+        }
+      }
+      
+      if (!jsonString) {
+        console.error('No JSON found in response. Full content:', content);
         throw new Error('No JSON found in response');
       }
 
-      const parsed = JSON.parse(jsonMatch[0]);
+      console.log('Extracted JSON string:', jsonString);
+      const parsed = JSON.parse(jsonString);
+      console.log('Parsed JSON:', parsed);
       
       if (!parsed.analysis || !Array.isArray(parsed.analysis)) {
         throw new Error('Invalid analysis format');
