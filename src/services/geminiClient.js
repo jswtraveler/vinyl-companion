@@ -76,7 +76,7 @@ export class GeminiClient {
         temperature: 0.1, // Low temperature for consistent analysis
         topK: 1,
         topP: 1,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192, // Increased to prevent truncation
       },
       safetySettings: [
         {
@@ -255,7 +255,37 @@ Ensure the response is valid JSON and includes all ${Math.min(albums.length, 50)
       }
 
       console.log('Extracted JSON string:', jsonString);
-      const parsed = JSON.parse(jsonString);
+      
+      // Try to repair incomplete JSON by adding missing closing brackets
+      let repairedJson = jsonString.trim();
+      if (!repairedJson.endsWith('}')) {
+        // Count opening vs closing brackets to determine what's missing
+        const openBrackets = (repairedJson.match(/\{/g) || []).length;
+        const closeBrackets = (repairedJson.match(/\}/g) || []).length;
+        const openArrays = (repairedJson.match(/\[/g) || []).length;
+        const closeArrays = (repairedJson.match(/\]/g) || []).length;
+        
+        console.log(`Bracket counts - Objects: ${openBrackets}/${closeBrackets}, Arrays: ${openArrays}/${closeArrays}`);
+        
+        // Remove trailing comma if present
+        if (repairedJson.endsWith(',')) {
+          repairedJson = repairedJson.slice(0, -1);
+        }
+        
+        // Add missing closing brackets
+        if (closeArrays < openArrays) {
+          repairedJson += ']';
+          console.log('Added missing ] bracket');
+        }
+        if (closeBrackets < openBrackets) {
+          repairedJson += '}';
+          console.log('Added missing } bracket');
+        }
+        
+        console.log('Repaired JSON string:', repairedJson);
+      }
+      
+      const parsed = JSON.parse(repairedJson);
       console.log('Parsed JSON:', parsed);
       
       if (!parsed.analysis || !Array.isArray(parsed.analysis)) {
