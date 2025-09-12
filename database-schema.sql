@@ -71,23 +71,28 @@ ALTER TABLE tracks ENABLE ROW LEVEL SECURITY;
 
 -- 4. Create RLS Policies for albums table
 -- Users can only see/modify their own albums
+DROP POLICY IF EXISTS "Users can view their own albums" ON albums;
 CREATE POLICY "Users can view their own albums" 
   ON albums FOR SELECT 
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert their own albums" ON albums;
 CREATE POLICY "Users can insert their own albums" 
   ON albums FOR INSERT 
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own albums" ON albums;
 CREATE POLICY "Users can update their own albums" 
   ON albums FOR UPDATE 
   USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own albums" ON albums;
 CREATE POLICY "Users can delete their own albums" 
   ON albums FOR DELETE 
   USING (auth.uid() = user_id);
 
 -- 5. Create RLS Policies for tracks table
+DROP POLICY IF EXISTS "Users can view tracks of their albums" ON tracks;
 CREATE POLICY "Users can view tracks of their albums" 
   ON tracks FOR SELECT 
   USING (
@@ -98,6 +103,7 @@ CREATE POLICY "Users can view tracks of their albums"
     )
   );
 
+DROP POLICY IF EXISTS "Users can insert tracks to their albums" ON tracks;
 CREATE POLICY "Users can insert tracks to their albums" 
   ON tracks FOR INSERT 
   WITH CHECK (
@@ -108,6 +114,7 @@ CREATE POLICY "Users can insert tracks to their albums"
     )
   );
 
+DROP POLICY IF EXISTS "Users can update tracks of their albums" ON tracks;
 CREATE POLICY "Users can update tracks of their albums" 
   ON tracks FOR UPDATE 
   USING (
@@ -118,6 +125,7 @@ CREATE POLICY "Users can update tracks of their albums"
     )
   );
 
+DROP POLICY IF EXISTS "Users can delete tracks of their albums" ON tracks;
 CREATE POLICY "Users can delete tracks of their albums" 
   ON tracks FOR DELETE 
   USING (
@@ -151,8 +159,9 @@ CREATE TRIGGER update_albums_updated_at
   FOR EACH ROW 
   EXECUTE FUNCTION update_updated_at_column();
 
--- 9. Create a view for album statistics
-CREATE OR REPLACE VIEW user_collection_stats AS
+-- 9. Create a secure view for album statistics (user can only see their own stats)
+CREATE OR REPLACE VIEW user_collection_stats 
+WITH (security_invoker=true) AS
 SELECT 
   user_id,
   COUNT(*) as total_albums,
@@ -162,7 +171,11 @@ SELECT
   AVG(rating) as average_rating,
   SUM(purchase_price) as total_spent
 FROM albums 
+WHERE user_id = auth.uid()  -- Only show current user's data
 GROUP BY user_id;
+
+-- Enable RLS on the view
+ALTER VIEW user_collection_stats SET (security_invoker=true);
 
 -- 10. Enable realtime for live updates (optional)
 -- Uncomment if you want real-time subscriptions
