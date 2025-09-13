@@ -8,6 +8,7 @@ Similar to how the vinyl collection app searches for albums
 import requests
 import json
 import time
+import os
 from typing import Dict, List, Optional
 import argparse
 
@@ -288,11 +289,18 @@ def main():
     parser = argparse.ArgumentParser(description='Compare MusicBrainz and Discogs album metadata')
     parser.add_argument('query', help='Album search query (e.g., "Dark Side of the Moon Pink Floyd")')
     parser.add_argument('--discogs-token', 
-                       default='cnnvGRrVAJNYTcPEZrAXMykPzWrgzuYMdrkTbTXM',
-                       help='Discogs API token (defaults to app token)')
+                       default=os.getenv('DISCOGS_TOKEN'),
+                       help='Discogs API token (set DISCOGS_TOKEN env var or use this flag)')
     parser.add_argument('--limit', type=int, default=3, help='Number of results to compare (default: 3)')
     
     args = parser.parse_args()
+    
+    # Check if token is provided
+    if not args.discogs_token:
+        print("❌ Error: Discogs API token required!")
+        print("Set DISCOGS_TOKEN environment variable or use --discogs-token flag")
+        print("Get your token at: https://www.discogs.com/settings/developers")
+        return
     
     try:
         compare_apis(args.query, args.discogs_token, args.limit)
@@ -307,13 +315,25 @@ if __name__ == "__main__":
     import sys
     if len(sys.argv) == 1:
         print("🎵 Album Metadata Comparison Tool")
+        print("\nSetup:")
+        print("  export DISCOGS_TOKEN='your_token_here'")
+        print("  Or get token at: https://www.discogs.com/settings/developers")
         print("\nUsage examples:")
         print("  python album_metadata_test.py 'Dark Side of the Moon Pink Floyd'")
         print("  python album_metadata_test.py 'Nevermind Nirvana' --limit 5")
         print("  python album_metadata_test.py 'OK Computer Radiohead' --discogs-token YOUR_TOKEN")
+        
+        # Check for token before proceeding
+        token = os.getenv('DISCOGS_TOKEN')
+        if not token:
+            print("\n❌ Error: DISCOGS_TOKEN environment variable not set!")
+            print("Set it with: export DISCOGS_TOKEN='your_token_here'")
+            return
+            
+        print("\n✅ Discogs token found in environment")
         print("\nTry searching for an album:")
         query = input("Enter album name: ").strip()
         if query:
-            compare_apis(query, 'cnnvGRrVAJNYTcPEZrAXMykPzWrgzuYMdrkTbTXM', 3)
+            compare_apis(query, token, 3)
     else:
         main()
