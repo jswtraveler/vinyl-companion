@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 const AlbumCard = ({ 
   album, 
@@ -6,6 +6,7 @@ const AlbumCard = ({
   onDelete, 
   showActions = true 
 }) => {
+  const [showDescription, setShowDescription] = useState(false);
   const formatDate = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString();
@@ -26,8 +27,15 @@ const AlbumCard = ({
     if (onDelete) onDelete(album);
   };
 
+  const hasAIDescription = album.aiAnalysis && album.aiAnalysis.reasoning;
+  
+  const toggleDescription = (e) => {
+    e.stopPropagation();
+    setShowDescription(!showDescription);
+  };
+
   return (
-    <article className="bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group">
+    <article className="bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group relative">
       {/* Cover Image */}
       <div className="aspect-square bg-gray-700 relative">
         {album.coverImage ? (
@@ -93,13 +101,74 @@ const AlbumCard = ({
 
         {/* Album Details - Simplified */}
         <div className="text-sm text-gray-400">
-          {album.year && (
-            <p className="text-xs mt-1">
-              {album.year}
-            </p>
+          <div className="flex items-center justify-between">
+            {album.year && (
+              <p className="text-xs mt-1">
+                {album.year}
+              </p>
+            )}
+            
+            {/* AI Description Button */}
+            {hasAIDescription && (
+              <button
+                onClick={toggleDescription}
+                className="text-purple-400 hover:text-purple-300 transition-colors"
+                title="View AI mood analysis"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+            )}
+          </div>
+          
+          {/* Mood Tags */}
+          {album.moods && album.moods.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {album.moods.slice(0, 3).map((mood) => (
+                <span
+                  key={mood}
+                  className="px-2 py-0.5 text-xs rounded-full bg-purple-600 bg-opacity-20 text-purple-300 border border-purple-500 border-opacity-30"
+                >
+                  {mood}
+                </span>
+              ))}
+              {album.moods.length > 3 && (
+                <span className="text-xs text-gray-500">
+                  +{album.moods.length - 3}
+                </span>
+              )}
+            </div>
           )}
         </div>
       </div>
+      
+      {/* AI Description Popup */}
+      {showDescription && hasAIDescription && (
+        <div className="absolute inset-0 bg-black bg-opacity-90 rounded-lg p-4 z-20 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="text-white font-medium text-sm">AI Analysis</h4>
+            <button
+              onClick={toggleDescription}
+              className="text-gray-400 hover:text-white"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          
+          <p className="text-gray-300 text-xs leading-relaxed flex-1 overflow-y-auto">
+            "{album.aiAnalysis.reasoning}"
+          </p>
+          
+          {album.aiAnalysis.timestamp && (
+            <p className="text-gray-500 text-xs mt-2">
+              Analyzed: {formatDate(album.aiAnalysis.timestamp)}
+            </p>
+          )}
+        </div>
+      )}
     </article>
   );
 };
