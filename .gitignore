@@ -36,3 +36,4 @@ netlify.toml
 uv.lock
 .python-version
 pyproject.toml
+next_session_brief.md
