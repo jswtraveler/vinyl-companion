@@ -113,26 +113,27 @@ const SuggestionsSection = ({ albums = [] }) => {
 
 // Individual suggestion card component
 const SuggestionCard = ({ album }) => {
+
   return (
     <div className="flex-shrink-0 w-32 bg-gray-800 rounded-lg overflow-hidden hover:bg-gray-700 transition-colors cursor-pointer group">
       {/* Album Cover */}
       <div className="aspect-square bg-gray-600 relative">
         {album.coverImage ? (
-          <img 
-            src={album.coverImage} 
+          <img
+            src={album.coverImage}
             alt={`${album.title} cover`}
             className="w-full h-full object-cover"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-400">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} 
-                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" 
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
               />
             </svg>
           </div>
         )}
-        
+
         {/* Play/View overlay on hover */}
         <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all duration-200 flex items-center justify-center">
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
