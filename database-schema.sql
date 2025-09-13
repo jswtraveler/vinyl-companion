@@ -44,6 +44,10 @@ CREATE TABLE IF NOT EXISTS albums (
   listening_count INTEGER DEFAULT 0,
   last_played DATE,
   
+  -- AI Analysis and Mood Tags
+  moods TEXT[], -- Array of AI-generated mood tags
+  ai_analysis JSONB, -- AI analysis metadata (reasoning, confidence, timestamp, etc.)
+  
   -- System fields
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

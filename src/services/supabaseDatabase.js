@@ -63,6 +63,7 @@ export class SupabaseDatabase {
         identificationConfidence: album.identification_confidence, // Map identification_confidence to identificationConfidence
         listeningCount: album.listening_count, // Map listening_count to listeningCount
         lastPlayed: album.last_played, // Map last_played to lastPlayed
+        aiAnalysis: album.ai_analysis, // Map ai_analysis to aiAnalysis
         createdAt: album.created_at, // Map created_at to createdAt
         updatedAt: album.updated_at // Map updated_at to updatedAt
       }));
@@ -157,7 +158,9 @@ export class SupabaseDatabase {
         notes: albumData.notes,
         rating: albumData.rating,
         listening_count: albumData.listeningCount || 0,
-        last_played: albumData.lastPlayed
+        last_played: albumData.lastPlayed,
+        moods: albumData.moods || [],
+        ai_analysis: albumData.aiAnalysis || null
       };
 
       const { data, error } = await supabase
@@ -210,7 +213,9 @@ export class SupabaseDatabase {
         notes: albumData.notes,
         rating: albumData.rating,
         listening_count: albumData.listeningCount,
-        last_played: albumData.lastPlayed
+        last_played: albumData.lastPlayed,
+        moods: albumData.moods,
+        ai_analysis: albumData.aiAnalysis
       };
 
       // Remove undefined values
