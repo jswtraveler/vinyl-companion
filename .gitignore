@@ -33,3 +33,6 @@ netlify.toml
 *.njsproj
 *.sln
 *.sw?
+uv.lock
+.python-version
+pyproject.toml
