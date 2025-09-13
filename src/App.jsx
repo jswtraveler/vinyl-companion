@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import AlbumForm from './components/AlbumForm'
 import AlbumCard from './components/AlbumCard'
 import SearchBar from './components/SearchBar'
@@ -25,8 +25,10 @@ function App() {
   const [error, setError] = useState(null)
   const [editingAlbum, setEditingAlbum] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [sortBy, setSortBy] = useState('dateAdded')
+  const [sortBy, setSortBy] = useState('artist')
   const [sortOrder, setSortOrder] = useState('desc')
+  const [showSortDropdown, setShowSortDropdown] = useState(false)
+  const sortDropdownRef = useRef(null)
   const [showStats, setShowStats] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const [showAlbumSearch, setShowAlbumSearch] = useState(false)
@@ -130,6 +132,20 @@ function App() {
       loadAlbums(useCloudDatabase)
     }
   }, [authLoading, useCloudDatabase])
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (sortDropdownRef.current && !sortDropdownRef.current.contains(event.target)) {
+        setShowSortDropdown(false);
+      }
+    };
+
+    if (showSortDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSortDropdown]);
 
   const loadAlbums = async (useCloud = false) => {
     try {
@@ -577,6 +593,21 @@ function App() {
       setSortBy(field);
       setSortOrder('asc');
     }
+    setShowSortDropdown(false);
+  };
+
+  const toggleSortDirection = () => {
+    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const getSortLabel = (key) => {
+    const labels = {
+      'dateAdded': 'Date Added',
+      'title': 'Album',
+      'artist': 'Artist',
+      'year': 'Date Released'
+    };
+    return labels[key] || key;
   };
 
   const toggleStats = () => {
@@ -856,30 +887,50 @@ function App() {
                 >
                   Stats
                 </button>
-                <span className="text-sm font-medium text-gray-300">Sort by:</span>
-                {[
-                  { key: 'dateAdded', label: 'Date Added' },
-                  { key: 'title', label: 'Title' },
-                  { key: 'artist', label: 'Artist' },
-                  { key: 'year', label: 'Year' }
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => handleSortChange(key)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-                      sortBy === key
-                        ? 'bg-black border-gray-500 text-white'
-                        : 'bg-black border-gray-600 text-white hover:border-gray-400'
-                    }`}
-                  >
-                    {label}
-                    {sortBy === key && (
-                      <span className="ml-1">
-                        {sortOrder === 'asc' ? '↑' : '↓'}
-                      </span>
+                
+                {/* Sort Dropdown and Direction Toggle */}
+                <div className="flex items-center gap-1">
+                  <div className="relative" ref={sortDropdownRef}>
+                    <button
+                      onClick={() => setShowSortDropdown(!showSortDropdown)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border bg-black border-gray-600 text-white hover:border-gray-400 flex items-center gap-2"
+                    >
+                      {getSortLabel(sortBy)}
+                      <svg className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                    
+                    {showSortDropdown && (
+                      <div className="absolute top-full left-0 mt-1 bg-black border border-gray-600 rounded-lg shadow-lg z-10 min-w-full">
+                        {[
+                          { key: 'artist', label: 'Artist' },
+                          { key: 'title', label: 'Album' },
+                          { key: 'dateAdded', label: 'Date Added' },
+                          { key: 'year', label: 'Date Released' }
+                        ].map(({ key, label }) => (
+                          <button
+                            key={key}
+                            onClick={() => handleSortChange(key)}
+                            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-800 transition-colors first:rounded-t-lg last:rounded-b-lg ${
+                              sortBy === key ? 'text-white bg-gray-800' : 'text-gray-300'
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     )}
+                  </div>
+                  
+                  <button
+                    onClick={toggleSortDirection}
+                    className="px-2 py-1.5 rounded-lg text-sm font-medium transition-colors border bg-black border-gray-600 text-white hover:border-gray-400"
+                    title={`Sort ${sortOrder === 'asc' ? 'ascending' : 'descending'}`}
+                  >
+                    {sortOrder === 'asc' ? '↑' : '↓'}
                   </button>
-                ))}
+                </div>
               </div>
             </div>
           )}
