@@ -91,13 +91,33 @@ export const getMoodsForGenre = (genre) => {
 };
 
 /**
- * Get all moods for an album (only from explicit AI-generated moods)
+ * Get all moods for an album (AI-generated moods + genre-based fallback)
  * @param {Object} album - Album object
- * @returns {string[]} Array of mood IDs from AI analysis
+ * @returns {string[]} Array of mood IDs from AI analysis or genre mapping
  */
 export const getMoodsForAlbum = (album) => {
-  if (!album || !album.moods) return [];
-  return Array.isArray(album.moods) ? album.moods : [];
+  if (!album) return [];
+
+  // First, try to get AI-generated moods
+  let aiMoods = [];
+  if (album.moods && Array.isArray(album.moods)) {
+    // Normalize AI moods to lowercase to match MOOD_CATEGORIES IDs
+    aiMoods = album.moods.map(mood => mood.toLowerCase());
+  }
+
+  // If we have AI-generated moods, use them
+  if (aiMoods.length > 0) {
+    return aiMoods;
+  }
+
+  // Fallback: generate moods from genres
+  let genreMoods = [];
+  if (album.genre && Array.isArray(album.genre)) {
+    const allGenreMoods = album.genre.flatMap(genre => getMoodsForGenre(genre));
+    genreMoods = [...new Set(allGenreMoods)]; // Remove duplicates
+  }
+
+  return genreMoods;
 };
 
 /**
@@ -108,42 +128,47 @@ export const getMoodsForAlbum = (album) => {
  */
 export const filterAlbumsByMood = (albums, moodId) => {
   if (!albums || !moodId) return [];
-  
-  return albums.filter(album => {
+
+  const filtered = albums.filter(album => {
     const albumMoods = getMoodsForAlbum(album);
     return albumMoods.includes(moodId);
   });
+
+  return filtered;
 };
 
 /**
- * Get mood statistics for a collection (only from AI-generated moods)
+ * Get mood statistics for a collection (AI-generated + genre-based moods)
  * @param {Object[]} albums - Array of album objects
  * @returns {Object} Mood counts and percentages
  */
 export const getMoodStatistics = (albums) => {
   if (!albums || albums.length === 0) return {};
-  
+
   const moodCounts = {};
-  
+
   // Initialize counts
   MOOD_CATEGORIES.forEach(mood => {
     moodCounts[mood.id] = 0;
   });
-  
-  // Count albums per mood (only explicit moods from AI analysis)
+
+  // Count albums per mood (now includes both AI and genre-based moods)
   albums.forEach(album => {
-    const albumMoods = getMoodsForAlbum(album); // Only returns explicit album.moods
+    const albumMoods = getMoodsForAlbum(album); // Returns AI or genre-based moods
     albumMoods.forEach(moodId => {
       if (moodCounts[moodId] !== undefined) {
         moodCounts[moodId]++;
       }
     });
   });
-  
-  // Calculate percentages based on albums that have moods
-  const albumsWithMoods = albums.filter(album => album.moods && album.moods.length > 0);
+
+  // Calculate percentages based on all albums that have any moods (AI or genre-based)
+  const albumsWithMoods = albums.filter(album => {
+    const moods = getMoodsForAlbum(album);
+    return moods.length > 0;
+  });
   const totalWithMoods = albumsWithMoods.length;
-  
+
   const statistics = {};
   Object.entries(moodCounts).forEach(([moodId, count]) => {
     const mood = MOOD_CATEGORIES.find(m => m.id === moodId);
@@ -153,12 +178,12 @@ export const getMoodStatistics = (albums) => {
       label: mood?.label || moodId
     };
   });
-  
+
   return statistics;
 };
 
 /**
- * Get recommended albums for a specific mood (only AI-tagged albums)
+ * Get recommended albums for a specific mood (AI-tagged + genre-based albums)
  * @param {Object[]} albums - Array of album objects
  * @param {string} moodId - Selected mood ID
  * @param {number} limit - Maximum number of albums to return
@@ -166,26 +191,33 @@ export const getMoodStatistics = (albums) => {
  */
 export const getRecommendedAlbumsForMood = (albums, moodId, limit = 10) => {
   const matchingAlbums = filterAlbumsByMood(albums, moodId);
-  
-  // Sort by relevance (albums with more AI-generated moods first, then by date added)
+
+  // Sort by relevance (AI-tagged albums first, then by mood count, then by date added)
   const sortedAlbums = matchingAlbums
     .map(album => ({
       ...album,
-      moodCount: (album.moods || []).length
+      aiMoodCount: (album.moods || []).length, // AI-generated moods
+      totalMoodCount: getMoodsForAlbum(album).length // Total moods (AI + genre-based)
     }))
     .sort((a, b) => {
-      // Primary sort: more AI-generated moods = more versatile
-      if (b.moodCount !== a.moodCount) {
-        return b.moodCount - a.moodCount;
+      // Primary sort: AI-analyzed albums first (they have more accurate mood data)
+      if (a.aiMoodCount > 0 && b.aiMoodCount === 0) return -1;
+      if (b.aiMoodCount > 0 && a.aiMoodCount === 0) return 1;
+
+      // Secondary sort: albums with more total moods = more versatile
+      if (b.totalMoodCount !== a.totalMoodCount) {
+        return b.totalMoodCount - a.totalMoodCount;
       }
-      // Secondary sort: newer additions first (if dateAdded available)
+
+      // Tertiary sort: newer additions first (if dateAdded available)
       if (a.dateAdded && b.dateAdded) {
         return new Date(b.dateAdded) - new Date(a.dateAdded);
       }
+
       // Fallback: alphabetical by title
       return (a.title || '').localeCompare(b.title || '');
     });
-  
+
   return sortedAlbums.slice(0, limit);
 };
 
