@@ -156,3 +156,81 @@ function score(c, w={A:.35,G:.30,T:.15,L:.08,M:.07,P:.05}) {
   Step 3: Advanced Scoring - Implement sophisticated similarity algorithms
   Step 4: Smart Candidates - Add more data sources and filtering
   Step 5: Curated Lists - Create themed recommendations and discovery features
+
+## Recommendation Methodology Evolution
+
+### Original Basic Approach (Steps 1 & 2)
+
+The initial recommendation system used a **source-based filtering approach**:
+
+**Methodology:**
+- **Simple categorization**: Albums were recommended based purely on their data source
+- **No scoring**: All recommendations from the same source were treated equally
+- **Basic deduplication**: Only filtered out albums already in user's collection
+- **Static ordering**: Recommendations sorted by external popularity or API order
+
+**Logic Flow:**
+1. Fetch similar artists from Last.fm for user's top artists
+2. Create "Similar Artists" list with placeholder album suggestions
+3. Fetch popular albums from user's favorite genres via Last.fm
+4. Create "Genre Matches" list ordered by Last.fm popularity ranking
+5. Generate basic "Profile-Based" suggestions using collection statistics
+6. Present all three lists without cross-comparison or intelligent ranking
+
+**Limitations:**
+- No consideration of **how well** an album matches the user's actual taste
+- Popular albums always ranked higher regardless of personal fit
+- Similar artists suggested without analyzing **why** the user likes the source artist
+- Genre matches didn't account for user's **specific preferences within genres**
+- No way to distinguish between "good match" and "great match"
+
+### Advanced Multi-Factor Scoring (Step 3)
+
+The new system uses **intelligent similarity analysis** across multiple dimensions:
+
+**Methodology:**
+- **Weighted multi-criteria analysis**: Six factors scored and combined with research-backed weights
+- **Personalized scoring**: Each album gets a custom score based on individual user profile
+- **Confidence metrics**: System indicates how certain it is about each recommendation
+- **Intelligent ranking**: Best overall matches surface regardless of source
+- **Explanation generation**: System explains **why** each album is recommended
+
+**Scoring Dimensions:**
+1. **Artist Proximity (35%)**: How closely connected is this artist to user's collection?
+   - Direct artist overlap, similar artist networks, frequency of artist in collection
+2. **Tag Similarity (30%)**: How well do genres/moods align with user preferences?
+   - Jaccard similarity between album tags and user's favorite tags, weighted by preference strength
+3. **Era Fit (15%)**: Does the release period match user's temporal preferences?
+   - Decade compatibility, adjacent period scoring, era preference analysis
+4. **Label/Scene (8%)**: Does this fit the user's label/geographic preferences?
+   - Record label affinity, country/region matching from collection patterns
+5. **Mood Fit (7%)**: How well do AI-analyzed moods align with user's taste?
+   - Compatibility between album moods and user's mood preferences from collection
+6. **External Signals (5%)**: What does the broader music community think?
+   - Last.fm similarity scores, popularity metrics, community rankings
+
+**Logic Flow:**
+1. **Candidate Collection**: Gather albums from all available sources (Last.fm, user patterns)
+2. **Multi-Dimensional Analysis**: Score each candidate across all six factors
+3. **Weighted Combination**: Calculate overall match percentage using research weights
+4. **Quality Filtering**: Remove candidates below 10% match threshold
+5. **Intelligent Categorization**: Create specialized lists based on score patterns:
+   - **Top Picks**: Highest overall scores regardless of source
+   - **Similar Artists**: High artist proximity scores
+   - **Genre Matches**: High tag similarity scores
+   - **Hidden Gems**: High personal match but lower mainstream popularity
+6. **Explanation Generation**: Analyze which factors drove each recommendation
+
+**Key Improvements:**
+- **Personal relevance over popularity**: A 95% personal match beats a popular album with 40% match
+- **Multi-dimensional understanding**: Considers user's complete musical identity, not just single factors
+- **Transparency**: Users understand **why** albums are suggested ("matches your favorite genres and preferred era")
+- **Confidence awareness**: System knows when it's making strong vs. uncertain recommendations
+- **Discovery balance**: Mixes safe bets (high confidence) with adventurous picks (high potential)
+
+### Practical Impact
+
+**Before**: "Here are popular albums from artists similar to ones you like"
+**After**: "Here's a 78% match because it combines your love of indie rock (your #1 genre) with 2000s releases (your preferred era) from an artist similar to Radiohead (your #3 most-played artist)"
+
+The evolution transforms the system from a **simple content filter** into an **intelligent music curator** that understands and explains personal taste patterns.
