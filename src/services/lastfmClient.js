@@ -16,6 +16,10 @@ export class LastFmClient {
     this.isProcessingQueue = false;
     this.lastRequestTime = 0;
     this.minRequestInterval = 1000; // 1 second between requests to respect rate limits
+    this.storageKey = 'lastfm_cache';
+
+    // Load existing cache from localStorage
+    this.loadCacheFromStorage();
   }
 
   /**
@@ -80,6 +84,9 @@ export class LastFmClient {
           data,
           timestamp: Date.now()
         });
+
+        // Save to localStorage
+        this.saveCacheToStorage();
 
         this.lastRequestTime = Date.now();
         request.resolve(data);
@@ -338,6 +345,37 @@ export class LastFmClient {
    */
   clearCache() {
     this.cache.clear();
+    this.saveCacheToStorage();
+  }
+
+  /**
+   * Load cache from localStorage
+   */
+  loadCacheFromStorage() {
+    try {
+      const stored = localStorage.getItem(this.storageKey);
+      if (stored) {
+        const data = JSON.parse(stored);
+        Object.entries(data).forEach(([key, value]) => {
+          this.cache.set(key, value);
+        });
+        console.log(`🎵 Loaded ${this.cache.size} cached Last.fm responses from storage`);
+      }
+    } catch (error) {
+      console.warn('Failed to load Last.fm cache from storage:', error);
+    }
+  }
+
+  /**
+   * Save cache to localStorage
+   */
+  saveCacheToStorage() {
+    try {
+      const data = Object.fromEntries(this.cache);
+      localStorage.setItem(this.storageKey, JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save Last.fm cache to storage:', error);
+    }
   }
 }
 
