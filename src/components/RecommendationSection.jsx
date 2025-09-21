@@ -188,10 +188,16 @@ const RecommendationSection = ({ albums, user, useCloudDatabase }) => {
             {expanded && recommendations.metadata && (
               <div className="text-xs text-gray-500 pt-2 border-t border-gray-700">
                 Generated in {recommendations.metadata.duration}ms •
+                {recommendations.metadata.scoringEngine && (
+                  <> {recommendations.metadata.scoringEngine} scoring • </>
+                )}
                 {recommendations.externalData && (
-                  <> {recommendations.externalData.candidateCount} external candidates • </>
+                  <> {recommendations.externalData.candidateCount} candidates • </>
                 )}
                 {new Date(recommendations.metadata.generatedAt).toLocaleTimeString()}
+                {recommendations.metadata.version && (
+                  <> • v{recommendations.metadata.version}</>
+                )}
               </div>
             )}
           </div>
@@ -263,13 +269,36 @@ const RecommendationItem = ({ item, expanded }) => {
             {item.reason}
           </div>
         )}
+        {expanded && item.reasons && item.reasons.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {item.reasons.slice(0, 2).map((reason, index) => (
+              <span
+                key={index}
+                className="text-xs px-1.5 py-0.5 bg-gray-600 text-gray-300 rounded"
+                title={`${reason.reason} (${Math.round(reason.strength * 100)}%)`}
+              >
+                {reason.reason}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Metadata */}
+      {/* Metadata and Scores */}
       <div className="flex-shrink-0 text-right">
-        {item.similarity && (
+        {item.score && (
+          <div className="text-xs font-medium text-blue-400">
+            {item.score}% match
+          </div>
+        )}
+        {expanded && item.confidence && (
+          <div className="text-xs text-gray-500">
+            {item.confidence}% confidence
+          </div>
+        )}
+        {item.similarity && !item.score && (
           <div className="text-xs text-gray-400">
-            {Math.round(item.similarity * 100)}% match
+            {Math.round(item.similarity * 100)}% similar
           </div>
         )}
         {item.popularity && (

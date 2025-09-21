@@ -7,6 +7,7 @@
 import LastFmClient from './lastfmClient.js';
 import RecommendationDataFetcher from './recommendationDataFetcher.js';
 import CollectionProfiler from './collectionProfiler.js';
+import RecommendationScoring from './recommendationScoring.js';
 import { AlbumNormalizer } from '../utils/albumNormalization.js';
 
 export class RecommendationService {
@@ -24,6 +25,7 @@ export class RecommendationService {
     // Services
     this.lastfmClient = null;
     this.dataFetcher = null;
+    this.scoringEngine = new RecommendationScoring();
     this.currentProfile = null;
     this.currentData = null;
 
@@ -206,86 +208,254 @@ export class RecommendationService {
   }
 
   /**
-   * Build recommendations from profile and external data
+   * Build recommendations from profile and external data using advanced scoring
    * @param {Object} profile - User profile
    * @param {Object|null} externalData - External data
    * @param {Object[]} userAlbums - User's existing albums for deduplication
    * @returns {Promise<Object>} Recommendations
    */
   async buildRecommendations(profile, externalData, userAlbums) {
-    // For Steps 1&2 implementation, we'll create basic recommendations
-    // Steps 3-5 (scoring, candidate generation, curated lists) will be added later
+    console.log('🎵 Building recommendations with advanced scoring...');
 
     const recommendations = {
       total: 0,
       lists: {},
       metadata: {
         generatedAt: Date.now(),
-        sources: []
+        sources: [],
+        scoringEngine: 'advanced',
+        version: '3.0'
       }
     };
 
-    // Create user fingerprints for deduplication
+    // Collect all candidate albums from various sources
+    const candidates = this.collectCandidateAlbums(externalData, userAlbums);
+    console.log(`🎵 Found ${candidates.length} candidate albums for scoring`);
+
+    if (candidates.length === 0) {
+      return recommendations;
+    }
+
+    // Score all candidates using advanced algorithm
+    const scoredCandidates = this.scoringEngine.scoreMultipleCandidates(
+      candidates,
+      profile,
+      userAlbums,
+      externalData
+    );
+
+    console.log(`🎵 Scored ${scoredCandidates.length} candidates (${candidates.length - scoredCandidates.length} filtered out)`);
+
+    // Create recommendation lists based on scores and sources
+    this.createScoredRecommendationLists(scoredCandidates, recommendations);
+
+    return recommendations;
+  }
+
+  /**
+   * Collect candidate albums from all available sources
+   */
+  collectCandidateAlbums(externalData, userAlbums) {
+    const candidates = [];
     const userFingerprints = new Set(
       userAlbums.map(album =>
         AlbumNormalizer.createFingerprint(album.artist, album.title)
       )
     );
 
-    // Basic artist similarity recommendations
+    // From external data similar artists
     if (externalData?.similarArtists) {
-      const artistRecs = this.buildArtistSimilarityRecommendations(
+      const artistCandidates = this.extractCandidatesFromSimilarArtists(
         externalData.similarArtists,
-        userFingerprints,
-        10
+        userFingerprints
       );
-
-      if (artistRecs.length > 0) {
-        recommendations.lists.similar_artists = {
-          title: 'Because you listen to similar artists',
-          description: 'Albums from artists similar to those in your collection',
-          items: artistRecs,
-          count: artistRecs.length
-        };
-        recommendations.total += artistRecs.length;
-        recommendations.metadata.sources.push('similar_artists');
-      }
+      candidates.push(...artistCandidates);
     }
 
-    // Basic genre recommendations
+    // From external data genre albums
     if (externalData?.tagAlbums) {
-      const genreRecs = this.buildGenreRecommendations(
+      const genreCandidates = this.extractCandidatesFromGenreAlbums(
         externalData.tagAlbums,
-        userFingerprints,
-        15
+        userFingerprints
       );
+      candidates.push(...genreCandidates);
+    }
 
-      if (genreRecs.length > 0) {
-        recommendations.lists.genre_matches = {
-          title: 'More music you might like',
-          description: 'Popular albums from your favorite genres',
-          items: genreRecs,
-          count: genreRecs.length
+    // From candidate albums in external data
+    if (externalData?.candidateAlbums) {
+      const externalCandidates = Array.from(externalData.candidateAlbums.values())
+        .filter(candidate => !userFingerprints.has(candidate.fingerprint));
+      candidates.push(...externalCandidates);
+    }
+
+    return candidates;
+  }
+
+  /**
+   * Extract candidates from similar artists data
+   */
+  extractCandidatesFromSimilarArtists(similarArtistsData, userFingerprints) {
+    const candidates = [];
+
+    Object.values(similarArtistsData).forEach(artistData => {
+      artistData.similarArtists.forEach(similarArtist => {
+        // Create candidate with similarity metadata
+        const candidate = {
+          artist: similarArtist.name,
+          title: `Popular Album by ${similarArtist.name}`, // Placeholder
+          type: 'similar_artist',
+          similarity: similarArtist.match,
+          image: similarArtist.image,
+          metadata: {
+            sourceArtist: artistData.sourceArtist,
+            lastfmMatch: similarArtist.match,
+            source: 'similar_artists'
+          }
         };
-        recommendations.total += genreRecs.length;
-        recommendations.metadata.sources.push('genre_matches');
-      }
-    }
 
-    // Profile-based recommendations (without external data)
-    const profileRecs = this.buildProfileBasedRecommendations(profile, 5);
-    if (profileRecs.length > 0) {
-      recommendations.lists.profile_based = {
-        title: 'Based on your collection',
-        description: 'Recommendations derived from your listening patterns',
-        items: profileRecs,
-        count: profileRecs.length
+        const fingerprint = AlbumNormalizer.createFingerprint(candidate.artist, candidate.title);
+        if (!userFingerprints.has(fingerprint)) {
+          candidate.fingerprint = fingerprint;
+          candidates.push(candidate);
+        }
+      });
+    });
+
+    return candidates;
+  }
+
+  /**
+   * Extract candidates from genre albums data
+   */
+  extractCandidatesFromGenreAlbums(tagAlbumsData, userFingerprints) {
+    const candidates = [];
+
+    Object.values(tagAlbumsData).forEach(tagData => {
+      tagData.albums.forEach(album => {
+        if (!userFingerprints.has(album.fingerprint)) {
+          const candidate = {
+            artist: album.artist.name,
+            title: album.name,
+            type: 'genre_match',
+            popularity: album.playcount,
+            rank: album.rank,
+            image: album.image,
+            url: album.url,
+            fingerprint: album.fingerprint,
+            metadata: {
+              sourceTag: tagData.sourceTag,
+              playcount: album.playcount,
+              rank: album.rank,
+              source: 'genre_albums'
+            }
+          };
+          candidates.push(candidate);
+        }
+      });
+    });
+
+    return candidates;
+  }
+
+  /**
+   * Create recommendation lists from scored candidates
+   */
+  createScoredRecommendationLists(scoredCandidates, recommendations) {
+    // Top recommendations (highest scores across all sources)
+    const topRecommendations = scoredCandidates
+      .slice(0, 10)
+      .map(result => this.formatRecommendationItem(result));
+
+    if (topRecommendations.length > 0) {
+      recommendations.lists.top_picks = {
+        title: 'Top Picks for You',
+        description: 'Our highest-rated recommendations based on your music taste',
+        items: topRecommendations,
+        count: topRecommendations.length
       };
-      recommendations.total += profileRecs.length;
-      recommendations.metadata.sources.push('profile_analysis');
+      recommendations.total += topRecommendations.length;
+      recommendations.metadata.sources.push('top_picks');
     }
 
-    return recommendations;
+    // Similar artists with high scores
+    const similarArtistRecs = scoredCandidates
+      .filter(result => result.candidate.type === 'similar_artist')
+      .slice(0, 8)
+      .map(result => this.formatRecommendationItem(result));
+
+    if (similarArtistRecs.length > 0) {
+      recommendations.lists.similar_artists = {
+        title: 'Because you listen to similar artists',
+        description: 'Albums from artists similar to those in your collection',
+        items: similarArtistRecs,
+        count: similarArtistRecs.length
+      };
+      recommendations.total += similarArtistRecs.length;
+      recommendations.metadata.sources.push('similar_artists');
+    }
+
+    // Genre matches with high scores
+    const genreMatches = scoredCandidates
+      .filter(result => result.candidate.type === 'genre_match')
+      .slice(0, 12)
+      .map(result => this.formatRecommendationItem(result));
+
+    if (genreMatches.length > 0) {
+      recommendations.lists.genre_matches = {
+        title: 'More music you might like',
+        description: 'Popular albums from your favorite genres',
+        items: genreMatches,
+        count: genreMatches.length
+      };
+      recommendations.total += genreMatches.length;
+      recommendations.metadata.sources.push('genre_matches');
+    }
+
+    // Hidden gems (lower popularity but high personal match)
+    const hiddenGems = scoredCandidates
+      .filter(result =>
+        result.totalScore > 0.6 &&
+        (!result.candidate.popularity || result.candidate.popularity < 50000)
+      )
+      .slice(0, 6)
+      .map(result => this.formatRecommendationItem(result));
+
+    if (hiddenGems.length > 0) {
+      recommendations.lists.hidden_gems = {
+        title: 'Hidden Gems',
+        description: 'Lesser-known albums that match your taste perfectly',
+        items: hiddenGems,
+        count: hiddenGems.length
+      };
+      recommendations.total += hiddenGems.length;
+      recommendations.metadata.sources.push('hidden_gems');
+    }
+  }
+
+  /**
+   * Format scored result into recommendation item
+   */
+  formatRecommendationItem(scoredResult) {
+    const { candidate, totalScore, explanation, confidence, reasons } = scoredResult;
+
+    return {
+      type: candidate.type,
+      artist: candidate.artist,
+      title: candidate.title,
+      image: candidate.image,
+      url: candidate.url,
+      reason: explanation,
+      score: Math.round(totalScore * 100), // Convert to percentage
+      confidence: Math.round(confidence * 100),
+      reasons: reasons,
+      similarity: candidate.similarity,
+      popularity: candidate.popularity,
+      rank: candidate.rank,
+      metadata: {
+        ...candidate.metadata,
+        scoredAt: Date.now()
+      }
+    };
   }
 
   /**
