@@ -263,14 +263,7 @@ export class RecommendationService {
       )
     );
 
-    // From external data similar artists
-    if (externalData?.similarArtists) {
-      const artistCandidates = this.extractCandidatesFromSimilarArtists(
-        externalData.similarArtists,
-        userFingerprints
-      );
-      candidates.push(...artistCandidates);
-    }
+    // Skip similar artists extraction since candidateAlbums already contains processed similar artist data with real album titles
 
     // From external data genre albums
     if (externalData?.tagAlbums) {
