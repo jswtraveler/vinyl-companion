@@ -54,6 +54,9 @@ export class RecommendationDataFetcher {
       // Fetch additional artist information
       await this.fetchArtistInfoData(profile.artists);
 
+      // Fetch top albums for similar artists
+      await this.fetchTopAlbumsForSimilarArtists();
+
       // Process and aggregate results
       this.aggregateResults();
 
@@ -256,6 +259,62 @@ export class RecommendationDataFetcher {
   }
 
   /**
+   * Fetch top albums for similar artists to get real album titles
+   */
+  async fetchTopAlbumsForSimilarArtists() {
+    console.log('🎵 Fetching top albums for similar artists');
+
+    const similarArtistNames = new Set();
+
+    // Collect all similar artist names
+    Object.values(this.results.similarArtists).forEach(artistData => {
+      artistData.similarArtists.slice(0, 3).forEach(similarArtist => { // Limit to top 3 per artist
+        similarArtistNames.add(similarArtist.name);
+      });
+    });
+
+    const artistsToProcess = Array.from(similarArtistNames).slice(0, 10); // Limit total requests
+
+    for (const artistName of artistsToProcess) {
+      try {
+        await this.delay(this.options.requestDelayMs);
+
+        const response = await this.lastfm.getArtistTopAlbums(artistName, 3); // Get top 3 albums per artist
+
+        this.results.metadata.totalRequests++;
+
+        if (response?.topalbums?.album) {
+          const albums = Array.isArray(response.topalbums.album)
+            ? response.topalbums.album
+            : [response.topalbums.album];
+
+          // Store the top albums for this artist
+          if (!this.results.artistTopAlbums) {
+            this.results.artistTopAlbums = {};
+          }
+
+          this.results.artistTopAlbums[artistName] = albums.map(album => ({
+            name: album.name,
+            artist: album.artist.name,
+            playcount: parseInt(album.playcount) || 0,
+            mbid: album.mbid || null,
+            url: album.url || null,
+            image: this.extractImageUrl(album.image),
+            fingerprint: AlbumNormalizer.createFingerprint(album.artist.name, album.name)
+          }));
+
+          this.results.metadata.successfulRequests++;
+          console.log(`✅ Found ${albums.length} top albums for ${artistName}`);
+        }
+
+      } catch (error) {
+        console.error(`❌ Failed to fetch top albums for ${artistName}:`, error);
+        this.results.metadata.failedRequests++;
+      }
+    }
+  }
+
+  /**
    * Aggregate and process all fetched data into candidate albums
    */
   aggregateResults() {
@@ -274,16 +333,61 @@ export class RecommendationDataFetcher {
    * Add candidate albums derived from similar artists
    */
   addCandidatesFromSimilarArtists() {
+    // First, add albums from similar artists that we fetched top albums for
+    if (this.results.artistTopAlbums) {
+      Object.entries(this.results.artistTopAlbums).forEach(([artistName, albums]) => {
+        // Find the source artist data for this similar artist
+        let sourceArtistData = null;
+        let similarArtistData = null;
+
+        Object.values(this.results.similarArtists).forEach(artistData => {
+          const match = artistData.similarArtists.find(sa => sa.name === artistName);
+          if (match) {
+            sourceArtistData = artistData;
+            similarArtistData = match;
+          }
+        });
+
+        // Add each top album as a candidate
+        albums.forEach(album => {
+          if (!this.results.candidateAlbums.has(album.fingerprint)) {
+            this.results.candidateAlbums.set(album.fingerprint, {
+              type: 'similar_artist',
+              artist: album.artist,
+              title: album.name,
+              fingerprint: album.fingerprint,
+              sourceArtist: sourceArtistData?.sourceArtist || artistName,
+              similarity: similarArtistData?.match || 0.5,
+              playcount: album.playcount,
+              mbid: album.mbid,
+              image: album.image,
+              url: album.url,
+              metadata: {
+                source: 'lastfm_similar_artists',
+                fetchedAt: Date.now()
+              }
+            });
+          }
+        });
+      });
+    }
+
+    // Then add any remaining similar artists as artist-only suggestions (for artists without top albums)
     Object.values(this.results.similarArtists).forEach(artistData => {
       artistData.similarArtists.forEach(similarArtist => {
-        // Create placeholder candidate - would need additional API calls for actual albums
+        // Skip if we already have albums from this artist
+        if (this.results.artistTopAlbums && this.results.artistTopAlbums[similarArtist.name]) {
+          return;
+        }
+
+        // Create artist-only candidate for exploration
         const candidateFingerprint = `similar_artist::${AlbumNormalizer.normalizeString(similarArtist.name)}`;
 
         if (!this.results.candidateAlbums.has(candidateFingerprint)) {
           this.results.candidateAlbums.set(candidateFingerprint, {
             type: 'similar_artist',
             artist: similarArtist.name,
-            title: null, // Would need additional lookup
+            title: null, // No specific album - suggests exploring the artist
             fingerprint: candidateFingerprint,
             sourceArtist: artistData.sourceArtist,
             similarity: similarArtist.match,

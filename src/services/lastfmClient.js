@@ -276,6 +276,21 @@ export class LastFmClient {
   }
 
   /**
+   * Get top albums for a specific artist
+   * @param {string} artist - Artist name
+   * @param {number} limit - Maximum number of results (default: 50)
+   * @returns {Promise<Object>} Top albums by artist
+   */
+  async getArtistTopAlbums(artist, limit = 50) {
+    if (!artist) throw new Error('Artist name is required');
+
+    return this.makeRequest('artist.gettopalbums', {
+      artist: artist.trim(),
+      limit: Math.min(limit, 100)
+    });
+  }
+
+  /**
    * Get cache statistics
    * @returns {Object} Cache stats
    */
