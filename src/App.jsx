@@ -8,6 +8,7 @@ import IdentificationLoader from './components/IdentificationLoader'
 import IdentificationResults from './components/IdentificationResults'
 import AuthModal from './components/AuthModal'
 import SuggestionsSection from './components/SuggestionsSection'
+import RecommendationSection from './components/RecommendationSection'
 import AIAnalysisModal from './components/AIAnalysisModal'
 import AlbumSearchModal from './components/AlbumSearchModal'
 import { AlbumIdentifier } from './services/albumIdentifier'
@@ -1013,6 +1014,15 @@ function App() {
           {/* Suggestions Section */}
           {albums.length > 0 && (
             <SuggestionsSection albums={filteredAndSortedAlbums} />
+          )}
+
+          {/* Recommendation Section */}
+          {albums.length > 0 && (
+            <RecommendationSection
+              albums={albums}
+              user={user}
+              useCloudDatabase={useCloudDatabase}
+            />
           )}
 
           {/* Search Results Info */}
