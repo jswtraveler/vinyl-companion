@@ -274,9 +274,16 @@ export class RecommendationDataFetcher {
     });
 
     const artistsToProcess = Array.from(similarArtistNames).slice(0, 10); // Limit total requests
+    console.log(`🎵 Processing ${artistsToProcess.length} unique similar artists:`, artistsToProcess);
 
     for (const artistName of artistsToProcess) {
       try {
+        // Skip if we already have data for this artist
+        if (this.results.artistTopAlbums && this.results.artistTopAlbums[artistName]) {
+          console.log(`⚡ Skipping ${artistName} - already have top albums data`);
+          continue;
+        }
+
         await this.delay(this.options.requestDelayMs);
 
         const response = await this.lastfm.getArtistTopAlbums(artistName, 3); // Get top 3 albums per artist
