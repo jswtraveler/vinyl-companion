@@ -1,102 +1,107 @@
-# 🎯 Next Development Session - Start Strong Brief
+# Next Session Brief: Fix Album Cover Images in Mood Suggestions
 
-## 📊 Current Status (End of Day 25)
-**95% Complete MVP** - Camera identification working, but Discogs search functionality has issues
+## 🎯 Session Goals
+Fix missing album cover images in the mood suggestion filter results and commit changes to the codebase.
 
-### ✅ What's Working Perfectly
-- **Mobile camera identification** - ✅ Complete with full workflow
-- Complete core features (CRUD, search, sort, stats) 
-- PWA installation and offline capability
-- **SerpAPI mobile proxy** - Working with Netlify serverless function
-- **Camera → Photo → Identification → Results → Form** - Full workflow functional
-- **Broken album cover image** - ✅ Fixed in identification results
+## 🚀 Current Status
 
-### ✅ Major Achievements This Session
-- **Fixed mobile camera DOM rendering** - Video element always renders, no more black screen
-- **Fixed identification results display** - Added missing state variables and proper prop handling
-- **API priority reversed** - Discogs now comes before MusicBrainz in both camera ID and manual search
-- **Added "Find by Name" button** - Purple search button for album name-only Discogs searches
-- **Complete identification workflow** - Camera captures work end-to-end with results display
+### ✅ Recently Completed
+1. **Mood Filtering Functionality**: Successfully fixed mood suggestion filters
+   - **Root Issue**: Case sensitivity mismatch between AI-generated moods (`["Nostalgic", "Upbeat", "Dreamy"]`) and filter IDs (`["nostalgic", "upbeat", "dreamy"]`)
+   - **Solution**: Added case normalization in `getMoodsForAlbum()` function
+   - **Files Modified**: `src/utils/moodUtils.js`
 
-### 🔥 Current Critical Issue
-**Discogs Search API Not Returning Results**
+2. **Enhanced Mood System**: Improved mood matching with fallback support
+   - AI-generated moods take priority
+   - Genre-based mood mapping as fallback for albums without AI analysis
+   - Both systems now work together seamlessly
 
-#### Problem Summary:
-- **"Find by Name" button**: ✅ Displays correctly in header
-- **Search modal**: ✅ Opens and accepts input properly  
-- **API calls**: ❌ Return no results for known albums
-- **Test cases failing**:
-  - "Dark Side of the Moon" → No results (should find Pink Floyd album)
-  - "Songs from the Wood" → No results (should find Jethro Tull album)
-- **Discogs website**: ✅ Both albums found immediately when searched manually
+3. **UI Error Handling**: Added basic error handling for broken images
+   - Shows placeholder icon when images fail to load
+   - Fixed JSX syntax errors in SuggestionCard component
 
-#### Root Cause Analysis Needed:
-1. **API endpoint verification** - Is DiscogsClient.searchReleases() using correct endpoint?
-2. **Authentication issues** - Does Discogs API require auth that's missing/expired?
-3. **Query format problems** - Are search queries formatted correctly for Discogs API?
-4. **Rate limiting** - Is the Discogs API blocking requests?
-5. **Response parsing** - Are results being returned but not parsed correctly?
+### ❌ Current Issue: Album Cover Images Not Loading
 
-## 🚀 IMMEDIATE NEXT STEPS (Priority Order)
+**Problem**: Album cover URLs are truncated to ~175 characters, causing images to fail loading in mood suggestion results.
 
-### 1. Debug Discogs API Integration (30 minutes)
-**Investigate the search failure:**
-```javascript
-// Check these components:
-// - src/services/apiClients.js → DiscogsClient.searchReleases()  
-// - Console errors during search attempts
-// - Network tab to see actual API requests/responses
-```
+**Evidence**:
+- Original URL: `https://i.discogs.com/gxBF76jI5Ru-gLcN0N9hX_kKuaAl...` (truncated)
+- Full URLs should be much longer (~300+ characters)
+- Images work in main album grid but not in mood suggestions
 
-**Key debugging questions:**
-- Is the DiscogsClient making HTTP requests at all?
-- What's the actual URL being called and response received?
-- Are there authentication headers missing?
-- Is the response structure different than expected?
+**Debugging Done**:
+- ✅ Confirmed mood filtering works correctly
+- ✅ Verified album data passes through filtering unchanged
+- ✅ Identified URL truncation happens in data storage layer, not filtering code
+- ✅ Added console debugging (now cleaned up)
 
-### 2. Test Known Working Queries (15 minutes)
-**Verify against Discogs API docs:**
-- Test basic API connectivity with a simple known query
-- Compare our request format to Discogs documentation examples  
-- Validate response structure matches our parsing code
+## 🎯 Next Session Tasks
 
-### 3. Fix Search Functionality (20 minutes)
-**Likely solutions:**
-- **Option A:** Authentication - Add/fix Discogs API credentials
-- **Option B:** Endpoint - Update to correct Discogs search endpoint  
-- **Option C:** Query format - Fix search parameter structure
-- **Option D:** Rate limiting - Add delays or implement proper rate limiting
+### 1. Investigate Root Cause of URL Truncation
+- **Check database schemas**:
+  - Local IndexedDB field limits
+  - Supabase `cover_image_url` field constraints
+- **Examine data import/save processes**:
+  - `src/services/database.js` - local storage
+  - `src/services/supabaseDatabase.js` - cloud storage
+  - Album form saving logic
+- **Test with new album entry**: Add test album with long URL to isolate issue
 
-## 📁 Key Files to Investigate
-- `src/services/apiClients.js` - DiscogsClient implementation
-- `src/App.jsx` - AlbumSearchModal component (lines 862-1026)
-- Browser DevTools Network tab - Actual API requests/responses
-- Discogs API documentation - Verify correct endpoint/auth
+### 2. Fix URL Storage Issues
+- **If database constraint**: Update schema to allow longer URLs
+- **If application logic**: Fix truncation in save/import processes
+- **If data corruption**: Implement data migration for existing albums
 
-## 🧪 Testing Strategy
-- **Working baseline**: Manual search on discogs.com for "Dark Side of the Moon"  
-- **Debug target**: AlbumSearchModal search function in App.jsx
-- **Success criteria**: Same albums appear in our search results
-- **Test albums**: Use well-known releases that definitely exist in Discogs
+### 3. Improve User Experience
+- **Better error handling**: More informative fallbacks for broken images
+- **Progressive loading**: Show loading state while images load
+- **Image optimization**: Consider resizing/caching for better performance
 
-## 🎯 Success Criteria
-- [ ] "Dark Side of the Moon" returns Pink Floyd results
-- [ ] "Songs from the Wood" returns Jethro Tull results  
-- [ ] Search results show proper album metadata (title, artist, year, format)
-- [ ] Clicking results pre-fills album form correctly
-- [ ] End-to-end: "Find by Name" → Search → Select → Form → Save
+### 4. Code Organization & Commits
+Create multiple focused commits:
+1. **"Fix mood filtering case sensitivity issue"**
+   - Changes to `src/utils/moodUtils.js`
+2. **"Add genre-based mood fallback system"**
+   - Enhanced mood matching logic
+3. **"Fix album cover URL truncation in [storage layer]"**
+   - Database schema or application logic fixes
+4. **"Improve image error handling in suggestion cards"**
+   - UI improvements and fallbacks
 
-## 💡 Current Theory
-The Discogs API integration is likely missing authentication or using an incorrect endpoint. The search modal UI works perfectly, but the underlying API call in `DiscogsClient.searchReleases()` isn't configured properly or is being blocked by Discogs.
+### 5. Testing & Validation
+- **Functional Testing**:
+  - Mood filters show correct albums
+  - Album covers load properly
+  - Fallbacks work for missing images
+- **Data Testing**:
+  - New albums save with full-length URLs
+  - Existing albums can be migrated/fixed
 
-## 📋 Debug Strategy for Next Session
-1. **Check browser console** for errors during search
-2. **Check network tab** to see if HTTP requests are being made to Discogs
-3. **Review DiscogsClient** implementation in apiClients.js
-4. **Test API credentials** and authentication setup
-5. **Compare with working Discogs API examples**
+## 🛠️ Technical Notes
 
-**Once Discogs search is fixed, the vinyl collection app will be 100% complete for MVP use.**
+### Files Recently Modified
+- `src/utils/moodUtils.js`: Fixed case sensitivity, added genre fallback
+- `src/components/SuggestionsSection.jsx`: Fixed JSX syntax, basic error handling
 
----
-*Updated: 2025-08-29 Evening - Discogs search functionality needs debugging*
+### Key Functions
+- `getMoodsForAlbum()`: Now normalizes AI mood case and includes genre fallback
+- `filterAlbumsByMood()`: Works with both AI and genre-based moods
+- `SuggestionCard`: Renders mood-filtered albums
+
+### Environment
+- **Development Server**: Run with `npm run dev`
+- **Database**: Currently using local IndexedDB (user not authenticated)
+- **Test Data**: ~3 albums with AI-generated moods available
+
+## 🚨 Important Notes
+- **Do not commit `next_session_brief.md`** to git repository
+- Focus on **fixing the root cause** of URL truncation, not just symptoms
+- Maintain **backward compatibility** with existing album data
+- Test both **local and cloud database** scenarios
+
+## 📋 Success Criteria
+1. ✅ Mood suggestion filters show albums with proper cover images
+2. ✅ URL truncation issue resolved at source
+3. ✅ All changes committed in logical, focused commits
+4. ✅ No regressions in existing mood filtering functionality
+5. ✅ Robust error handling for edge cases

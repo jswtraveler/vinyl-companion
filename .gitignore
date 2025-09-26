@@ -37,3 +37,4 @@ uv.lock
 .python-version
 pyproject.toml
 next_session_brief.md
+old_markdown/*
