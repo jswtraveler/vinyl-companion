@@ -5,6 +5,7 @@
  */
 
 import LastFmClient from './lastfmClient.js';
+import ListenBrainzClient from './listenBrainzClient.js';
 import RecommendationDataFetcher from './recommendationDataFetcher.js';
 import CollectionProfiler from './collectionProfiler.js';
 import RecommendationScoring from './recommendationScoring.js';
@@ -15,6 +16,8 @@ export class RecommendationService {
     // Configuration
     this.config = {
       lastfmApiKey: import.meta.env.VITE_LASTFM_API_KEY,
+      useListenBrainz: false, // Feature flag for ListenBrainz
+      listenBrainzFallbackToLastfm: true, // Graceful degradation
       enableCaching: true,
       cacheExpirationHours: 24,
       minCollectionSize: 3, // Minimum albums needed for recommendations
@@ -24,6 +27,7 @@ export class RecommendationService {
 
     // Services
     this.lastfmClient = null;
+    this.listenBrainzClient = null;
     this.dataFetcher = null;
     this.scoringEngine = new RecommendationScoring();
     this.currentProfile = null;
@@ -44,15 +48,31 @@ export class RecommendationService {
    */
   initialize() {
     try {
-      if (!this.config.lastfmApiKey) {
-        console.warn('⚠️ Last.fm API key not found. External recommendations will be limited.');
-        return;
+      if (this.config.useListenBrainz) {
+        // Initialize ListenBrainz client (no API key required)
+        this.listenBrainzClient = new ListenBrainzClient({
+          enableCaching: this.config.enableCaching,
+          cacheExpirationHours: this.config.cacheExpirationHours
+        });
+
+        // Initialize fallback Last.fm client if configured
+        if (this.config.listenBrainzFallbackToLastfm && this.config.lastfmApiKey) {
+          this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
+        }
+
+        this.dataFetcher = new RecommendationDataFetcher(this.listenBrainzClient, this.lastfmClient);
+        console.log('🎵 Recommendation service initialized with ListenBrainz');
+      } else {
+        // Default to Last.fm
+        if (!this.config.lastfmApiKey) {
+          console.warn('⚠️ Last.fm API key not found. External recommendations will be limited.');
+          return;
+        }
+
+        this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
+        this.dataFetcher = new RecommendationDataFetcher(this.lastfmClient);
+        console.log('🎵 Recommendation service initialized with Last.fm');
       }
-
-      this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
-      this.dataFetcher = new RecommendationDataFetcher(this.lastfmClient);
-
-      console.log('🎵 Recommendation service initialized');
     } catch (error) {
       console.error('❌ Failed to initialize recommendation service:', error);
     }

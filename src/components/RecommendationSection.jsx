@@ -13,7 +13,9 @@ const RecommendationSection = ({ albums, user, useCloudDatabase }) => {
     try {
       const service = new RecommendationService({
         enableCaching: true,
-        minCollectionSize: 5 // Require at least 5 albums for recommendations
+        minCollectionSize: 5, // Require at least 5 albums for recommendations
+        useListenBrainz: true, // Feature flag - set to true to test ListenBrainz
+        listenBrainzFallbackToLastfm: true // Graceful degradation
       });
       setRecommendationService(service);
     } catch (err) {

@@ -6,14 +6,26 @@
 import { AlbumNormalizer } from '../utils/albumNormalization.js';
 
 export class RecommendationDataFetcher {
-  constructor(lastfmClient, options = {}) {
-    this.lastfm = lastfmClient;
+  constructor(primaryClient, fallbackClient = null, options = {}) {
+    // Primary client can be either LastFm or ListenBrainz
+    this.primaryClient = primaryClient;
+    this.fallbackClient = fallbackClient;
+
+    // Determine client types
+    this.isPrimaryListenBrainz = primaryClient?.constructor?.name === 'ListenBrainzClient';
+    this.isFallbackLastFm = fallbackClient?.constructor?.name === 'LastFmClient';
+
+    // Legacy support - if first param is LastFm client, use as primary
+    this.lastfm = this.isPrimaryListenBrainz ? fallbackClient : primaryClient;
+    this.listenbrainz = this.isPrimaryListenBrainz ? primaryClient : null;
+
     this.options = {
       maxSimilarArtists: 20,
       maxAlbumsPerTag: 30,
       maxTagsToProcess: 10,
       maxArtistsToProcess: 15,
       requestDelayMs: 1000,
+      preferListenBrainz: this.isPrimaryListenBrainz,
       ...options
     };
 
@@ -113,25 +125,56 @@ export class RecommendationDataFetcher {
     for (const artistData of artistsToProcess) {
       try {
         await this.delay(this.options.requestDelayMs);
-
-        const response = await this.lastfm.getSimilarArtists(
-          artistData.artist,
-          this.options.maxSimilarArtists
-        );
-
         this.results.metadata.totalRequests++;
+
+        let response = null;
+        let dataSource = 'unknown';
+
+        // Try ListenBrainz first if available and we have MBID
+        if (this.listenbrainz && this.options.preferListenBrainz) {
+          const artistMBIDs = AlbumNormalizer.extractArtistMBIDs(artistData.metadata || {});
+
+          if (artistMBIDs.length > 0) {
+            try {
+              const lbResponse = await this.listenbrainz.getSimilarArtists(artistMBIDs[0], this.options.maxSimilarArtists);
+              if (lbResponse?.similar_artists?.length > 0) {
+                response = this.formatListenBrainzResponse(lbResponse, artistData.artist);
+                dataSource = 'listenbrainz';
+                console.log(`✅ Got ListenBrainz data for ${artistData.artist}`);
+              }
+            } catch (lbError) {
+              console.warn(`⚠️ ListenBrainz failed for ${artistData.artist}, trying fallback:`, lbError.message);
+            }
+          }
+        }
+
+        // Fallback to Last.fm if ListenBrainz didn't work or wasn't available
+        if (!response && this.lastfm) {
+          const lastfmResponse = await this.lastfm.getSimilarArtists(
+            artistData.artist,
+            this.options.maxSimilarArtists
+          );
+
+          if (lastfmResponse?.similarartists?.artist) {
+            response = lastfmResponse;
+            dataSource = 'lastfm';
+            console.log(`✅ Got Last.fm data for ${artistData.artist}`);
+          }
+        }
 
         if (response?.similarartists?.artist) {
           this.results.similarArtists[artistData.artist] = {
             sourceArtist: artistData.artist,
             sourceData: artistData,
+            dataSource: dataSource,
             similarArtists: response.similarartists.artist.map(artist => ({
               name: artist.name,
               match: parseFloat(artist.match) || 0,
               mbid: artist.mbid || null,
               url: artist.url || null,
               streamable: artist.streamable === '1',
-              image: this.extractImageUrl(artist.image)
+              image: this.extractImageUrl(artist.image),
+              listenbrainz_data: artist.listenbrainz_data || null
             }))
           };
 
@@ -553,6 +596,29 @@ export class RecommendationDataFetcher {
         });
       });
     }
+  }
+
+  /**
+   * Format ListenBrainz similar artists response to match Last.fm format
+   * @private
+   */
+  formatListenBrainzResponse(lbResponse, sourceArtist) {
+    return {
+      similarartists: {
+        artist: lbResponse.similar_artists.map(artist => ({
+          name: artist.artist_name,
+          match: artist.similarity_score || 0,
+          mbid: artist.artist_mbid || null,
+          url: null, // ListenBrainz doesn't provide URLs
+          streamable: false,
+          image: null, // ListenBrainz doesn't provide images
+          listenbrainz_data: {
+            total_listen_count: artist.total_listen_count || 0,
+            algorithm: 'collaborative_filtering'
+          }
+        }))
+      }
+    };
   }
 
   /**
