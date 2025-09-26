@@ -84,7 +84,7 @@ export class RecommendationService {
       // Step 2: Fetch external data if needed and available
       let externalData = null;
       if (this.lastfmClient && options.includeExternal !== false) {
-        externalData = await this.fetchExternalData(profile);
+        externalData = await this.fetchExternalData(profile, albums);
       }
 
       // Step 3: Generate basic recommendations (Steps 3-5 from plan would go here)
@@ -171,9 +171,10 @@ export class RecommendationService {
   /**
    * Fetch external data based on user profile
    * @param {Object} profile - User profile
+   * @param {Array} userCollection - User's album collection for enhanced matching
    * @returns {Promise<Object|null>} External data
    */
-  async fetchExternalData(profile) {
+  async fetchExternalData(profile, userCollection = []) {
     try {
       // Check cache first
       const cacheKey = this.generateExternalDataCacheKey(profile);
@@ -186,9 +187,9 @@ export class RecommendationService {
         }
       }
 
-      // Fetch new external data
-      console.log('🎵 Fetching fresh external data');
-      const externalData = await this.dataFetcher.fetchForUserProfile(profile);
+      // Fetch new external data with enhanced matching
+      console.log('🎵 Fetching fresh external data with enhanced MBID matching');
+      const externalData = await this.dataFetcher.fetchForUserProfile(profile, userCollection);
 
       // Cache the data
       if (this.config.enableCaching) {
@@ -285,24 +286,39 @@ export class RecommendationService {
   }
 
   /**
-   * Extract candidates from similar artists data
+   * Extract candidates from similar artists data with enhanced MBID matching
    */
-  extractCandidatesFromSimilarArtists(similarArtistsData, userFingerprints) {
+  extractCandidatesFromSimilarArtists(similarArtistsData, userFingerprints, userCollection = []) {
     const candidates = [];
 
     Object.values(similarArtistsData).forEach(artistData => {
+      // Use enhanced matching to find which user artists connect to these similar artists
+      const matchedArtists = AlbumNormalizer.matchArtistsWithCollection(
+        artistData.similarArtists,
+        userCollection
+      );
+
       artistData.similarArtists.forEach(similarArtist => {
-        // Create candidate with similarity metadata
+        // Find if this artist was matched to user's collection
+        const enhancedMatch = matchedArtists.find(m => m.name === similarArtist.name);
+
+        // Create candidate with enhanced similarity metadata
         const candidate = {
           artist: similarArtist.name,
           title: `Popular Album by ${similarArtist.name}`, // Placeholder
           type: 'similar_artist',
           similarity: similarArtist.match,
           image: similarArtist.image,
+          mbid: similarArtist.mbid,
           metadata: {
             sourceArtist: artistData.sourceArtist,
             lastfmMatch: similarArtist.match,
-            source: 'similar_artists'
+            source: 'similar_artists',
+            // Enhanced matching metadata
+            matchConfidence: enhancedMatch?.matchConfidence || 0,
+            matchType: enhancedMatch?.matchType || 'unmatched',
+            connectedToUser: !!enhancedMatch,
+            userArtist: enhancedMatch?.userArtist?.artist
           }
         };
 

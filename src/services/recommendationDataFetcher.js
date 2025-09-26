@@ -35,11 +35,13 @@ export class RecommendationDataFetcher {
   /**
    * Fetch external data based on user profile
    * @param {Object} profile - User collection profile
+   * @param {Array} userCollection - Full user album collection for enhanced matching
    * @returns {Promise<Object>} Aggregated external data
    */
-  async fetchForUserProfile(profile) {
+  async fetchForUserProfile(profile, userCollection = []) {
     console.log('🎵 Starting external data fetch for user profile');
     this.results.metadata.startTime = Date.now();
+    this.userCollection = userCollection; // Store for enhanced matching
 
     try {
       // Reset results for new fetch
@@ -57,8 +59,8 @@ export class RecommendationDataFetcher {
       // Fetch top albums for similar artists
       await this.fetchTopAlbumsForSimilarArtists();
 
-      // Process and aggregate results
-      this.aggregateResults();
+      // Process and aggregate results with enhanced matching
+      this.aggregateResultsWithEnhancedMatching();
 
       this.results.metadata.endTime = Date.now();
       this.results.metadata.duration = this.results.metadata.endTime - this.results.metadata.startTime;
@@ -451,6 +453,106 @@ export class RecommendationDataFetcher {
         }
       });
     });
+  }
+
+  /**
+   * Aggregate results into candidate albums (legacy method)
+   */
+  aggregateResults() {
+    this.addCandidatesFromSimilarArtists();
+    this.addCandidatesFromGenreTags();
+  }
+
+  /**
+   * Aggregate results with enhanced MBID matching
+   */
+  aggregateResultsWithEnhancedMatching() {
+    this.addCandidatesFromSimilarArtistsWithMatching();
+    this.addCandidatesFromGenreTags();
+  }
+
+  /**
+   * Add candidates from similar artists with enhanced MBID matching
+   */
+  addCandidatesFromSimilarArtistsWithMatching() {
+    Object.values(this.results.similarArtists).forEach(artistData => {
+      // Use enhanced matching to connect Last.fm artists to user collection
+      const matchedArtists = AlbumNormalizer.matchArtistsWithCollection(
+        artistData.similarArtists,
+        this.userCollection || []
+      );
+
+      artistData.similarArtists.forEach(similarArtist => {
+        // Find enhanced match information
+        const enhancedMatch = matchedArtists.find(m => m.name === similarArtist.name);
+
+        // Create artist-only candidate for exploration
+        const candidateFingerprint = `similar_artist::${AlbumNormalizer.normalizeString(similarArtist.name)}`;
+
+        if (!this.results.candidateAlbums.has(candidateFingerprint)) {
+          this.results.candidateAlbums.set(candidateFingerprint, {
+            type: 'similar_artist',
+            artist: similarArtist.name,
+            title: null, // No specific album - suggests exploring the artist
+            fingerprint: candidateFingerprint,
+            sourceArtist: artistData.sourceArtist,
+            similarity: similarArtist.match,
+            mbid: similarArtist.mbid,
+            image: similarArtist.image,
+            metadata: {
+              source: 'lastfm_similar_artists',
+              fetchedAt: Date.now(),
+              // Enhanced matching metadata
+              matchConfidence: enhancedMatch?.matchConfidence || 0,
+              matchType: enhancedMatch?.matchType || 'unmatched',
+              connectedToUser: !!enhancedMatch,
+              userArtist: enhancedMatch?.userArtist?.artist,
+              matchedMBID: enhancedMatch?.matchMetadata?.matchedId
+            }
+          });
+        }
+      });
+    });
+
+    // Process artist top albums if available
+    if (this.results.artistTopAlbums) {
+      Object.entries(this.results.artistTopAlbums).forEach(([artistName, albums]) => {
+        // Find the source artist data for this similar artist
+        let sourceArtistData = null;
+        let similarArtistData = null;
+
+        Object.values(this.results.similarArtists).forEach(artistData => {
+          const match = artistData.similarArtists.find(sa => sa.name === artistName);
+          if (match) {
+            sourceArtistData = artistData;
+            similarArtistData = match;
+          }
+        });
+
+        // Add each top album as a candidate
+        albums.forEach(album => {
+          if (!this.results.candidateAlbums.has(album.fingerprint)) {
+            this.results.candidateAlbums.set(album.fingerprint, {
+              type: 'similar_artist',
+              artist: album.artist,
+              title: album.name,
+              fingerprint: album.fingerprint,
+              sourceArtist: sourceArtistData?.sourceArtist || artistName,
+              similarity: similarArtistData?.match || 0.5,
+              playcount: album.playcount,
+              mbid: album.mbid,
+              image: album.image,
+              url: album.url,
+              metadata: {
+                source: 'lastfm_similar_artists',
+                fetchedAt: Date.now(),
+                albumType: 'top_album'
+              }
+            });
+          }
+        });
+      });
+    }
   }
 
   /**

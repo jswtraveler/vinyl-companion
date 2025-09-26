@@ -224,6 +224,108 @@ export class AlbumNormalizer {
   }
 
   /**
+   * Find matching artist in user collection using MusicBrainz ID first, then string matching
+   * @param {Object} lastfmArtist - Artist object from Last.fm (with optional mbid)
+   * @param {Array} userArtists - Array of user's artists/albums
+   * @returns {Object|null} Match result with artist and confidence score
+   */
+  static findArtistMatch(lastfmArtist, userArtists) {
+    if (!lastfmArtist || !Array.isArray(userArtists)) return null;
+
+    // 1. Try MBID match first (most reliable)
+    if (lastfmArtist.mbid) {
+      const mbidMatch = userArtists.find(userItem => {
+        const userMbids = this.extractArtistMBIDs(userItem.metadata || {});
+        return userMbids.includes(lastfmArtist.mbid);
+      });
+
+      if (mbidMatch) {
+        return {
+          artist: mbidMatch,
+          confidence: 1.0,
+          matchType: 'mbid',
+          matchedId: lastfmArtist.mbid
+        };
+      }
+    }
+
+    // 2. Fallback to normalized string matching
+    const normalizedLastfm = this.normalizeString(lastfmArtist.name);
+    if (!normalizedLastfm) return null;
+
+    const stringMatch = userArtists.find(userItem => {
+      const normalizedUser = this.normalizeString(userItem.artist);
+      return normalizedUser === normalizedLastfm;
+    });
+
+    if (stringMatch) {
+      return {
+        artist: stringMatch,
+        confidence: 0.8,
+        matchType: 'string',
+        normalizedName: normalizedLastfm
+      };
+    }
+
+    return null;
+  }
+
+  /**
+   * Enhanced artist matching for recommendation system
+   * @param {Array} lastfmArtists - Array of Last.fm artists with similarity scores
+   * @param {Array} userCollection - User's album collection
+   * @returns {Array} Matched artists with enhanced metadata
+   */
+  static matchArtistsWithCollection(lastfmArtists, userCollection) {
+    if (!Array.isArray(lastfmArtists) || !Array.isArray(userCollection)) {
+      return [];
+    }
+
+    const matches = [];
+    const stats = {
+      totalArtists: lastfmArtists.length,
+      mbidMatches: 0,
+      stringMatches: 0,
+      unmatched: 0
+    };
+
+    lastfmArtists.forEach(lastfmArtist => {
+      const match = this.findArtistMatch(lastfmArtist, userCollection);
+
+      if (match) {
+        matches.push({
+          ...lastfmArtist,
+          userArtist: match.artist,
+          matchConfidence: match.confidence,
+          matchType: match.matchType,
+          matchMetadata: {
+            matchedId: match.matchedId,
+            normalizedName: match.normalizedName
+          }
+        });
+
+        // Update stats
+        if (match.matchType === 'mbid') stats.mbidMatches++;
+        else if (match.matchType === 'string') stats.stringMatches++;
+      } else {
+        stats.unmatched++;
+      }
+    });
+
+    // Log matching statistics for debugging
+    console.log('🎵 Artist matching stats:', {
+      total: stats.totalArtists,
+      matched: matches.length,
+      mbidMatches: stats.mbidMatches,
+      stringMatches: stats.stringMatches,
+      unmatched: stats.unmatched,
+      matchRate: `${Math.round((matches.length / stats.totalArtists) * 100)}%`
+    });
+
+    return matches;
+  }
+
+  /**
    * Check if two albums are likely the same release
    * @param {Object} album1 - First album
    * @param {Object} album2 - Second album
