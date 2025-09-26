@@ -10,6 +10,7 @@ import RecommendationDataFetcher from './recommendationDataFetcher.js';
 import CollectionProfiler from './collectionProfiler.js';
 import RecommendationScoring from './recommendationScoring.js';
 import RecommendationCacheService from './recommendationCacheService.js';
+import { supabase } from './supabase.js';
 import { AlbumNormalizer } from '../utils/albumNormalization.js';
 
 export class RecommendationService {
@@ -18,8 +19,6 @@ export class RecommendationService {
     this.config = {
       lastfmApiKey: import.meta.env.VITE_LASTFM_API_KEY,
       listenBrainzToken: import.meta.env.VITE_LISTENBRAINZ_TOKEN,
-      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
-      supabaseKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
       userId: options.userId || null, // Required for persistent caching
       useListenBrainz: false, // Feature flag for ListenBrainz
       listenBrainzFallbackToLastfm: true, // Graceful degradation
@@ -55,12 +54,9 @@ export class RecommendationService {
    */
   initialize() {
     try {
-      // Initialize persistent caching service
-      if (this.config.enablePersistentCaching && this.config.supabaseUrl && this.config.supabaseKey) {
-        this.cacheService = new RecommendationCacheService(
-          this.config.supabaseUrl,
-          this.config.supabaseKey
-        );
+      // Initialize persistent caching service (reuse existing Supabase client)
+      if (this.config.enablePersistentCaching) {
+        this.cacheService = new RecommendationCacheService(supabase);
         console.log('🎵 Persistent caching enabled');
       } else {
         console.log('🎵 Using in-memory caching only');

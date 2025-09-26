@@ -4,11 +4,12 @@
  * Implements the recommendation_caching_schema.sql database design
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from './supabase.js';
 
 export class RecommendationCacheService {
-  constructor(supabaseUrl, supabaseKey) {
-    this.supabase = createClient(supabaseUrl, supabaseKey);
+  constructor(supabaseClient = null) {
+    // Reuse existing Supabase client to avoid multiple instances
+    this.supabase = supabaseClient || supabase;
     this.enableLogging = true;
   }
 
