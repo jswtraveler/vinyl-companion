@@ -52,16 +52,62 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     try {
       console.log('🎨 Generating artist recommendations for collection...');
 
-      // Get external data (similar artists) but focus on artists, not albums
-      const profile = await recommendationService.buildUserProfile(albums);
-      const externalData = await recommendationService.fetchExternalData(profile, albums);
+      // Check if we have cached artist recommendations first
+      const cacheService = recommendationService.cacheService;
+      const userId = recommendationService.config.userId;
+      let artistRecommendations = null;
+      let fromCache = false;
 
-      // Extract and score artists instead of albums
-      const artistRecommendations = await buildArtistRecommendations(externalData, albums);
+      if (cacheService && userId) {
+        const collectionFingerprint = cacheService.generateCollectionFingerprint(albums);
+        const cacheKey = `artist_recs_${collectionFingerprint}`;
 
-      if (artistRecommendations.total > 0) {
-        setRecommendations(artistRecommendations);
-        console.log('✅ Artist recommendations generated successfully');
+        // Try to get cached artist recommendations
+        const cachedArtistRecs = await cacheService.getUserRecommendationsCache(userId, cacheKey);
+        if (cachedArtistRecs && cachedArtistRecs.recommendations?.artists) {
+          artistRecommendations = cachedArtistRecs.recommendations;
+          fromCache = true;
+          console.log('✅ Using cached artist recommendations');
+        }
+      }
+
+      // If not cached, generate fresh recommendations
+      if (!artistRecommendations) {
+        // Use the main recommendation service to get cached external data
+        const result = await recommendationService.generateRecommendations(albums, {
+          includeExternal: true
+        });
+
+        if (result.success) {
+          // Get the raw external data (this will be cached)
+          const profile = await recommendationService.buildUserProfile(albums);
+          const rawExternalData = await recommendationService.fetchExternalData(profile, albums);
+
+          // Extract and score artists from the external data
+          artistRecommendations = await buildArtistRecommendations(rawExternalData, albums);
+
+          // Cache the artist recommendations
+          if (cacheService && userId && artistRecommendations.total > 0) {
+            const collectionFingerprint = cacheService.generateCollectionFingerprint(albums);
+            const cacheKey = `artist_recs_${collectionFingerprint}`;
+            await cacheService.setUserRecommendationsCache(userId, cacheKey, {
+              artists: artistRecommendations.artists,
+              total: artistRecommendations.total,
+              metadata: artistRecommendations.metadata
+            });
+          }
+        }
+      }
+
+      if (artistRecommendations && artistRecommendations.total > 0) {
+        setRecommendations({
+          ...artistRecommendations,
+          metadata: {
+            ...artistRecommendations.metadata,
+            cached: fromCache
+          }
+        });
+        console.log('✅ Artist recommendations ready');
       } else {
         setError('No artist recommendations available at this time');
       }
@@ -73,9 +119,13 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     }
   };
 
-  const buildArtistRecommendations = async (externalData, userAlbums) => {
+  const buildArtistRecommendations = async (externalDataResult, userAlbums) => {
     const userArtists = new Set(userAlbums.map(album => album.artist.toLowerCase()));
     const artistScores = new Map();
+
+    // The externalData structure from generateRecommendations is different
+    // We need to access the actual external data from the result
+    const externalData = externalDataResult;
 
     // Process similar artists data to extract artist recommendations
     if (externalData?.similarArtists) {
@@ -106,14 +156,14 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             });
           }
 
-          const artistData = artistScores.get(normalizedName);
-          artistData.totalScore += connectionStrength;
-          artistData.connectionCount += 1;
-          artistData.connections.push({
+          const artistScoreData = artistScores.get(normalizedName);
+          artistScoreData.totalScore += connectionStrength;
+          artistScoreData.connectionCount += 1;
+          artistScoreData.connections.push({
             sourceArtist: sourceArtist,
             similarity: connectionStrength
           });
-          artistData.maxSimilarity = Math.max(artistData.maxSimilarity, connectionStrength);
+          artistScoreData.maxSimilarity = Math.max(artistScoreData.maxSimilarity, connectionStrength);
         });
       });
     }
@@ -266,6 +316,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               <div className="text-xs text-gray-500 pt-2 border-t border-gray-700">
                 Found {recommendations.metadata.totalCandidates} artist candidates •
                 Average {recommendations.metadata.averageConnections} connections per artist •
+                {recommendations.metadata.cached ? 'Cached' : 'Fresh'} data •
                 Generated at {new Date(recommendations.metadata.generatedAt).toLocaleTimeString()}
               </div>
             )}
