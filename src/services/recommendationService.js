@@ -9,6 +9,7 @@ import ListenBrainzClient from './listenBrainzClient.js';
 import RecommendationDataFetcher from './recommendationDataFetcher.js';
 import CollectionProfiler from './collectionProfiler.js';
 import RecommendationScoring from './recommendationScoring.js';
+import RecommendationCacheService from './recommendationCacheService.js';
 import { AlbumNormalizer } from '../utils/albumNormalization.js';
 
 export class RecommendationService {
@@ -17,9 +18,13 @@ export class RecommendationService {
     this.config = {
       lastfmApiKey: import.meta.env.VITE_LASTFM_API_KEY,
       listenBrainzToken: import.meta.env.VITE_LISTENBRAINZ_TOKEN,
+      supabaseUrl: import.meta.env.VITE_SUPABASE_URL,
+      supabaseKey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+      userId: options.userId || null, // Required for persistent caching
       useListenBrainz: false, // Feature flag for ListenBrainz
       listenBrainzFallbackToLastfm: true, // Graceful degradation
       enableCaching: true,
+      enablePersistentCaching: true, // Feature flag for database caching
       cacheExpirationHours: 24,
       minCollectionSize: 3, // Minimum albums needed for recommendations
       maxCandidates: 1000,
@@ -31,10 +36,11 @@ export class RecommendationService {
     this.listenBrainzClient = null;
     this.dataFetcher = null;
     this.scoringEngine = new RecommendationScoring();
+    this.cacheService = null;
     this.currentProfile = null;
     this.currentData = null;
 
-    // Cache (in-memory for now, could be moved to IndexedDB/Supabase later)
+    // Legacy in-memory cache (fallback when persistent caching unavailable)
     this.cache = {
       profiles: new Map(),
       externalData: new Map(),
@@ -49,6 +55,17 @@ export class RecommendationService {
    */
   initialize() {
     try {
+      // Initialize persistent caching service
+      if (this.config.enablePersistentCaching && this.config.supabaseUrl && this.config.supabaseKey) {
+        this.cacheService = new RecommendationCacheService(
+          this.config.supabaseUrl,
+          this.config.supabaseKey
+        );
+        console.log('🎵 Persistent caching enabled');
+      } else {
+        console.log('🎵 Using in-memory caching only');
+      }
+
       if (this.config.useListenBrainz) {
         // Initialize ListenBrainz client with user token
         this.listenBrainzClient = new ListenBrainzClient({
@@ -62,7 +79,9 @@ export class RecommendationService {
           this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
         }
 
-        this.dataFetcher = new RecommendationDataFetcher(this.listenBrainzClient, this.lastfmClient);
+        this.dataFetcher = new RecommendationDataFetcher(this.listenBrainzClient, this.lastfmClient, {
+          cacheService: this.cacheService
+        });
         console.log('🎵 Recommendation service initialized with ListenBrainz');
       } else {
         // Default to Last.fm
@@ -72,7 +91,9 @@ export class RecommendationService {
         }
 
         this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
-        this.dataFetcher = new RecommendationDataFetcher(this.lastfmClient);
+        this.dataFetcher = new RecommendationDataFetcher(this.lastfmClient, null, {
+          cacheService: this.cacheService
+        });
         console.log('🎵 Recommendation service initialized with Last.fm');
       }
     } catch (error) {
@@ -95,6 +116,35 @@ export class RecommendationService {
       // Validate input
       if (!albums || albums.length < this.config.minCollectionSize) {
         return this.getEmptyRecommendations(`Collection too small (minimum ${this.config.minCollectionSize} albums required)`);
+      }
+
+      // Check for cached recommendations if persistent caching is enabled
+      if (this.cacheService && this.config.userId) {
+        const collectionFingerprint = this.cacheService.generateCollectionFingerprint(albums);
+        const cachedRecommendations = await this.cacheService.getUserRecommendationsCache(
+          this.config.userId,
+          collectionFingerprint
+        );
+
+        if (cachedRecommendations && !options.forceRefresh) {
+          console.log('✅ Returning cached recommendations');
+          return {
+            success: true,
+            profile: null, // Would need to be cached separately if needed
+            externalData: null,
+            recommendations: cachedRecommendations.recommendations,
+            metadata: {
+              ...cachedRecommendations.metadata,
+              duration: Date.now() - startTime,
+              collectionSize: albums.length
+            }
+          };
+        }
+      }
+
+      // Sync user's owned artists to database for persistent caching
+      if (this.cacheService && this.config.userId) {
+        await this.cacheService.syncUserOwnedArtists(this.config.userId, albums);
       }
 
       // Step 1: Build/update user profile
@@ -124,9 +174,27 @@ export class RecommendationService {
           generatedAt: new Date().toISOString(),
           duration: Date.now() - startTime,
           collectionSize: albums.length,
-          recommendationCount: recommendations.total || 0
+          recommendationCount: recommendations.total || 0,
+          scoringEngine: this.scoringEngine.getEngineInfo?.() || 'enhanced_mbid_v1'
         }
       };
+
+      // Cache the recommendations if persistent caching is enabled
+      if (this.cacheService && this.config.userId) {
+        const collectionFingerprint = this.cacheService.generateCollectionFingerprint(albums);
+        await this.cacheService.setUserRecommendationsCache(
+          this.config.userId,
+          collectionFingerprint,
+          recommendations,
+          {
+            duration: result.metadata.duration,
+            confidence: this.calculateConfidenceScore(result),
+            diversity: this.calculateDiversityScore(recommendations),
+            coverage: this.calculateCoveragePercentage(externalData),
+            dataSources: this.getUsedDataSources(externalData)
+          }
+        );
+      }
 
       console.log('✅ Recommendations generated successfully:', {
         duration: `${result.metadata.duration}ms`,
@@ -726,7 +794,111 @@ export class RecommendationService {
       this.lastfmClient.clearCache();
     }
 
+    if (this.cacheService && this.config.userId) {
+      this.cacheService.invalidateUserRecommendations(this.config.userId);
+    }
+
     console.log('🎵 All caches cleared');
+  }
+
+  /**
+   * Calculate confidence score for recommendations
+   * @param {Object} result - Recommendation result
+   * @returns {number} Confidence score (0-1)
+   */
+  calculateConfidenceScore(result) {
+    let confidence = 0.5; // Base confidence
+
+    // Higher confidence if we have external data
+    if (result.externalData && result.externalData.candidateCount > 0) {
+      confidence += 0.3;
+    }
+
+    // Higher confidence for larger collections
+    if (result.metadata.collectionSize >= 10) {
+      confidence += 0.1;
+    }
+
+    // Higher confidence if recommendations were generated
+    if (result.recommendations.total > 0) {
+      confidence += 0.1;
+    }
+
+    return Math.min(confidence, 1.0);
+  }
+
+  /**
+   * Calculate diversity score for recommendations
+   * @param {Object} recommendations - Recommendations object
+   * @returns {number} Diversity score (0-1)
+   */
+  calculateDiversityScore(recommendations) {
+    if (!recommendations.lists || Object.keys(recommendations.lists).length === 0) {
+      return 0;
+    }
+
+    // Count unique genres, decades, etc. from recommendations
+    const genres = new Set();
+    const decades = new Set();
+    const artists = new Set();
+
+    Object.values(recommendations.lists).forEach(list => {
+      list.items?.forEach(item => {
+        if (item.metadata?.genre) genres.add(item.metadata.genre);
+        if (item.metadata?.decade) decades.add(item.metadata.decade);
+        if (item.artist) artists.add(item.artist);
+      });
+    });
+
+    // Simple diversity metric based on variety
+    const diversityFactors = [
+      Math.min(genres.size / 5, 1), // Up to 5 different genres = max score
+      Math.min(decades.size / 3, 1), // Up to 3 different decades = max score
+      Math.min(artists.size / 10, 1) // Up to 10 different artists = max score
+    ];
+
+    return diversityFactors.reduce((sum, factor) => sum + factor, 0) / diversityFactors.length;
+  }
+
+  /**
+   * Calculate coverage percentage for external data
+   * @param {Object} externalData - External data object
+   * @returns {number} Coverage percentage (0-100)
+   */
+  calculateCoveragePercentage(externalData) {
+    if (!externalData || !externalData.candidateCount) {
+      return 0;
+    }
+
+    // Simple coverage metric - could be enhanced based on actual implementation
+    const candidateCount = externalData.candidateCount;
+
+    if (candidateCount >= 50) return 95;
+    if (candidateCount >= 25) return 80;
+    if (candidateCount >= 10) return 60;
+    if (candidateCount >= 5) return 40;
+    return 20;
+  }
+
+  /**
+   * Get list of data sources used in generation
+   * @param {Object} externalData - External data object
+   * @returns {Array} List of data sources
+   */
+  getUsedDataSources(externalData) {
+    const sources = [];
+
+    if (this.config.useListenBrainz) {
+      sources.push('listenbrainz');
+    }
+
+    if (this.lastfmClient) {
+      sources.push('lastfm');
+    }
+
+    sources.push('profile_based');
+
+    return sources;
   }
 }
 

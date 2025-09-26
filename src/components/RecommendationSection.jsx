@@ -13,6 +13,8 @@ const RecommendationSection = ({ albums, user, useCloudDatabase }) => {
     try {
       const service = new RecommendationService({
         enableCaching: true,
+        enablePersistentCaching: useCloudDatabase, // Use persistent caching when cloud DB is enabled
+        userId: user?.id || null, // Pass user ID for persistent caching
         minCollectionSize: 5, // Require at least 5 albums for recommendations
         useListenBrainz: false, // Feature flag - set to true to test ListenBrainz
         listenBrainzFallbackToLastfm: true, // Graceful degradation
@@ -23,7 +25,7 @@ const RecommendationSection = ({ albums, user, useCloudDatabase }) => {
       console.error('Failed to initialize recommendation service:', err);
       setError('Recommendation service unavailable');
     }
-  }, []);
+  }, [user, useCloudDatabase]);
 
   // Check if we have enough albums for recommendations
   const hasEnoughAlbums = useMemo(() => {

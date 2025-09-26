@@ -19,6 +19,9 @@ export class RecommendationDataFetcher {
     this.lastfm = this.isPrimaryListenBrainz ? fallbackClient : primaryClient;
     this.listenbrainz = this.isPrimaryListenBrainz ? primaryClient : null;
 
+    // Persistent caching service
+    this.cacheService = options.cacheService || null;
+
     this.options = {
       maxSimilarArtists: 20,
       maxAlbumsPerTag: 30,
@@ -124,44 +127,90 @@ export class RecommendationDataFetcher {
 
     for (const artistData of artistsToProcess) {
       try {
-        await this.delay(this.options.requestDelayMs);
-        this.results.metadata.totalRequests++;
-
         let response = null;
         let dataSource = 'unknown';
+        let fromCache = false;
 
-        // Try ListenBrainz first if available and we have MBID
-        if (this.listenbrainz && this.options.preferListenBrainz) {
-          const artistMBIDs = AlbumNormalizer.extractArtistMBIDs(artistData.metadata || {});
+        // Check persistent cache first
+        if (this.cacheService) {
+          const preferredDataSource = this.options.preferListenBrainz ? 'listenbrainz' : 'lastfm';
+          const cachedData = await this.cacheService.getSimilarArtistsCache(artistData.artist, preferredDataSource);
 
-          if (artistMBIDs.length > 0) {
-            try {
-              console.log(`🎵 Trying ListenBrainz for ${artistData.artist} with MBID: ${artistMBIDs[0]}`);
-              const lbResponse = await this.listenbrainz.getSimilarArtists(artistMBIDs[0], this.options.maxSimilarArtists);
-              if (lbResponse?.similar_artists?.length > 0) {
-                response = this.formatListenBrainzResponse(lbResponse, artistData.artist);
-                dataSource = 'listenbrainz';
-                console.log(`✅ Got ListenBrainz data for ${artistData.artist}`);
+          if (cachedData) {
+            // Convert cached data back to expected format
+            response = {
+              similarartists: {
+                artist: cachedData.similarArtists
               }
-            } catch (lbError) {
-              console.warn(`⚠️ ListenBrainz failed for ${artistData.artist}, trying fallback:`, lbError.message);
-            }
-          } else {
-            console.log(`🎵 No MBID available for ${artistData.artist}, skipping ListenBrainz`);
+            };
+            dataSource = cachedData.metadata.dataSource;
+            fromCache = true;
+            console.log(`✅ Got cached similar artists for ${artistData.artist}`);
           }
         }
 
-        // Fallback to Last.fm if ListenBrainz didn't work or wasn't available
-        if (!response && this.lastfm) {
-          const lastfmResponse = await this.lastfm.getSimilarArtists(
-            artistData.artist,
-            this.options.maxSimilarArtists
-          );
+        // If not in cache, fetch from APIs
+        if (!response) {
+          await this.delay(this.options.requestDelayMs);
+          this.results.metadata.totalRequests++;
 
-          if (lastfmResponse?.similarartists?.artist) {
-            response = lastfmResponse;
-            dataSource = 'lastfm';
-            console.log(`✅ Got Last.fm data for ${artistData.artist}`);
+          // Try ListenBrainz first if available and we have MBID
+          if (this.listenbrainz && this.options.preferListenBrainz) {
+            const artistMBIDs = AlbumNormalizer.extractArtistMBIDs(artistData.metadata || {});
+
+            if (artistMBIDs.length > 0) {
+              try {
+                console.log(`🎵 Trying ListenBrainz for ${artistData.artist} with MBID: ${artistMBIDs[0]}`);
+                const lbResponse = await this.listenbrainz.getSimilarArtists(artistMBIDs[0], this.options.maxSimilarArtists);
+                if (lbResponse?.similar_artists?.length > 0) {
+                  response = this.formatListenBrainzResponse(lbResponse, artistData.artist);
+                  dataSource = 'listenbrainz';
+                  console.log(`✅ Got ListenBrainz data for ${artistData.artist}`);
+
+                  // Cache the response
+                  if (this.cacheService) {
+                    const artistMBID = AlbumNormalizer.extractArtistMBIDs(artistData.metadata || {})[0] || null;
+                    await this.cacheService.setSimilarArtistsCache(
+                      artistData.artist,
+                      artistMBID,
+                      response.similarartists.artist,
+                      'listenbrainz',
+                      { rawResponse: lbResponse }
+                    );
+                  }
+                }
+              } catch (lbError) {
+                console.warn(`⚠️ ListenBrainz failed for ${artistData.artist}, trying fallback:`, lbError.message);
+              }
+            } else {
+              console.log(`🎵 No MBID available for ${artistData.artist}, skipping ListenBrainz`);
+            }
+          }
+
+          // Fallback to Last.fm if ListenBrainz didn't work or wasn't available
+          if (!response && this.lastfm) {
+            const lastfmResponse = await this.lastfm.getSimilarArtists(
+              artistData.artist,
+              this.options.maxSimilarArtists
+            );
+
+            if (lastfmResponse?.similarartists?.artist) {
+              response = lastfmResponse;
+              dataSource = 'lastfm';
+              console.log(`✅ Got Last.fm data for ${artistData.artist}`);
+
+              // Cache the response
+              if (this.cacheService) {
+                const artistMBID = AlbumNormalizer.extractArtistMBIDs(artistData.metadata || {})[0] || null;
+                await this.cacheService.setSimilarArtistsCache(
+                  artistData.artist,
+                  artistMBID,
+                  response.similarartists.artist,
+                  'lastfm',
+                  { rawResponse: lastfmResponse }
+                );
+              }
+            }
           }
         }
 
