@@ -15,7 +15,8 @@ const RecommendationSection = ({ albums, user, useCloudDatabase }) => {
         enableCaching: true,
         minCollectionSize: 5, // Require at least 5 albums for recommendations
         useListenBrainz: true, // Feature flag - set to true to test ListenBrainz
-        listenBrainzFallbackToLastfm: true // Graceful degradation
+        listenBrainzFallbackToLastfm: true, // Graceful degradation
+        listenBrainzToken: import.meta.env.VITE_LISTENBRAINZ_TOKEN // Add your token here
       });
       setRecommendationService(service);
     } catch (err) {

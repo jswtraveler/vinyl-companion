@@ -7,6 +7,7 @@
 export class ListenBrainzClient {
   constructor(options = {}) {
     this.baseURL = 'https://api.listenbrainz.org';
+    this.userToken = options.userToken || import.meta.env.VITE_LISTENBRAINZ_TOKEN;
     this.options = {
       timeout: 10000,
       maxRetries: 3,
@@ -180,12 +181,19 @@ export class ListenBrainzClient {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.options.timeout);
 
+        const headers = {
+          'Accept': 'application/json',
+          'User-Agent': 'VinylCollectionApp/1.0'
+        };
+
+        // Add authorization header if user token is available
+        if (this.userToken) {
+          headers['Authorization'] = `Token ${this.userToken}`;
+        }
+
         const response = await fetch(url.toString(), {
           signal: controller.signal,
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'VinylCollectionApp/1.0'
-          }
+          headers: headers
         });
 
         clearTimeout(timeoutId);

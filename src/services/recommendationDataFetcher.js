@@ -136,6 +136,7 @@ export class RecommendationDataFetcher {
 
           if (artistMBIDs.length > 0) {
             try {
+              console.log(`🎵 Trying ListenBrainz for ${artistData.artist} with MBID: ${artistMBIDs[0]}`);
               const lbResponse = await this.listenbrainz.getSimilarArtists(artistMBIDs[0], this.options.maxSimilarArtists);
               if (lbResponse?.similar_artists?.length > 0) {
                 response = this.formatListenBrainzResponse(lbResponse, artistData.artist);
@@ -145,6 +146,8 @@ export class RecommendationDataFetcher {
             } catch (lbError) {
               console.warn(`⚠️ ListenBrainz failed for ${artistData.artist}, trying fallback:`, lbError.message);
             }
+          } else {
+            console.log(`🎵 No MBID available for ${artistData.artist}, skipping ListenBrainz`);
           }
         }
 

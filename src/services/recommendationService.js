@@ -16,6 +16,7 @@ export class RecommendationService {
     // Configuration
     this.config = {
       lastfmApiKey: import.meta.env.VITE_LASTFM_API_KEY,
+      listenBrainzToken: import.meta.env.VITE_LISTENBRAINZ_TOKEN,
       useListenBrainz: false, // Feature flag for ListenBrainz
       listenBrainzFallbackToLastfm: true, // Graceful degradation
       enableCaching: true,
@@ -49,8 +50,9 @@ export class RecommendationService {
   initialize() {
     try {
       if (this.config.useListenBrainz) {
-        // Initialize ListenBrainz client (no API key required)
+        // Initialize ListenBrainz client with user token
         this.listenBrainzClient = new ListenBrainzClient({
+          userToken: this.config.listenBrainzToken,
           enableCaching: this.config.enableCaching,
           cacheExpirationHours: this.config.cacheExpirationHours
         });
