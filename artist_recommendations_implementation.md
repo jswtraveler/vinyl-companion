@@ -21,7 +21,85 @@ ArtistScore(a_c) = α * log(1 + Σ Conn(a_o, a_c)) / sqrt(|OwnedArtists|)
 
 ---
 
-## 2. Roadmap
+## 2. ListenBrainz Migration Strategy
+
+### **Why Switch from Last.fm to ListenBrainz**
+
+**Current Pain Points with Last.fm:**
+- String-based artist matching causes missed connections
+- API key management and rate limiting complexity
+- Commercial bias in recommendation algorithms
+- Dependency on external service with potential pricing changes
+
+**ListenBrainz Advantages:**
+- **Native MusicBrainz ID integration** - perfect synergy with our enhanced matching system
+- **Open source and free** - no API keys, rate limits, or vendor lock-in
+- **Quality-focused recommendations** - better for curated vinyl collections than streaming-focused data
+- **Direct MBID relationships** - enables sophisticated graph algorithms without string matching
+
+### **Migration Phases**
+
+#### **Phase 1: Parallel Implementation (Week 0)**
+- Implement `ListenBrainzClient` alongside existing `LastFmClient`
+- Add feature flag to switch between services (`useListenBrainz: boolean`)
+- Maintain existing Last.fm workflows as fallback
+
+```javascript
+// Enhanced service initialization
+const recommendationService = new RecommendationService({
+  useListenBrainz: true,          // Feature flag
+  listenBrainzFallbackToLastfm: true,  // Graceful degradation
+  lastfmApiKey: process.env.VITE_LASTFM_API_KEY  // Keep as backup
+});
+```
+
+#### **Phase 2: A/B Testing (Week 1)**
+- Run both services in parallel for recommendation comparison
+- Log recommendation quality metrics (coverage, relevance, diversity)
+- User preference feedback collection
+- Performance benchmarking (API response times, accuracy)
+
+#### **Phase 3: Gradual Migration (Week 2)**
+- Default to ListenBrainz with Last.fm fallback for missing data
+- Migrate existing cached data where MBIDs are available
+- Update documentation and configuration
+
+#### **Phase 4: Complete Migration (Week 3)**
+- Remove Last.fm dependencies for new installations
+- Keep Last.fm support for legacy data compatibility
+- Update API documentation and examples
+
+### **Implementation Strategy**
+
+**ListenBrainz API Endpoints to Implement:**
+- **Similar artists**: `/1/explore/similar-artists/{artist_mbid}`
+- **Artist statistics**: `/1/stats/artist/{artist_mbid}`
+- **Recording lookup**: `/1/explore/recording/{recording_mbid}`
+- **User recommendations**: `/1/recommend/recording` (if user listening data available)
+
+**Enhanced Data Pipeline:**
+```javascript
+// Direct MBID-based queries (no string matching needed)
+const similarArtists = await listenBrainzClient.getSimilarArtists(artistMBID);
+const artistStats = await listenBrainzClient.getArtistStats(artistMBID);
+
+// Seamless integration with existing MusicBrainz data
+const enhancedProfile = {
+  ...userProfile,
+  artistMBIDs: extractedMBIDs,
+  listenBrainzData: similarArtists
+};
+```
+
+**Benefits for Graph Algorithms:**
+- **Direct MBID connections** enable true graph traversal
+- **No string normalization overhead**
+- **Higher precision artist relationships**
+- **Native support for multi-hop discovery**
+
+---
+
+## 3. Roadmap
 
 ### **MVP (Persisted, Normalized, Week 1–2)**
 
