@@ -367,13 +367,25 @@ export class RecommendationService {
   }
 
   /**
-   * Create recommendation lists from scored candidates
+   * Create recommendation lists from scored candidates (with deduplication)
    */
   createScoredRecommendationLists(scoredCandidates, recommendations) {
-    // Top recommendations (highest scores across all sources)
-    const topRecommendations = scoredCandidates
-      .slice(0, 10)
-      .map(result => this.formatRecommendationItem(result));
+    const usedFingerprints = new Set();
+
+    // Helper function to filter out already used recommendations
+    const getUniqueRecommendations = (candidates, maxCount) => {
+      const unique = [];
+      for (const candidate of candidates) {
+        if (!usedFingerprints.has(candidate.candidate.fingerprint) && unique.length < maxCount) {
+          usedFingerprints.add(candidate.candidate.fingerprint);
+          unique.push(this.formatRecommendationItem(candidate));
+        }
+      }
+      return unique;
+    };
+
+    // Top recommendations (highest scores across all sources) - priority list
+    const topRecommendations = getUniqueRecommendations(scoredCandidates.slice(0, 10), 10);
 
     if (topRecommendations.length > 0) {
       recommendations.lists.top_picks = {
@@ -386,11 +398,10 @@ export class RecommendationService {
       recommendations.metadata.sources.push('top_picks');
     }
 
-    // Similar artists with high scores
-    const similarArtistRecs = scoredCandidates
-      .filter(result => result.candidate.type === 'similar_artist')
-      .slice(0, 8)
-      .map(result => this.formatRecommendationItem(result));
+    // Similar artists with high scores (excluding already used)
+    const similarArtistCandidates = scoredCandidates
+      .filter(result => result.candidate.type === 'similar_artist');
+    const similarArtistRecs = getUniqueRecommendations(similarArtistCandidates, 8);
 
     if (similarArtistRecs.length > 0) {
       recommendations.lists.similar_artists = {
@@ -403,11 +414,10 @@ export class RecommendationService {
       recommendations.metadata.sources.push('similar_artists');
     }
 
-    // Genre matches with high scores
-    const genreMatches = scoredCandidates
-      .filter(result => result.candidate.type === 'genre_match')
-      .slice(0, 12)
-      .map(result => this.formatRecommendationItem(result));
+    // Genre matches with high scores (excluding already used)
+    const genreMatchCandidates = scoredCandidates
+      .filter(result => result.candidate.type === 'genre_match');
+    const genreMatches = getUniqueRecommendations(genreMatchCandidates, 12);
 
     if (genreMatches.length > 0) {
       recommendations.lists.genre_matches = {
@@ -420,14 +430,13 @@ export class RecommendationService {
       recommendations.metadata.sources.push('genre_matches');
     }
 
-    // Hidden gems (lower popularity but high personal match)
-    const hiddenGems = scoredCandidates
+    // Hidden gems (lower popularity but high personal match, excluding already used)
+    const hiddenGemCandidates = scoredCandidates
       .filter(result =>
         result.totalScore > 0.6 &&
         (!result.candidate.popularity || result.candidate.popularity < 50000)
-      )
-      .slice(0, 6)
-      .map(result => this.formatRecommendationItem(result));
+      );
+    const hiddenGems = getUniqueRecommendations(hiddenGemCandidates, 6);
 
     if (hiddenGems.length > 0) {
       recommendations.lists.hidden_gems = {

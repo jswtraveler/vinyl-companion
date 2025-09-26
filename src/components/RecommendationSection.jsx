@@ -232,7 +232,11 @@ const RecommendationList = ({ listData, expanded }) => {
 
       <div className="space-y-2">
         {displayItems.map((item, index) => (
-          <RecommendationItem key={index} item={item} expanded={expanded} />
+          <RecommendationItem
+            key={`${item.artist}-${item.title}-${item.type}-${index}`}
+            item={item}
+            expanded={expanded}
+          />
         ))}
       </div>
     </div>
