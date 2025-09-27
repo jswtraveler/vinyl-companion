@@ -27,27 +27,32 @@ export class RecommendationCacheService {
         .eq('source_artist_name', artistName)
         .eq('data_source', dataSource)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .limit(1);
 
       if (error) {
-        if (error.code !== 'PGRST116') { // Not found error is expected
-          console.warn('Error fetching similarity cache:', error);
-        }
+        console.warn('Error fetching similarity cache:', error);
         return null;
       }
 
+      // Handle empty results
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      const cacheRecord = data[0];
+
       // Update last accessed timestamp
-      await this.updateCacheAccess('artist_similarity_cache', data.id);
+      await this.updateCacheAccess('artist_similarity_cache', cacheRecord.id);
 
       this.log(`✅ Cache hit: Similar artists for ${artistName} (${dataSource})`);
       return {
-        similarArtists: data.similar_artists,
+        similarArtists: cacheRecord.similar_artists,
         metadata: {
           cached: true,
-          cachedAt: data.created_at,
-          expiresAt: data.expires_at,
-          accessCount: data.access_count + 1,
-          dataSource: data.data_source
+          cachedAt: cacheRecord.created_at,
+          expiresAt: cacheRecord.expires_at,
+          accessCount: cacheRecord.access_count + 1,
+          dataSource: cacheRecord.data_source
         }
       };
 
@@ -112,32 +117,37 @@ export class RecommendationCacheService {
         .eq('artist_name', artistName)
         .eq('data_source', dataSource)
         .gt('expires_at', new Date().toISOString())
-        .single();
+        .limit(1);
 
       if (error) {
-        if (error.code !== 'PGRST116') {
-          console.warn('Error fetching metadata cache:', error);
-        }
+        console.warn('Error fetching metadata cache:', error);
         return null;
       }
 
-      await this.updateCacheAccess('artist_metadata_cache', data.id);
+      // Handle empty results
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      const cacheRecord = data[0];
+
+      await this.updateCacheAccess('artist_metadata_cache', cacheRecord.id);
 
       this.log(`✅ Cache hit: Metadata for ${artistName} (${dataSource})`);
       return {
         metadata: {
-          listeners: data.listeners,
-          playcount: data.playcount,
-          tags: data.tags,
-          topAlbums: data.top_albums,
-          artistInfo: data.artist_info,
-          genres: data.genre_tags,
-          primaryGenre: data.primary_genre,
-          popularityScore: data.popularity_score
+          listeners: cacheRecord.listeners,
+          playcount: cacheRecord.playcount,
+          tags: cacheRecord.tags,
+          topAlbums: cacheRecord.top_albums,
+          artistInfo: cacheRecord.artist_info,
+          genres: cacheRecord.genre_tags,
+          primaryGenre: cacheRecord.primary_genre,
+          popularityScore: cacheRecord.popularity_score
         },
         cached: true,
-        cachedAt: data.created_at,
-        accessCount: data.access_count + 1
+        cachedAt: cacheRecord.created_at,
+        accessCount: cacheRecord.access_count + 1
       };
 
     } catch (error) {
@@ -208,37 +218,41 @@ export class RecommendationCacheService {
         .eq('is_stale', false)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .limit(1);
 
       if (error) {
-        if (error.code !== 'PGRST116') {
-          console.warn('Error fetching user recommendations cache:', error);
-        }
+        console.warn('Error fetching user recommendations cache:', error);
         return null;
       }
+
+      // Handle empty results
+      if (!data || data.length === 0) {
+        return null;
+      }
+
+      const cacheRecord = data[0];
 
       // Update view count
       await this.supabase
         .from('user_artist_recs_cache')
         .update({
-          view_count: data.view_count + 1,
+          view_count: cacheRecord.view_count + 1,
           last_viewed_at: new Date().toISOString()
         })
-        .eq('id', data.id);
+        .eq('id', cacheRecord.id);
 
       this.log(`✅ Cache hit: User recommendations for ${userId}`);
       return {
-        recommendations: data.recommendations,
-        lists: data.recommendation_lists,
+        recommendations: cacheRecord.recommendations,
+        lists: cacheRecord.recommendation_lists,
         metadata: {
           cached: true,
-          cachedAt: data.created_at,
-          generationTime: data.generation_time_ms,
-          confidence: data.confidence_score,
-          diversity: data.diversity_score,
-          coverage: data.coverage_percentage,
-          viewCount: data.view_count + 1
+          cachedAt: cacheRecord.created_at,
+          generationTime: cacheRecord.generation_time_ms,
+          confidence: cacheRecord.confidence_score,
+          diversity: cacheRecord.diversity_score,
+          coverage: cacheRecord.coverage_percentage,
+          viewCount: cacheRecord.view_count + 1
         }
       };
 
