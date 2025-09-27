@@ -337,16 +337,23 @@ export class RecommendationCacheService {
         // Note: albums array is only used for calculation, not stored in database
       }));
 
-      // Clear existing entries for this user
-      await this.supabase
+      // Clear existing entries for this user first
+      const { error: deleteError } = await this.supabase
         .from('user_owned_artists')
         .delete()
         .eq('user_id', userId);
 
-      // Insert new data
+      if (deleteError) {
+        console.error('Failed to clear existing owned artists:', deleteError);
+        // Continue anyway - upsert below will handle conflicts
+      }
+
+      // Use upsert to handle any remaining duplicates
       const { data, error } = await this.supabase
         .from('user_owned_artists')
-        .insert(ownedArtists)
+        .upsert(ownedArtists, {
+          onConflict: 'user_id,artist_name'
+        })
         .select();
 
       if (error) {

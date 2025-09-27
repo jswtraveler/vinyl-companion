@@ -332,14 +332,20 @@ const ArtistRecommendationCard = ({ artist, expanded }) => {
     <div className="bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-colors">
       {/* Artist Info */}
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-12 h-12 bg-gray-600 rounded-full flex-shrink-0 flex items-center justify-center">
-          {artist.image ? (
+        <div className="w-12 h-12 bg-gray-600 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden">
+          {artist.image && artist.image !== '' ? (
             <img
               src={artist.image}
               alt={artist.artist}
               className="w-full h-full object-cover rounded-full"
               onError={(e) => {
                 e.target.style.display = 'none';
+                // Show fallback icon
+                e.target.parentElement.innerHTML = `
+                  <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                `;
               }}
             />
           ) : (

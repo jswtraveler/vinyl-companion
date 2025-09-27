@@ -25,6 +25,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     params: {
       eventsPerSecond: 10
     }
+  },
+  global: {
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
   }
 });
 
