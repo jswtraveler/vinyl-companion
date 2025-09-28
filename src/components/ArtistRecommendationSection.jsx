@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { RecommendationService } from '../services/recommendationService.js';
+import { GraphRecommendationService } from '../services/graphRecommendationService.js';
 
 const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [recommendations, setRecommendations] = useState(null);
@@ -7,8 +8,10 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(false);
   const [recommendationService, setRecommendationService] = useState(null);
+  const [graphService, setGraphService] = useState(null);
+  const [useGraphAlgorithm, setUseGraphAlgorithm] = useState(false); // Temporarily disabled for local dev
 
-  // Initialize recommendation service
+  // Initialize recommendation services
   useEffect(() => {
     try {
       const service = new RecommendationService({
@@ -21,9 +24,19 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         listenBrainzToken: import.meta.env.VITE_LISTENBRAINZ_TOKEN
       });
       setRecommendationService(service);
+
+      // Initialize graph recommendation service
+      const graphRecommendationService = new GraphRecommendationService({
+        maxWalkDepth: 3,
+        restartProbability: 0.15,
+        minSimilarityThreshold: 0.3,
+        maxRecommendations: 20,
+        enableLogging: true
+      });
+      setGraphService(graphRecommendationService);
     } catch (err) {
-      console.error('Failed to initialize recommendation service:', err);
-      setError('Recommendation service unavailable');
+      console.error('Failed to initialize recommendation services:', err);
+      setError('Recommendation services unavailable');
     }
   }, [user, useCloudDatabase]);
 
@@ -34,12 +47,12 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
   // Generate artist recommendations when albums change
   useEffect(() => {
-    if (!recommendationService || !hasEnoughAlbums || !albums) {
+    if (!recommendationService || !graphService || !hasEnoughAlbums || !albums) {
       return;
     }
 
     generateArtistRecommendations();
-  }, [recommendationService, albums, hasEnoughAlbums]);
+  }, [recommendationService, graphService, albums, hasEnoughAlbums, useGraphAlgorithm]);
 
   const generateArtistRecommendations = async () => {
     if (!recommendationService || !albums || albums.length < 5) {
@@ -55,47 +68,68 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       // Check if we have cached artist recommendations first
       const cacheService = recommendationService.cacheService;
       const userId = recommendationService.config.userId;
+
+      console.log(`🔧 Debug: Albums count: ${albums.length}, User ID: ${userId}, Graph enabled: ${useGraphAlgorithm}`);
       let artistRecommendations = null;
       let fromCache = false;
 
       if (cacheService && userId) {
         const collectionFingerprint = cacheService.generateCollectionFingerprint(albums);
-        const cacheKey = `artist_recs_${collectionFingerprint}`;
+        const algorithmSuffix = useGraphAlgorithm ? '_graph' : '_basic';
+        const cacheKey = `artist_recs_${collectionFingerprint}${algorithmSuffix}`;
 
         // Try to get cached artist recommendations
         const cachedArtistRecs = await cacheService.getUserRecommendationsCache(userId, cacheKey);
         if (cachedArtistRecs && cachedArtistRecs.recommendations?.artists) {
           artistRecommendations = cachedArtistRecs.recommendations;
           fromCache = true;
-          console.log('✅ Using cached artist recommendations');
+          console.log(`✅ Using cached ${useGraphAlgorithm ? 'graph' : 'basic'} artist recommendations`);
         }
       }
 
       // If not cached, generate fresh recommendations
       if (!artistRecommendations) {
-        // Use the main recommendation service to get cached external data
-        const result = await recommendationService.generateRecommendations(albums, {
-          includeExternal: true
-        });
+        if (useGraphAlgorithm && graphService) {
+          console.log('🕸️ Using graph-based algorithm for artist recommendations...');
 
-        if (result.success) {
-          // Get the raw external data (this will be cached)
-          const profile = await recommendationService.buildUserProfile(albums);
-          const rawExternalData = await recommendationService.fetchExternalData(profile, albums);
+          // Use graph algorithm for enhanced discovery
+          const graphResult = await graphService.generateGraphRecommendations(userId, albums, {
+            maxWalkDepth: 3,
+            restartProbability: 0.15,
+            minSimilarityThreshold: 0.3
+          });
 
-          // Extract and score artists from the external data
-          artistRecommendations = await buildArtistRecommendations(rawExternalData, albums);
-
-          // Cache the artist recommendations
-          if (cacheService && userId && artistRecommendations.total > 0) {
-            const collectionFingerprint = cacheService.generateCollectionFingerprint(albums);
-            const cacheKey = `artist_recs_${collectionFingerprint}`;
-            await cacheService.setUserRecommendationsCache(userId, cacheKey, {
-              artists: artistRecommendations.artists,
-              total: artistRecommendations.total,
-              metadata: artistRecommendations.metadata
-            });
+          if (graphResult.success) {
+            artistRecommendations = {
+              artists: graphResult.recommendations,
+              total: graphResult.recommendations.length,
+              metadata: {
+                ...graphResult.metadata,
+                algorithm: 'graph_random_walk',
+                generatedAt: new Date().toISOString()
+              }
+            };
+          } else {
+            console.warn('Graph algorithm failed, falling back to basic algorithm');
+            console.log('🔧 Graph failure reason:', graphResult.error);
+            // Fall back to basic algorithm
+            artistRecommendations = await generateBasicRecommendations(albums);
           }
+        } else {
+          console.log('📊 Using basic similarity algorithm for artist recommendations...');
+          artistRecommendations = await generateBasicRecommendations(albums);
+        }
+
+        // Cache the artist recommendations with algorithm-specific key
+        if (cacheService && userId && artistRecommendations && artistRecommendations.total > 0) {
+          const collectionFingerprint = cacheService.generateCollectionFingerprint(albums);
+          const algorithmSuffix = useGraphAlgorithm ? '_graph' : '_basic';
+          const cacheKey = `artist_recs_${collectionFingerprint}${algorithmSuffix}`;
+          await cacheService.setUserRecommendationsCache(userId, cacheKey, {
+            artists: artistRecommendations.artists,
+            total: artistRecommendations.total,
+            metadata: artistRecommendations.metadata
+          });
         }
       }
 
@@ -119,6 +153,66 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     }
   };
 
+  const generateBasicRecommendations = async (albums) => {
+    try {
+      console.log('📊 Starting basic recommendation generation...');
+
+      // Build user profile to get artist list
+      console.log('📊 Debug: Sample album data:', albums[0]);
+      console.log('📊 Debug: All artists from albums:', albums.map(a => a.artist).filter(Boolean));
+
+      const profile = await recommendationService.buildUserProfile(albums);
+      console.log('📊 User profile built with', profile.artists?.length || 0, 'artists');
+      console.log('📊 Debug: Profile artists:', profile.artists?.slice(0, 3));
+
+      // Fetch similarity data specifically for artist recommendations
+      const dataFetcher = recommendationService.dataFetcher;
+      console.log('📊 Fetching artist similarity data...');
+
+      // Extract artist names from profile (it's an array of objects with artist and count)
+      const artistNames = profile.artists?.map(a => a.artist || a.name || a) || [];
+      console.log('📊 Artist names to fetch:', artistNames.slice(0, 3));
+
+      // Ensure we fetch similar artists data
+      const externalData = await dataFetcher.fetchSimilarArtistsData(artistNames);
+      console.log('📊 Similarity data fetched:', Object.keys(externalData || {}));
+
+      if (externalData && Object.keys(externalData).length > 0) {
+        console.log('📊 Building artist recommendations from similarity data...');
+
+        // Create the data structure expected by buildArtistRecommendations
+        const formattedData = {
+          similarArtists: externalData,
+          metadata: {
+            source: 'basic_similarity_fetch',
+            timestamp: Date.now()
+          }
+        };
+
+        const artistRecs = await buildArtistRecommendations(formattedData, albums);
+        console.log('📊 Built recommendations:', artistRecs?.total || 0, 'artists');
+        return artistRecs;
+      } else {
+        console.log('📊 No similarity data available, falling back to genre-based approach');
+        // Fall back to the original approach as last resort
+        const result = await recommendationService.generateRecommendations(albums, {
+          includeExternal: true
+        });
+
+        if (result.success) {
+          const rawExternalData = await recommendationService.fetchExternalData(profile, albums);
+          return await buildArtistRecommendations(rawExternalData, albums);
+        }
+      }
+
+      console.log('📊 Basic recommendation generation failed - no data available');
+      return null;
+    } catch (error) {
+      console.error('Basic recommendation generation failed:', error);
+      return null;
+    }
+  };
+
   const buildArtistRecommendations = async (externalDataResult, userAlbums) => {
     const userArtists = new Set(userAlbums.map(album => album.artist.toLowerCase()));
     const artistScores = new Map();
@@ -128,6 +222,9 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     const externalData = externalDataResult;
 
     // Process similar artists data to extract artist recommendations
+    console.log('🔍 Building artist recommendations from external data...');
+    console.log('🔍 ExternalData similarArtists count:', Object.keys(externalData?.similarArtists || {}).length);
+
     if (externalData?.similarArtists) {
       Object.values(externalData.similarArtists).forEach(artistData => {
         const sourceArtist = artistData.sourceArtist;
@@ -242,8 +339,25 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
                 ({recommendations.total} suggestions)
               </span>
             )}
+            {recommendations?.metadata?.algorithm && (
+              <span className="text-xs text-purple-300 bg-purple-900/30 px-2 py-1 rounded">
+                {recommendations.metadata.algorithm === 'graph_random_walk' ? '🕸️ Graph' : '📊 Basic'}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setUseGraphAlgorithm(!useGraphAlgorithm)}
+              disabled={loading}
+              className={`px-3 py-1 text-xs rounded border ${
+                useGraphAlgorithm
+                  ? 'bg-purple-700 border-purple-600 text-white'
+                  : 'bg-gray-700 border-gray-600 text-gray-300'
+              } hover:bg-opacity-80 disabled:opacity-50`}
+              title={`Switch to ${useGraphAlgorithm ? 'Basic' : 'Graph'} algorithm`}
+            >
+              {useGraphAlgorithm ? '🕸️ Graph' : '📊 Basic'}
+            </button>
             <button
               onClick={handleRefresh}
               disabled={loading}
@@ -314,10 +428,22 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             {/* Metadata */}
             {expanded && recommendations.metadata && (
               <div className="text-xs text-gray-500 pt-2 border-t border-gray-700">
-                Found {recommendations.metadata.totalCandidates} artist candidates •
-                Average {recommendations.metadata.averageConnections} connections per artist •
-                {recommendations.metadata.cached ? 'Cached' : 'Fresh'} data •
-                Generated at {new Date(recommendations.metadata.generatedAt).toLocaleTimeString()}
+                {recommendations.metadata.algorithm === 'graph_random_walk' ? (
+                  <>
+                    🕸️ Graph algorithm • {recommendations.metadata.seedArtists} seed artists •
+                    Walk depth: {recommendations.metadata.walkDepth} •
+                    Found {recommendations.metadata.totalCandidates} candidates •
+                    {recommendations.metadata.duration}ms •
+                    {recommendations.metadata.cached ? 'Cached' : 'Fresh'} data
+                  </>
+                ) : (
+                  <>
+                    📊 Basic algorithm • Found {recommendations.metadata.totalCandidates} artist candidates •
+                    Average {recommendations.metadata.averageConnections} connections per artist •
+                    {recommendations.metadata.cached ? 'Cached' : 'Fresh'} data •
+                    Generated at {new Date(recommendations.metadata.generatedAt).toLocaleTimeString()}
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -90,7 +90,12 @@ export class RecommendationCacheService {
         .select();
 
       if (error) {
-        console.error('Failed to cache similarity data:', error);
+        if (error.code === '42501') {
+          console.warn('⚠️ Cache write blocked by RLS policy - this is expected until database policies are updated');
+          console.warn('The app will continue to work but may make more API calls');
+        } else {
+          console.error('Failed to cache similarity data:', error);
+        }
         return false;
       }
 
@@ -189,7 +194,12 @@ export class RecommendationCacheService {
         .select();
 
       if (error) {
-        console.error('Failed to cache metadata:', error);
+        if (error.code === '42501') {
+          console.warn('⚠️ Metadata cache write blocked by RLS policy - this is expected until database policies are updated');
+          console.warn('The app will continue to work but may make more API calls');
+        } else {
+          console.error('Failed to cache metadata:', error);
+        }
         return false;
       }
 
