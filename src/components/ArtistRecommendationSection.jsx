@@ -276,11 +276,14 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
     // Convert to array and calculate final scores
     const scoredArtists = Array.from(artistScores.values()).map(artist => {
-      // Score formula: average similarity * sqrt(connection count) + max similarity boost
+      // Fixed score formula: reward total connections while maintaining quality threshold
       const avgSimilarity = artist.totalScore / artist.connectionCount;
-      const breadthBonus = Math.sqrt(artist.connectionCount) * 0.1;
-      const maxSimBonus = artist.maxSimilarity * 0.2;
-      const finalScore = avgSimilarity + breadthBonus + maxSimBonus;
+      const breadthMultiplier = 1 + (artist.connectionCount - 1) * 0.3; // Strong breadth reward
+      const qualityThreshold = avgSimilarity > 0.4 ? 1 : 0.7; // Slight penalty for very weak connections
+      const maxSimBonus = artist.maxSimilarity * 0.15;
+
+      // Use total score with breadth multiplier instead of averaging
+      const finalScore = (artist.totalScore * breadthMultiplier * qualityThreshold) + maxSimBonus;
 
       return {
         ...artist,
