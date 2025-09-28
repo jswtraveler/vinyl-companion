@@ -73,7 +73,7 @@ BEGIN
         SELECT
             current_artist as target_artist,
             SUM(walk_score) as total_score,
-            COUNT(DISTINCT origin_artist) as connection_breadth,
+            COUNT(DISTINCT origin_artist)::INTEGER as connection_breadth,
             ARRAY_AGG(DISTINCT origin_artist) as connected_to,
             jsonb_agg(
                 jsonb_build_object(
@@ -90,21 +90,21 @@ BEGIN
     -- Apply random walk normalization and ranking
     ranked_recommendations AS (
         SELECT
-            target_artist,
+            artist_scores.target_artist,
             -- Normalize score by collection size and apply restart probability boost
-            total_score * POWER(p_restart_probability, 0.5) as graph_score,
-            connection_breadth,
-            connected_to,
+            artist_scores.total_score * POWER(p_restart_probability, 0.5) as graph_score,
+            artist_scores.connection_breadth,
+            artist_scores.connected_to,
             -- Keep top 3 walk paths for each artist for explanation
             (
                 SELECT jsonb_agg(path_obj ORDER BY (path_obj->>'score')::DECIMAL DESC)
                 FROM (
-                    SELECT jsonb_array_elements(walk_paths) as path_obj
+                    SELECT jsonb_array_elements(artist_scores.walk_paths) as path_obj
                     LIMIT 3
                 ) sub
             ) as walk_paths
         FROM artist_scores
-        WHERE total_score > 0
+        WHERE artist_scores.total_score > 0
     )
 
     SELECT
