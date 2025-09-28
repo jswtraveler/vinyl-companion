@@ -121,16 +121,14 @@ $$ LANGUAGE plpgsql;
 
 -- Create optimized indexes for graph traversal performance
 CREATE INDEX IF NOT EXISTS idx_similarity_cache_graph_lookup
-    ON artist_similarity_cache (source_artist_name, expires_at)
-    WHERE expires_at > NOW();
+    ON artist_similarity_cache (source_artist_name, expires_at);
 
 CREATE INDEX IF NOT EXISTS idx_user_artists_graph_lookup
     ON user_owned_artists (user_id, artist_name);
 
 -- GIN index for efficient JSONB operations on similar_artists
 CREATE INDEX IF NOT EXISTS idx_similarity_artists_gin
-    ON artist_similarity_cache USING GIN (similar_artists)
-    WHERE expires_at > NOW();
+    ON artist_similarity_cache USING GIN (similar_artists);
 
 -- Add function comments
 COMMENT ON FUNCTION graph_artist_recommendations IS
