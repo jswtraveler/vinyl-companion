@@ -26,7 +26,7 @@ export class RecommendationDataFetcher {
       maxSimilarArtists: 20,
       maxAlbumsPerTag: 30,
       maxTagsToProcess: 10,
-      maxArtistsToProcess: 15,
+      maxArtistsToProcess: 25, // Increased to process more artists
       requestDelayMs: 1000,
       preferListenBrainz: this.isPrimaryListenBrainz,
       ...options
@@ -121,7 +121,7 @@ export class RecommendationDataFetcher {
   async fetchSimilarArtistsData(topArtists) {
     const artistsToProcess = topArtists
       .slice(0, this.options.maxArtistsToProcess)
-      .filter(artistData => artistData.artist && artistData.count >= 2); // Only process artists with multiple albums
+      .filter(artistData => artistData.artist && artistData.count >= 1); // Process artists with any albums (lowered from 2 to 1)
 
     console.log(`🎵 Fetching similar artists for ${artistsToProcess.length} artists`);
 
@@ -250,7 +250,7 @@ export class RecommendationDataFetcher {
   async fetchGenreAlbumsData(topGenres) {
     const genresToProcess = topGenres
       .slice(0, this.options.maxTagsToProcess)
-      .filter(genreData => genreData.genre && genreData.count >= 3); // Only process significant genres
+      .filter(genreData => genreData.genre && genreData.count >= 2); // Process genres with 2+ albums (lowered from 3)
 
     console.log(`🎵 Fetching albums for ${genresToProcess.length} genres`);
 
@@ -304,8 +304,8 @@ export class RecommendationDataFetcher {
    */
   async fetchArtistInfoData(topArtists) {
     const artistsToProcess = topArtists
-      .slice(0, Math.min(5, this.options.maxArtistsToProcess)) // Limit to top 5 for detailed info
-      .filter(artistData => artistData.count >= 3); // Only highly represented artists
+      .slice(0, Math.min(10, this.options.maxArtistsToProcess)) // Increased from 5 to 10 for more diversity
+      .filter(artistData => artistData.count >= 1); // Process all artists (lowered from 3)
 
     console.log(`🎵 Fetching detailed info for ${artistsToProcess.length} artists`);
 
