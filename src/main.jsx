@@ -65,8 +65,14 @@ window.addEventListener('appinstalled', (e) => {
   // Optional: track installation analytics
 })
 
-createRoot(document.getElementById('root')).render(
+// StrictMode causes double-execution in development, which can lead to duplicate API calls
+// Keep it in development for catching bugs, but disable in production
+const AppWithStrictMode = import.meta.env.DEV ? (
   <StrictMode>
     <App />
-  </StrictMode>,
-)
+  </StrictMode>
+) : (
+  <App />
+);
+
+createRoot(document.getElementById('root')).render(AppWithStrictMode)

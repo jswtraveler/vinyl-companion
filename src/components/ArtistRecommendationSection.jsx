@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RecommendationService } from '../services/recommendationService.js';
 import { GraphRecommendationService } from '../services/graphRecommendationService.js';
 
@@ -10,6 +10,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [recommendationService, setRecommendationService] = useState(null);
   const [graphService, setGraphService] = useState(null);
   const [useGraphAlgorithm, setUseGraphAlgorithm] = useState(false); // Temporarily disabled for local dev
+  const isGeneratingRef = useRef(false); // Prevent duplicate calls
 
   // Initialize recommendation services
   useEffect(() => {
@@ -46,19 +47,17 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   }, [albums]);
 
   // Generate artist recommendations when albums change
-  useEffect(() => {
-    if (!recommendationService || !graphService || !hasEnoughAlbums || !albums) {
+  const generateArtistRecommendations = useCallback(async () => {
+    // Prevent duplicate calls
+    if (isGeneratingRef.current) {
+      console.log('🚫 Skipping duplicate recommendation generation call');
       return;
     }
-
-    generateArtistRecommendations();
-  }, [recommendationService, graphService, albums, hasEnoughAlbums, useGraphAlgorithm]);
-
-  const generateArtistRecommendations = async () => {
     if (!recommendationService || !albums || albums.length < 5) {
       return;
     }
 
+    isGeneratingRef.current = true;
     setLoading(true);
     setError(null);
 
@@ -150,8 +149,18 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       setError('Failed to generate artist recommendations');
     } finally {
       setLoading(false);
+      isGeneratingRef.current = false;
     }
-  };
+  }, [recommendationService, graphService, albums, useGraphAlgorithm]);
+
+  // Effect to trigger recommendations when dependencies change
+  useEffect(() => {
+    if (!recommendationService || !graphService || !hasEnoughAlbums || !albums) {
+      return;
+    }
+
+    generateArtistRecommendations();
+  }, [generateArtistRecommendations, hasEnoughAlbums]);
 
   const generateBasicRecommendations = async (albums) => {
     try {
@@ -301,12 +310,12 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     };
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     if (recommendationService) {
       recommendationService.clearCache();
       generateArtistRecommendations();
     }
-  };
+  }, [recommendationService, generateArtistRecommendations]);
 
   // Don't render if not enough albums
   if (!hasEnoughAlbums) {
@@ -347,7 +356,11 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setUseGraphAlgorithm(!useGraphAlgorithm)}
+              onClick={() => {
+                const newAlgorithm = !useGraphAlgorithm;
+                setUseGraphAlgorithm(newAlgorithm);
+                console.log(`🔄 Switching to ${newAlgorithm ? 'Graph' : 'Basic'} algorithm`);
+              }}
               disabled={loading}
               className={`px-3 py-1 text-xs rounded border ${
                 useGraphAlgorithm
