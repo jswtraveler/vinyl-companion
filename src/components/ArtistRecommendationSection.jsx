@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RecommendationService } from '../services/recommendationService.js';
 import { GraphRecommendationService } from '../services/graphRecommendationService.js';
+import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilter.js';
 
 const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [recommendations, setRecommendations] = useState(null);
@@ -11,6 +12,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [graphService, setGraphService] = useState(null);
   const [useGraphAlgorithm, setUseGraphAlgorithm] = useState(false); // Temporarily disabled for local dev
   const isGeneratingRef = useRef(false); // Prevent duplicate calls
+  const [diversityEnabled, setDiversityEnabled] = useState(true); // Enable diversity filtering by default
 
   // Initialize recommendation services
   useEffect(() => {
@@ -133,11 +135,32 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       }
 
       if (artistRecommendations && artistRecommendations.total > 0) {
+        // Apply diversity filtering if enabled
+        let finalArtists = artistRecommendations.artists;
+        let diversityStats = null;
+
+        if (diversityEnabled && finalArtists.length > 0) {
+          console.log('🎯 Applying diversity filter to artist recommendations...');
+          finalArtists = applyDiversityFilter(finalArtists, {
+            maxSameGenre: 3,
+            maxSameDecade: 4,
+            diversityWeight: 0.3,
+            genreDistributionTarget: 0.4
+          });
+
+          diversityStats = getDiversityStats(finalArtists);
+          console.log('🎯 Diversity stats:', diversityStats);
+        }
+
         setRecommendations({
           ...artistRecommendations,
+          artists: finalArtists,
+          total: finalArtists.length,
           metadata: {
             ...artistRecommendations.metadata,
-            cached: fromCache
+            cached: fromCache,
+            diversityEnabled,
+            diversityStats
           }
         });
         console.log('✅ Artist recommendations ready');
@@ -151,7 +174,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       setLoading(false);
       isGeneratingRef.current = false;
     }
-  }, [recommendationService, graphService, albums, useGraphAlgorithm]);
+  }, [recommendationService, graphService, albums, useGraphAlgorithm, diversityEnabled]);
 
   // Effect to trigger recommendations when dependencies change
   useEffect(() => {
@@ -375,6 +398,22 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               {useGraphAlgorithm ? '🕸️ Graph' : '📊 Basic'}
             </button>
             <button
+              onClick={() => {
+                const newDiversity = !diversityEnabled;
+                setDiversityEnabled(newDiversity);
+                console.log(`🎯 ${newDiversity ? 'Enabling' : 'Disabling'} diversity filtering`);
+              }}
+              disabled={loading}
+              className={`px-3 py-1 text-xs rounded border ${
+                diversityEnabled
+                  ? 'bg-green-700 border-green-600 text-white'
+                  : 'bg-gray-700 border-gray-600 text-gray-300'
+              } hover:bg-opacity-80 disabled:opacity-50`}
+              title={`${diversityEnabled ? 'Disable' : 'Enable'} diversity filtering`}
+            >
+              {diversityEnabled ? '🎯 Diverse' : '📋 All'}
+            </button>
+            <button
               onClick={handleRefresh}
               disabled={loading}
               className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded border border-gray-600 disabled:opacity-50"
@@ -459,6 +498,13 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
                     {recommendations.metadata.cached ? 'Cached' : 'Fresh'} data •
                     Generated at {new Date(recommendations.metadata.generatedAt).toLocaleTimeString()}
                   </>
+                )}
+                {recommendations.metadata.diversityEnabled && recommendations.metadata.diversityStats && (
+                  <div className="text-xs text-green-400 mt-1">
+                    🎯 Diversity: {Object.keys(recommendations.metadata.diversityStats.genreDistribution).length} genres •
+                    Max genre: {Math.round(recommendations.metadata.diversityStats.maxGenrePercentage * 100)}% •
+                    Diversity score: {recommendations.metadata.diversityStats.diversityScore.toFixed(2)}
+                  </div>
                 )}
               </div>
             )}
