@@ -74,6 +74,9 @@ export class RecommendationDataFetcher {
       // Fetch top albums for similar artists
       await this.fetchTopAlbumsForSimilarArtists();
 
+      // Fetch artist info (tags/genres) for similar artists for diversity filtering
+      await this.fetchArtistInfoForSimilarArtists();
+
       // Process and aggregate results with enhanced matching
       this.aggregateResultsWithEnhancedMatching();
 
@@ -413,6 +416,114 @@ export class RecommendationDataFetcher {
 
       } catch (error) {
         console.error(`❌ Failed to fetch top albums for ${artistName}:`, error);
+        this.results.metadata.failedRequests++;
+      }
+    }
+  }
+
+  /**
+   * Fetch artist information (tags/genres) for similar artists
+   * This enables genre-based diversity filtering for recommendations
+   */
+  async fetchArtistInfoForSimilarArtists() {
+    console.log('🎵 Fetching artist info for similar artists (for diversity filtering)');
+
+    const similarArtistNames = new Set();
+
+    // Collect all similar artist names
+    Object.values(this.results.similarArtists).forEach(artistData => {
+      artistData.similarArtists.slice(0, 5).forEach(similarArtist => { // Take top 5 per source artist
+        similarArtistNames.add(similarArtist.name);
+      });
+    });
+
+    const artistsToProcess = Array.from(similarArtistNames).slice(0, 15); // Limit total requests
+    console.log(`🎵 Processing ${artistsToProcess.length} similar artists for genre info:`, artistsToProcess);
+
+    for (const artistName of artistsToProcess) {
+      try {
+        // Skip if we already have artist info for this artist
+        if (this.results.artistInfo && this.results.artistInfo[artistName]) {
+          console.log(`⚡ Skipping ${artistName} - already have artist info`);
+          continue;
+        }
+
+        // Check persistent cache first
+        if (this.cacheService) {
+          const cachedMetadata = await this.cacheService.getArtistMetadataCache(artistName, 'lastfm');
+          if (cachedMetadata) {
+            this.results.artistInfo[artistName] = {
+              sourceArtist: artistName,
+              sourceData: { artist: artistName },
+              name: artistName,
+              mbid: cachedMetadata.metadata.mbid || null,
+              tags: cachedMetadata.metadata.genres || [],
+              playcount: cachedMetadata.metadata.playcount || 0,
+              listeners: cachedMetadata.metadata.listeners || 0
+            };
+            console.log(`✅ Got cached artist info for ${artistName}`);
+            continue;
+          }
+        }
+
+        await this.delay(this.options.requestDelayMs);
+
+        const response = await this.lastfm.getArtistInfo(artistName);
+
+        this.results.metadata.totalRequests++;
+
+        if (response?.artist) {
+          const artist = response.artist;
+          this.results.artistInfo[artistName] = {
+            sourceArtist: artistName,
+            sourceData: { artist: artistName },
+            name: artist.name,
+            mbid: artist.mbid || null,
+            url: artist.url || null,
+            streamable: artist.streamable === '1',
+            playcount: parseInt(artist.stats?.playcount) || 0,
+            listeners: parseInt(artist.stats?.listeners) || 0,
+            bio: artist.bio ? {
+              published: artist.bio.published || null,
+              summary: artist.bio.summary || null,
+              content: artist.bio.content || null
+            } : null,
+            tags: artist.tags?.tag ? artist.tags.tag.map(tag => ({
+              name: tag.name,
+              url: tag.url || null
+            })) : [],
+            similar: artist.similar?.artist ? artist.similar.artist.map(similar => ({
+              name: similar.name,
+              url: similar.url || null
+            })) : [],
+            image: this.extractImageUrl(artist.image)
+          };
+
+          // Cache the response
+          if (this.cacheService) {
+            await this.cacheService.setArtistMetadataCache(
+              artistName,
+              artist.mbid || null,
+              {
+                name: artist.name,
+                mbid: artist.mbid || null,
+                playcount: parseInt(artist.stats?.playcount) || 0,
+                listeners: parseInt(artist.stats?.listeners) || 0,
+                genres: artist.tags?.tag ? artist.tags.tag.map(tag => tag.name) : [],
+                bio: artist.bio?.summary || null
+              },
+              'lastfm'
+            );
+          }
+
+          console.log(`✅ Fetched artist info for ${artistName} with ${artist.tags?.tag?.length || 0} tags`);
+          this.results.metadata.successfulRequests++;
+        } else {
+          console.log(`⚠️ No artist info found for ${artistName}`);
+        }
+
+      } catch (error) {
+        console.error(`❌ Failed to fetch artist info for ${artistName}:`, error);
         this.results.metadata.failedRequests++;
       }
     }

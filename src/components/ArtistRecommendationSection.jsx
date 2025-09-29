@@ -318,6 +318,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             // Look up additional artist metadata if available
             const artistInfo = externalData?.artistInfo?.[artistName] || null;
 
+
             artistScores.set(normalizedName, {
               artist: artistName,
               totalScore: 0,
