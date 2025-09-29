@@ -428,19 +428,30 @@ export class RecommendationDataFetcher {
   async fetchArtistInfoForSimilarArtists() {
     console.log('🎵 Fetching artist info for similar artists (for diversity filtering)');
 
-    const similarArtistNames = new Set();
+    const similarArtistsMap = new Map();
 
-    // Collect all similar artist names
+    // Collect all similar artists with both name AND mbid
     Object.values(this.results.similarArtists).forEach(artistData => {
       artistData.similarArtists.slice(0, 5).forEach(similarArtist => { // Take top 5 per source artist
-        similarArtistNames.add(similarArtist.name);
+        const artistKey = similarArtist.name.toLowerCase();
+        if (!similarArtistsMap.has(artistKey)) {
+          similarArtistsMap.set(artistKey, {
+            name: similarArtist.name,
+            mbid: similarArtist.mbid || null
+          });
+        }
       });
     });
 
-    const artistsToProcess = Array.from(similarArtistNames).slice(0, 15); // Limit total requests
-    console.log(`🎵 Processing ${artistsToProcess.length} similar artists for genre info:`, artistsToProcess);
+    const artistsToProcess = Array.from(similarArtistsMap.values()).slice(0, 15); // Limit total requests
+    console.log(`🎵 Processing ${artistsToProcess.length} similar artists for genre info:`,
+                artistsToProcess.map(a => `${a.name}${a.mbid ? ' (MBID: ' + a.mbid.substring(0, 8) + '...)' : ' (no MBID)'}`)
+    );
 
-    for (const artistName of artistsToProcess) {
+    for (const artistData of artistsToProcess) {
+      const artistName = artistData.name;
+      const artistMbid = artistData.mbid;
+
       try {
         // Skip if we already have artist info for this artist
         if (this.results.artistInfo && this.results.artistInfo[artistName]) {
@@ -456,7 +467,7 @@ export class RecommendationDataFetcher {
               sourceArtist: artistName,
               sourceData: { artist: artistName },
               name: artistName,
-              mbid: cachedMetadata.metadata.mbid || null,
+              mbid: cachedMetadata.metadata.mbid || artistMbid,
               tags: cachedMetadata.metadata.genres || [],
               playcount: cachedMetadata.metadata.playcount || 0,
               listeners: cachedMetadata.metadata.listeners || 0
@@ -468,7 +479,8 @@ export class RecommendationDataFetcher {
 
         await this.delay(this.options.requestDelayMs);
 
-        const response = await this.lastfm.getArtistInfo(artistName);
+        // Use MBID if available for more accurate lookups
+        const response = await this.lastfm.getArtistInfo(artistName, 'en', artistMbid);
 
         this.results.metadata.totalRequests++;
 

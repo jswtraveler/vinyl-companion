@@ -202,13 +202,22 @@ export class LastFmClient {
    * @param {string} lang - Language for biography (default: 'en')
    * @returns {Promise<Object>} Artist information
    */
-  async getArtistInfo(artist, lang = 'en') {
-    if (!artist) throw new Error('Artist name is required');
+  async getArtistInfo(artist, lang = 'en', mbid = null) {
+    // Either artist name or mbid is required
+    if (!artist && !mbid) throw new Error('Artist name or MBID is required');
 
-    return this.makeRequest('artist.getinfo', {
-      artist: artist.trim(),
-      lang
-    });
+    const params = { lang };
+
+    // Prefer MBID for more accurate lookups
+    if (mbid && mbid.trim()) {
+      params.mbid = mbid.trim();
+      console.log(`🎵 Last.fm getArtistInfo using MBID: ${mbid}`);
+    } else if (artist) {
+      params.artist = artist.trim();
+      console.log(`🎵 Last.fm getArtistInfo using name: ${artist}`);
+    }
+
+    return this.makeRequest('artist.getinfo', params);
   }
 
   /**
