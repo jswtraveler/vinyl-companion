@@ -242,12 +242,11 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       const dataFetcher = recommendationService.dataFetcher;
       console.log('📊 Fetching artist similarity data...');
 
-      // Extract artist names from profile (it's an array of objects with artist and count)
-      const artistNames = profile.artists?.map(a => a.artist || a.name || a) || [];
-      console.log('📊 Artist names to fetch:', artistNames.slice(0, 3));
+      // Profile.artists is already in correct format: [{artist: "name", count: number}, ...]
+      console.log('📊 Artists to fetch (sample):', profile.artists?.slice(0, 3));
 
-      // Ensure we fetch similar artists data
-      await dataFetcher.fetchSimilarArtistsData(artistNames);
+      // Pass the full artist objects (not just names) to fetchSimilarArtistsData
+      await dataFetcher.fetchSimilarArtistsData(profile.artists || []);
       console.log('📊 Similarity data fetched:', Object.keys(dataFetcher.results.similarArtists || {}));
 
       // CRITICAL: Fetch artist info (tags/genres) for similar artists to enable diversity filtering
