@@ -486,7 +486,11 @@ export class RecommendationDataFetcher {
 
         if (response?.artist) {
           const artist = response.artist;
-          this.results.artistInfo[artistName] = {
+          // Use the artist name from Last.fm response as the key for consistency
+          // Also store under the requested name for fallback lookups
+          const canonicalName = artist.name;
+
+          const artistInfoData = {
             sourceArtist: artistName,
             sourceData: { artist: artistName },
             name: artist.name,
@@ -510,6 +514,15 @@ export class RecommendationDataFetcher {
             })) : [],
             image: this.extractImageUrl(artist.image)
           };
+
+          // Store under canonical name (Last.fm's response)
+          this.results.artistInfo[canonicalName] = artistInfoData;
+
+          // Also store under requested name if different (for fallback lookups)
+          if (artistName !== canonicalName) {
+            this.results.artistInfo[artistName] = artistInfoData;
+            console.log(`📝 Artist name mismatch: requested "${artistName}", got "${canonicalName}"`);
+          }
 
           // Cache the response
           if (this.cacheService) {
