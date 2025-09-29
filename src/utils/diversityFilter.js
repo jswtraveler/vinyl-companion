@@ -26,6 +26,18 @@ export function applyDiversityFilter(recommendations, options = {}) {
 
   console.log(`🎯 Applying diversity filter to ${recommendations.length} recommendations`);
 
+  // Debug: Sample first recommendation to see structure
+  if (recommendations.length > 0) {
+    const sample = recommendations[0];
+    console.log('🎯 Sample recommendation structure:', {
+      artist: sample.artist,
+      hasMetadata: !!sample.metadata,
+      metadataKeys: sample.metadata ? Object.keys(sample.metadata) : [],
+      genres: extractGenres(sample),
+      decade: extractDecade(sample)
+    });
+  }
+
   // Check if we have meaningful diversity metadata
   const hasGenreData = recommendations.some(item => extractGenres(item).length > 0);
   const hasYearData = recommendations.some(item => extractDecade(item) !== null);

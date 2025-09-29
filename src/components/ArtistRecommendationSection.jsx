@@ -247,22 +247,20 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       console.log('📊 Artist names to fetch:', artistNames.slice(0, 3));
 
       // Ensure we fetch similar artists data
-      const externalData = await dataFetcher.fetchSimilarArtistsData(artistNames);
-      console.log('📊 Similarity data fetched:', Object.keys(externalData || {}));
+      await dataFetcher.fetchSimilarArtistsData(artistNames);
+      console.log('📊 Similarity data fetched:', Object.keys(dataFetcher.results.similarArtists || {}));
 
-      if (externalData && Object.keys(externalData).length > 0) {
+      // CRITICAL: Fetch artist info (tags/genres) for similar artists to enable diversity filtering
+      console.log('📊 Fetching artist metadata for diversity filtering...');
+      await dataFetcher.fetchArtistInfoForSimilarArtists();
+      console.log('📊 Artist metadata fetched:', Object.keys(dataFetcher.results.artistInfo || {}).length, 'artists');
+
+      const externalData = dataFetcher.results;
+
+      if (externalData && Object.keys(externalData.similarArtists || {}).length > 0) {
         console.log('📊 Building artist recommendations from similarity data...');
 
-        // Create the data structure expected by buildArtistRecommendations
-        const formattedData = {
-          similarArtists: externalData,
-          metadata: {
-            source: 'basic_similarity_fetch',
-            timestamp: Date.now()
-          }
-        };
-
-        const artistRecs = await buildArtistRecommendations(formattedData, albums);
+        const artistRecs = await buildArtistRecommendations(externalData, albums);
         console.log('📊 Built recommendations:', artistRecs?.total || 0, 'artists');
         return artistRecs;
       } else {
@@ -318,6 +316,17 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             // Look up additional artist metadata if available
             const artistInfo = externalData?.artistInfo?.[artistName] || null;
 
+            // Extract genres from artist info tags
+            const genres = artistInfo?.tags ? artistInfo.tags.map(tag =>
+              typeof tag === 'object' ? tag.name : tag
+            ).filter(Boolean).slice(0, 3) : [];
+
+            console.log(`🎨 Artist ${artistName} metadata:`, {
+              hasInfo: !!artistInfo,
+              tagCount: artistInfo?.tags?.length || 0,
+              genreCount: genres.length,
+              genres: genres
+            });
 
             artistScores.set(normalizedName, {
               artist: artistName,
@@ -327,14 +336,21 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               maxSimilarity: 0,
               mbid: similarArtist.mbid,
               image: similarArtist.image,
-              // Add artist metadata for diversity filtering
+              // Add artist metadata for diversity filtering - CRITICAL for diversity to work
               metadata: artistInfo ? {
                 tags: artistInfo.tags || [],
-                genres: artistInfo.tags ? artistInfo.tags.map(tag => tag.name).slice(0, 3) : [],
+                genres: genres,  // Already extracted and formatted
                 playcount: artistInfo.playcount || 0,
                 listeners: artistInfo.listeners || 0,
                 bio: artistInfo.bio || null
-              } : null
+              } : {
+                // Even without artist info, provide empty structure
+                tags: [],
+                genres: [],
+                playcount: 0,
+                listeners: 0,
+                bio: null
+              }
             });
           }
 
