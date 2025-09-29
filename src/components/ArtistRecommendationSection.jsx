@@ -315,6 +315,9 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           const connectionStrength = parseFloat(similarArtist.match) || 0;
 
           if (!artistScores.has(normalizedName)) {
+            // Look up additional artist metadata if available
+            const artistInfo = externalData?.artistInfo?.[artistName] || null;
+
             artistScores.set(normalizedName, {
               artist: artistName,
               totalScore: 0,
@@ -322,7 +325,15 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               connections: [],
               maxSimilarity: 0,
               mbid: similarArtist.mbid,
-              image: similarArtist.image
+              image: similarArtist.image,
+              // Add artist metadata for diversity filtering
+              metadata: artistInfo ? {
+                tags: artistInfo.tags || [],
+                genres: artistInfo.tags ? artistInfo.tags.map(tag => tag.name).slice(0, 3) : [],
+                playcount: artistInfo.playcount || 0,
+                listeners: artistInfo.listeners || 0,
+                bio: artistInfo.bio || null
+              } : null
             });
           }
 

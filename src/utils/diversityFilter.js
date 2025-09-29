@@ -26,6 +26,18 @@ export function applyDiversityFilter(recommendations, options = {}) {
 
   console.log(`🎯 Applying diversity filter to ${recommendations.length} recommendations`);
 
+  // Check if we have meaningful diversity metadata
+  const hasGenreData = recommendations.some(item => extractGenres(item).length > 0);
+  const hasYearData = recommendations.some(item => extractDecade(item) !== null);
+
+  console.log(`🎯 Diversity metadata available: genres=${hasGenreData}, years=${hasYearData}`);
+
+  if (!hasGenreData && !hasYearData) {
+    // Fallback: Basic name-based diversity to prevent clustering of similar artist names
+    console.log('🎯 Using fallback name-based diversity filtering');
+    return applyNameBasedDiversity(recommendations, config);
+  }
+
   // Apply MMR (Maximal Marginal Relevance) algorithm
   const diverseRecommendations = maximalMarginalRelevance(
     recommendations,
@@ -39,6 +51,116 @@ export function applyDiversityFilter(recommendations, options = {}) {
   console.log(`🎯 Diversity filter result: ${constrainedRecommendations.length} recommendations (${recommendations.length - constrainedRecommendations.length} filtered out)`);
 
   return constrainedRecommendations;
+}
+
+/**
+ * Fallback diversity filtering based on artist name patterns
+ * Used when insufficient metadata is available
+ * @param {Array} recommendations - Artist recommendations
+ * @param {Object} config - Diversity configuration
+ * @returns {Array} Filtered recommendations with name-based diversity
+ */
+function applyNameBasedDiversity(recommendations, config) {
+  if (recommendations.length <= 6) {
+    // If we have few recommendations, don't filter them
+    return recommendations;
+  }
+
+  const selected = [];
+  const remaining = [...recommendations];
+  const usedPatterns = new Set();
+
+  // Always take the top recommendation
+  if (remaining.length > 0) {
+    const first = remaining.shift();
+    selected.push(first);
+    usedPatterns.add(extractNamePattern(first.artist));
+  }
+
+  // Select diverse artists avoiding similar name patterns
+  while (remaining.length > 0 && selected.length < (config.maxResults || 15)) {
+    let bestCandidate = null;
+    let bestIndex = -1;
+    let maxDiversity = -1;
+
+    for (let i = 0; i < remaining.length; i++) {
+      const candidate = remaining[i];
+      const pattern = extractNamePattern(candidate.artist);
+
+      // Calculate diversity score based on name similarity to already selected
+      let diversity = 1.0;
+
+      // Penalize if we already have this exact pattern
+      if (usedPatterns.has(pattern)) {
+        diversity *= 0.3;
+      }
+
+      // Penalize names that are too similar to already selected
+      for (const selectedArtist of selected) {
+        const similarity = calculateNameSimilarity(candidate.artist, selectedArtist.artist);
+        if (similarity > 0.7) {
+          diversity *= (1 - similarity);
+        }
+      }
+
+      if (diversity > maxDiversity) {
+        maxDiversity = diversity;
+        bestCandidate = candidate;
+        bestIndex = i;
+      }
+    }
+
+    if (bestCandidate && bestIndex >= 0) {
+      selected.push(remaining.splice(bestIndex, 1)[0]);
+      usedPatterns.add(extractNamePattern(bestCandidate.artist));
+    } else {
+      // If no good candidates, take the next highest scored
+      selected.push(remaining.shift());
+    }
+  }
+
+  console.log(`🎯 Name-based diversity: ${selected.length} artists selected from ${recommendations.length}`);
+  return selected;
+}
+
+/**
+ * Extract a pattern from an artist name for diversity checking
+ */
+function extractNamePattern(artistName) {
+  const name = artistName.toLowerCase().trim();
+
+  // Extract patterns like "The [Band]", "[Name] Band", etc.
+  if (name.startsWith('the ')) {
+    return 'the_prefix';
+  }
+  if (name.endsWith(' band') || name.endsWith(' group')) {
+    return 'band_suffix';
+  }
+  if (name.includes(' & ') || name.includes(' and ')) {
+    return 'collaboration';
+  }
+
+  // Group by first letter to spread alphabetically
+  return name.charAt(0);
+}
+
+/**
+ * Calculate basic name similarity between two artist names
+ */
+function calculateNameSimilarity(name1, name2) {
+  const n1 = name1.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const n2 = name2.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  if (n1 === n2) return 1.0;
+  if (n1.includes(n2) || n2.includes(n1)) return 0.8;
+
+  // Simple character overlap
+  const set1 = new Set(n1);
+  const set2 = new Set(n2);
+  const intersection = new Set([...set1].filter(x => set2.has(x)));
+  const union = new Set([...set1, ...set2]);
+
+  return intersection.size / union.size;
 }
 
 /**
@@ -214,8 +336,18 @@ function extractGenres(item) {
   const genres = item.genres || item.primaryGenres || item.tags || item.metadata?.genres || [];
 
   // Handle artist recommendation format where genres might be in metadata
-  if (item.metadata?.tags) {
-    return item.metadata.tags.slice(0, 2);
+  if (item.metadata?.genres && Array.isArray(item.metadata.genres)) {
+    return item.metadata.genres.slice(0, 2);
+  }
+
+  // Handle tags from artist info data
+  if (item.metadata?.tags && Array.isArray(item.metadata.tags)) {
+    // Tags are objects with {name: 'rock', url: '...'} structure
+    const tagNames = item.metadata.tags
+      .map(tag => typeof tag === 'object' ? tag.name : tag)
+      .filter(Boolean)
+      .slice(0, 2);
+    return tagNames;
   }
 
   if (Array.isArray(genres)) {
@@ -223,13 +355,6 @@ function extractGenres(item) {
   }
   if (typeof genres === 'string') {
     return [genres];
-  }
-
-  // Fallback: try to infer from connections to user's collection
-  // This can help with genre detection when direct genre info is missing
-  if (item.connections && item.connections.length > 0) {
-    // Could potentially look up genres from connected artists
-    // For now, return empty array
   }
 
   return [];
