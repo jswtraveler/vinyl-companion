@@ -160,7 +160,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             ...artistRecommendations.metadata,
             cached: fromCache,
             diversityEnabled,
-            diversityStats
+            diversityStats,
+            originalArtists: artistRecommendations.artists // Store original unfiltered list
           }
         });
         console.log('✅ Artist recommendations ready');
@@ -184,6 +185,46 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
     generateArtistRecommendations();
   }, [generateArtistRecommendations, hasEnoughAlbums]);
+
+  // Separate effect to handle diversity changes on existing recommendations
+  useEffect(() => {
+    if (!recommendations || !recommendations.artists || recommendations.artists.length === 0) {
+      return;
+    }
+
+    console.log(`🎯 Reapplying diversity filter (enabled: ${diversityEnabled}) to existing recommendations`);
+
+    // Get the original unfiltered artists from metadata if available
+    const originalArtists = recommendations.metadata?.originalArtists || recommendations.artists;
+    let finalArtists = [...originalArtists];
+    let diversityStats = null;
+
+    if (diversityEnabled) {
+      console.log('🎯 Applying diversity filter to existing recommendations...');
+      finalArtists = applyDiversityFilter(originalArtists, {
+        maxSameGenre: 3,
+        maxSameDecade: 4,
+        diversityWeight: 0.3,
+        genreDistributionTarget: 0.4
+      });
+
+      diversityStats = getDiversityStats(finalArtists);
+      console.log('🎯 Diversity stats:', diversityStats);
+    }
+
+    // Update recommendations with new diversity filtering
+    setRecommendations(prev => ({
+      ...prev,
+      artists: finalArtists,
+      total: finalArtists.length,
+      metadata: {
+        ...prev.metadata,
+        diversityEnabled,
+        diversityStats,
+        originalArtists: prev.metadata?.originalArtists || prev.artists // Store original for future toggles
+      }
+    }));
+  }, [diversityEnabled]); // Only trigger when diversity setting changes
 
   const generateBasicRecommendations = async (albums) => {
     try {
@@ -402,6 +443,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
                 const newDiversity = !diversityEnabled;
                 setDiversityEnabled(newDiversity);
                 console.log(`🎯 ${newDiversity ? 'Enabling' : 'Disabling'} diversity filtering`);
+
+                // No need to regenerate - the useEffect will handle it
               }}
               disabled={loading}
               className={`px-3 py-1 text-xs rounded border ${
