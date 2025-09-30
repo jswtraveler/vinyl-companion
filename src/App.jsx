@@ -20,6 +20,13 @@ import { supabase } from './services/supabase'
 import SupabaseDatabase from './services/supabaseDatabase'
 import { MOOD_CATEGORIES } from './utils/moodUtils'
 
+// New page components for tab navigation
+import CollectionPage from './pages/CollectionPage'
+import DiscoverPage from './pages/DiscoverPage'
+import AddAlbumPage from './pages/AddAlbumPage'
+import BottomTabBar from './components/navigation/BottomTabBar'
+import QuickAddModal from './components/QuickAddModal'
+
 function App() {
   const [showAddForm, setShowAddForm] = useState(false)
   const [albums, setAlbums] = useState([])
@@ -34,6 +41,7 @@ function App() {
   const [showStats, setShowStats] = useState(false)
   const [showCamera, setShowCamera] = useState(false)
   const [showAlbumSearch, setShowAlbumSearch] = useState(false)
+  const [albumSearchQuery, setAlbumSearchQuery] = useState('')
   const [showAIAnalysis, setShowAIAnalysis] = useState(false)
   
   // Authentication state
@@ -49,6 +57,10 @@ function App() {
   const [identificationResults, setIdentificationResults] = useState(null)
   const [identifyingImage, setIdentifyingImage] = useState(null)
   const [showIdentificationResults, setShowIdentificationResults] = useState(false)
+
+  // Tab navigation state
+  const [currentTab, setCurrentTab] = useState('collection')
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   // Authentication effect - check for existing session
   useEffect(() => {
@@ -221,12 +233,20 @@ function App() {
     if (albums.length === 0) return null
 
     const totalAlbums = albums.length
+    const artistSet = new Set()
     const genreCount = {}
     const formatCount = {}
     const decadeCount = {}
     let totalValue = 0
+    let totalYears = 0
+    let yearCount = 0
 
     albums.forEach(album => {
+      // Artist statistics
+      if (album.artist) {
+        artistSet.add(album.artist)
+      }
+
       // Genre statistics
       if (album.genre && Array.isArray(album.genre)) {
         album.genre.forEach(genre => {
@@ -243,6 +263,8 @@ function App() {
       if (album.year) {
         const decade = Math.floor(album.year / 10) * 10
         decadeCount[decade] = (decadeCount[decade] || 0) + 1
+        totalYears += album.year
+        yearCount++
       }
 
       // Value calculation
@@ -253,9 +275,12 @@ function App() {
 
     return {
       totalAlbums,
+      totalArtists: artistSet.size,
+      totalGenres: Object.keys(genreCount).length,
+      averageYear: yearCount > 0 ? Math.round(totalYears / yearCount) : 0,
       totalValue,
       averageValue: totalValue / totalAlbums,
-      topGenres: Object.entries(genreCount).sort((a, b) => b[1] - a[1]).slice(0, 5),
+      topGenres: Object.entries(genreCount).map(([genre, count]) => ({ genre, count })).sort((a, b) => b.count - a.count).slice(0, 5),
       formats: Object.entries(formatCount).sort((a, b) => b[1] - a[1]),
       decades: Object.entries(decadeCount).sort((a, b) => a[0] - b[0])
     }
@@ -263,6 +288,7 @@ function App() {
 
   // Handlers
   const handleFindByName = () => {
+    setAlbumSearchQuery('');
     setShowAlbumSearch(true);
   };
 
@@ -766,6 +792,82 @@ function App() {
     setIsIdentifying(false);
   };
 
+  // Tab navigation helpers
+  const handleQuickAddSearch = (searchTerm) => {
+    console.log('Quick add search:', searchTerm);
+    setAlbumSearchQuery(searchTerm);
+    setShowAlbumSearch(true);
+    setShowQuickAdd(false);
+  };
+
+  const handleQuickAddAdvanced = () => {
+    setCurrentTab('add');
+    setShowQuickAdd(false);
+  };
+
+  const handleAddPageFindByName = () => {
+    setAlbumSearchQuery('');
+    setShowAlbumSearch(true);
+  };
+
+  const handleAddPageIdentifyImage = () => {
+    setShowCamera(true);
+  };
+
+  const handleAddPageManualEntry = () => {
+    setShowAddForm(true);
+    setEditingAlbum(null);
+  };
+
+  // Render the appropriate page based on current tab
+  const renderPage = () => {
+    switch (currentTab) {
+      case 'collection':
+        return (
+          <CollectionPage
+            albums={albums}
+            loading={loading}
+            searchQuery={searchQuery}
+            onSearchChange={(e) => setSearchQuery(e.target.value)}
+            sortBy={sortBy}
+            sortOrder={sortOrder}
+            onSortChange={(newSortBy, newSortOrder) => {
+              setSortBy(newSortBy);
+              setSortOrder(newSortOrder);
+            }}
+            filteredAndSortedAlbums={filteredAndSortedAlbums}
+            onAlbumClick={handleEditAlbum}
+            onDeleteAlbum={handleDeleteAlbum}
+            onQuickAdd={() => setShowQuickAdd(true)}
+            stats={stats}
+            showStats={showStats}
+            onToggleStats={toggleStats}
+          />
+        );
+
+      case 'discover':
+        return (
+          <DiscoverPage
+            albums={albums}
+            user={user}
+            useCloudDatabase={useCloudDatabase}
+          />
+        );
+
+      case 'add':
+        return (
+          <AddAlbumPage
+            onFindByName={handleAddPageFindByName}
+            onIdentifyImage={handleAddPageIdentifyImage}
+            onManualEntry={handleAddPageManualEntry}
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black">
       <header className="bg-gray-900 shadow-sm">
@@ -803,290 +905,18 @@ function App() {
           </div>
         )}
 
-        <div className="mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-            <h2 className="text-xl font-semibold text-white">
-              Your Collection ({loading ? '...' : `${filteredAndSortedAlbums.length} of ${albums.length}`} albums)
-            </h2>
-          </div>
+        {/* Tab-based page rendering */}
+        {renderPage()}
 
-          {/* Search Bar with Auth Button */}
-          {albums.length > 0 && (
-            <div className="mb-4 flex items-center gap-3">
-              <div className="flex-1">
-                <SearchBar 
-                  onSearch={handleSearch} 
-                  placeholder="Search by title, artist, genre, label, or year..."
-                />
-              </div>
-              {/* Auth Controls */}
-              {!authLoading && (
-                <>
-                  {user ? (
-                    <button
-                      onClick={handleSignOut}
-                      className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-1 text-sm flex-shrink-0"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      <span>Sign Out</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleSignIn}
-                      className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-1 text-sm flex-shrink-0"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      <span>Sign In</span>
-                    </button>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+        {/* Modals and Overlays - remain global */}
 
-          {/* Auth button when no albums */}
-          {albums.length === 0 && !authLoading && (
-            <div className="mb-4 flex justify-end">
-              {user ? (
-                <button
-                  onClick={handleSignOut}
-                  className="px-3 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 flex items-center space-x-1 text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                  <span>Sign Out</span>
-                </button>
-              ) : (
-                <button
-                  onClick={handleSignIn}
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center space-x-1 text-sm"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  <span>Sign In</span>
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Sort Controls with Stats Button */}
-          {albums.length > 0 && (
-            <div className="mb-4">
-              <div className="flex flex-wrap gap-2 items-center">
-                <button
-                  onClick={toggleStats}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${
-                    showStats 
-                      ? 'bg-black border-gray-500 text-white' 
-                      : 'bg-black border-gray-600 text-white hover:border-gray-400'
-                  }`}
-                >
-                  Stats
-                </button>
-                
-                {/* Sort Dropdown and Direction Toggle */}
-                <div className="flex items-center gap-1">
-                  <div className="relative" ref={sortDropdownRef}>
-                    <button
-                      onClick={() => setShowSortDropdown(!showSortDropdown)}
-                      className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border bg-black border-gray-600 text-white hover:border-gray-400 flex items-center gap-2"
-                    >
-                      {getSortLabel(sortBy)}
-                      <svg className={`w-4 h-4 transition-transform ${showSortDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
-                    
-                    {showSortDropdown && (
-                      <div className="absolute top-full left-0 mt-1 bg-black border border-gray-600 rounded-lg shadow-lg z-10 min-w-full">
-                        {[
-                          { key: 'artist', label: 'Artist' },
-                          { key: 'title', label: 'Album' },
-                          { key: 'dateAdded', label: 'Date Added' },
-                          { key: 'year', label: 'Date Released' }
-                        ].map(({ key, label }) => (
-                          <button
-                            key={key}
-                            onClick={() => handleSortChange(key)}
-                            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-800 transition-colors first:rounded-t-lg last:rounded-b-lg ${
-                              sortBy === key ? 'text-white bg-gray-800' : 'text-gray-300'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  
-                  <button
-                    onClick={toggleSortDirection}
-                    className="px-2 py-1.5 rounded-lg text-sm font-medium transition-colors border bg-black border-gray-600 text-white hover:border-gray-400"
-                    title={`Sort ${sortOrder === 'asc' ? 'ascending' : 'descending'}`}
-                  >
-                    {sortOrder === 'asc' ? '↑' : '↓'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Statistics Section */}
-          {showStats && stats && (
-            <div className="mb-6 bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Collection Statistics</h3>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="text-sm font-medium text-blue-600">Total Albums</h4>
-                  <p className="text-2xl font-bold text-blue-900">{stats.totalAlbums}</p>
-                </div>
-                
-                {stats.totalValue > 0 && (
-                  <>
-                    <div className="bg-green-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-green-600">Total Value</h4>
-                      <p className="text-2xl font-bold text-green-900">${stats.totalValue.toFixed(2)}</p>
-                    </div>
-                    
-                    <div className="bg-yellow-50 p-4 rounded-lg">
-                      <h4 className="text-sm font-medium text-yellow-600">Average Value</h4>
-                      <p className="text-2xl font-bold text-yellow-900">${stats.averageValue.toFixed(2)}</p>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Top Genres */}
-                {stats.topGenres.length > 0 && (
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 mb-2">Top Genres</h4>
-                    <div className="space-y-2">
-                      {stats.topGenres.map(([genre, count]) => (
-                        <div key={genre} className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">{genre}</span>
-                          <span className="text-sm font-medium text-gray-900">{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Formats */}
-                {stats.formats.length > 0 && (
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 mb-2">Formats</h4>
-                    <div className="space-y-2">
-                      {stats.formats.map(([format, count]) => (
-                        <div key={format} className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">{format}</span>
-                          <span className="text-sm font-medium text-gray-900">{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Decades */}
-                {stats.decades.length > 0 && (
-                  <div>
-                    <h4 className="text-md font-semibold text-gray-800 mb-2">By Decade</h4>
-                    <div className="space-y-2">
-                      {stats.decades.map(([decade, count]) => (
-                        <div key={decade} className="flex justify-between items-center">
-                          <span className="text-sm text-gray-600">{decade}s</span>
-                          <span className="text-sm font-medium text-gray-900">{count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Suggestions Section */}
-          {albums.length > 0 && (
-            <SuggestionsSection albums={filteredAndSortedAlbums} />
-          )}
-
-          {/* Artist Recommendations - "Check These Artists Out" */}
-          {albums.length > 0 && (
-            <ArtistRecommendationSection
-              albums={albums}
-              user={user}
-              useCloudDatabase={useCloudDatabase}
-            />
-          )}
-
-          {/* Album Recommendations */}
-          {albums.length > 0 && (
-            <RecommendationSection
-              albums={albums}
-              user={user}
-              useCloudDatabase={useCloudDatabase}
-            />
-          )}
-
-          {/* Search Results Info */}
-          {searchQuery && (
-            <div className="mb-4 text-sm text-gray-400">
-              {filteredAndSortedAlbums.length === 0 ? (
-                <>No albums found for "{searchQuery}"</>
-              ) : filteredAndSortedAlbums.length < albums.length ? (
-                <>Showing {filteredAndSortedAlbums.length} of {albums.length} albums for "{searchQuery}"</>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-400">Loading your vinyl collection...</p>
-          </div>
-        ) : albums.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-            </svg>
-            <h3 className="text-lg font-medium text-white mb-2">No albums yet</h3>
-            <p className="text-gray-400 mb-6">Start building your collection by adding your first vinyl record!</p>
-            <p className="text-gray-400">Use the "Add Manually" button in the header above to add your first album.</p>
-          </div>
-        ) : filteredAndSortedAlbums.length === 0 ? (
-          <div className="text-center py-12">
-            <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <h3 className="text-lg font-medium text-white mb-2">No albums found</h3>
-            <p className="text-gray-400 mb-4">No albums match your search criteria.</p>
-            <button
-              onClick={() => setSearchQuery('')}
-              className="px-4 py-2 bg-black border border-gray-600 text-white rounded-lg hover:border-gray-400"
-            >
-              Clear Search
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredAndSortedAlbums.map((album) => (
-              <AlbumCard 
-                key={album.id} 
-                album={album} 
-                onEdit={handleEditAlbum}
-                onDelete={handleDeleteAlbum}
-              />
-            ))}
-          </div>
-        )}
+        {/* Quick Add Modal */}
+        <QuickAddModal
+          isOpen={showQuickAdd}
+          onClose={() => setShowQuickAdd(false)}
+          onSearch={handleQuickAddSearch}
+          onAdvanced={handleQuickAddAdvanced}
+        />
 
         {showAddForm && (
           <div style={{
@@ -1146,10 +976,15 @@ function App() {
 
         {/* Album Search by Name Modal */}
         {showAlbumSearch && (
-          <AlbumSearchModal 
-            onClose={() => setShowAlbumSearch(false)}
+          <AlbumSearchModal
+            onClose={() => {
+              setShowAlbumSearch(false);
+              setAlbumSearchQuery('');
+            }}
+            initialSearchQuery={albumSearchQuery}
             onSelectAlbum={(album) => {
               setShowAlbumSearch(false);
+              setAlbumSearchQuery('');
               // Convert search result to new album format (remove external ID)
               const newAlbum = createNewAlbum({
                 title: album.title,
@@ -1193,101 +1028,14 @@ function App() {
 
       </main>
 
-      {/* Floating Action Button */}
-      <FloatingActionButton 
-        onCamera={handleCameraClick}
-        onSearch={handleFindByName}
-        onAdd={handleAddManually}
-        onAIAnalysis={handleAIAnalysis}
-        hasAlbums={albums.length > 0}
+      {/* Bottom Tab Navigation */}
+      <BottomTabBar
+        currentTab={currentTab}
+        onNavigate={setCurrentTab}
       />
     </div>
   )
 }
-
-// Floating Action Button Component
-const FloatingActionButton = ({ onCamera, onSearch, onAdd, onAIAnalysis, hasAlbums }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const toggleOpen = () => setIsOpen(!isOpen);
-
-  return (
-    <div className="fixed bottom-6 right-6 z-50">
-      {/* Action buttons */}
-      {isOpen && (
-        <div className="flex flex-col items-end space-y-3 mb-3">
-          {/* AI Analysis Button - only show if user has albums */}
-          {hasAlbums && (
-            <button
-              onClick={() => {
-                onAIAnalysis();
-                setIsOpen(false);
-              }}
-              className="flex items-center space-x-3 bg-purple-600 hover:bg-purple-700 border border-purple-500 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
-            >
-              <span className="text-sm font-medium">✨ AI Analysis</span>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-              </svg>
-            </button>
-          )}
-          
-          <button
-            onClick={() => {
-              onCamera();
-              setIsOpen(false);
-            }}
-            className="flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
-          >
-            <span className="text-sm font-medium">Identify Album</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-          </button>
-          
-          <button
-            onClick={() => {
-              onSearch();
-              setIsOpen(false);
-            }}
-            className="flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
-          >
-            <span className="text-sm font-medium">Find by Name</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </button>
-          
-          <button
-            onClick={() => {
-              onAdd();
-              setIsOpen(false);
-            }}
-            className="flex items-center space-x-3 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white px-4 py-3 rounded-full shadow-lg transition-all duration-200 transform hover:scale-105"
-          >
-            <span className="text-sm font-medium">Add Manually</span>
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-          </button>
-        </div>
-      )}
-
-      {/* Main FAB */}
-      <button
-        onClick={toggleOpen}
-        className={`w-14 h-14 bg-gray-800 hover:bg-gray-700 border border-gray-600 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 ${
-          isOpen ? 'rotate-45' : 'rotate-0'
-        }`}
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      </button>
-    </div>
-  );
-};
 
 
 export default App
