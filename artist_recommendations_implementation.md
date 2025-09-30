@@ -307,6 +307,42 @@ const enhanceRecommendations = async (baseRecs, userPreferences) => {
 
 ---
 
+## ⚠️ **Known API Limitations**
+
+### **Last.fm API - Artist Images No Longer Available**
+
+**Issue**: As of 2024, the Last.fm API has discontinued providing artist images in their API responses.
+
+**Affected Endpoints**:
+- `artist.getsimilar` - No longer includes `image` array in response
+- `artist.getinfo` - No longer includes artist profile images
+- Any similar artist data fetched from Last.fm
+
+**Impact on Application**:
+- Artist recommendation cards display generic placeholder icons instead of artist photos
+- No visual differentiation between artists in recommendation lists
+- UI component `ArtistRecommendationCard` falls back to SVG icon (person silhouette)
+
+**Code References**:
+- src/components/ArtistRecommendationSection.jsx:491 - `image: similarArtist.image` stores image URL (now always empty/undefined)
+- src/components/ArtistRecommendationSection.jsx:689-708 - Renders fallback icon when image unavailable
+
+**Workaround Options** (not yet implemented):
+1. **MusicBrainz Cover Art Archive**: Use MBID to fetch artist images from Cover Art Archive
+2. **Discogs API**: Artist images available (requires separate API key)
+3. **Fanart.tv**: Artist images and fanart (requires API key, rate limited)
+4. **Spotify Web API**: Artist images available (requires OAuth)
+5. **Manual Curation**: Pre-fetch and store popular artist images in database
+
+**Current Behavior**:
+- All artist recommendation cards display generic SVG person icon
+- Fallback is graceful and doesn't affect functionality
+- Users can still identify artists by name and metadata
+
+**Priority**: Low - Visual enhancement only, no functional impact on recommendations
+
+---
+
 ## 🐛 **Current Debug Session (September 2024)**
 
 ### **Problem Description**
