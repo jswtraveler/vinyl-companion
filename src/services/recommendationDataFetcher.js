@@ -555,6 +555,111 @@ export class RecommendationDataFetcher {
   }
 
   /**
+   * Fetch metadata for a specific list of artists (two-pass approach)
+   * More efficient than fetchArtistInfoForSimilarArtists - fetches only what's needed
+   * @param {Array} artists - [{name: "Artist", mbid: "abc123"}, ...]
+   * @param {Object} options - {maxConcurrent: 30, onProgress: callback}
+   * @returns {Promise<Object>} Map of artistName -> artistInfo
+   */
+  async fetchMetadataForArtists(artists, options = {}) {
+    const {
+      maxConcurrent = 30,
+      onProgress = null
+    } = options;
+
+    console.log(`🎯 Fetching metadata for ${Math.min(artists.length, maxConcurrent)} specific artists...`);
+
+    const results = {};
+    let processed = 0;
+    const startTime = Date.now();
+
+    for (const artist of artists.slice(0, maxConcurrent)) {
+      try {
+        const artistName = artist.name;
+        const artistMbid = artist.mbid;
+
+        // Check persistent cache first
+        if (this.cacheService) {
+          const cached = await this.cacheService.getArtistMetadataCache(artistName, 'lastfm');
+          if (cached) {
+            // Use cached data
+            results[artistName] = {
+              tags: cached.metadata.tags || [],
+              genres: cached.metadata.genres || [],
+              playcount: cached.metadata.playcount || 0,
+              listeners: cached.metadata.listeners || 0,
+              mbid: cached.metadata.mbid || artistMbid
+            };
+            processed++;
+            if (onProgress) onProgress(processed, Math.min(artists.length, maxConcurrent));
+            console.log(`⚡ Cache hit for ${artistName}`);
+            continue;
+          }
+        }
+
+        // Fetch from Last.fm using MBID if available
+        await this.delay(this.options.requestDelayMs);
+        const response = await this.lastfm.getArtistInfo(artistName, 'en', artistMbid);
+
+        if (response?.artist) {
+          const artistData = response.artist;
+
+          // Extract genres from tags
+          const genres = artistData.tags?.tag ? artistData.tags.tag.map(tag => tag.name) : [];
+
+          results[artistName] = {
+            tags: artistData.tags?.tag || [],
+            genres: genres,
+            playcount: parseInt(artistData.stats?.playcount) || 0,
+            listeners: parseInt(artistData.stats?.listeners) || 0,
+            mbid: artistData.mbid || artistMbid
+          };
+
+          // Store under canonical name if different
+          const canonicalName = artistData.name;
+          if (canonicalName !== artistName) {
+            results[canonicalName] = results[artistName];
+          }
+
+          // Cache for future use
+          if (this.cacheService) {
+            await this.cacheService.setArtistMetadataCache(
+              artistName,
+              artistData.mbid || artistMbid,
+              {
+                name: artistData.name,
+                mbid: artistData.mbid || artistMbid,
+                playcount: parseInt(artistData.stats?.playcount) || 0,
+                listeners: parseInt(artistData.stats?.listeners) || 0,
+                genres: genres,
+                bio: artistData.bio?.summary || null
+              },
+              'lastfm'
+            );
+          }
+
+          console.log(`✅ Fetched metadata for ${artistName} (${genres.length} genres)`);
+        } else {
+          console.log(`⚠️ No metadata found for ${artistName}`);
+        }
+
+        processed++;
+        if (onProgress) onProgress(processed, Math.min(artists.length, maxConcurrent));
+
+      } catch (error) {
+        console.error(`❌ Failed to fetch metadata for ${artist.name}:`, error);
+        processed++;
+        if (onProgress) onProgress(processed, Math.min(artists.length, maxConcurrent));
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    console.log(`🎯 Metadata fetch complete: ${Object.keys(results).length} artists in ${duration}ms`);
+
+    return results;
+  }
+
+  /**
    * Aggregate and process all fetched data into candidate albums
    */
   aggregateResults() {

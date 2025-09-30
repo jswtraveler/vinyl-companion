@@ -406,3 +406,282 @@ To achieve full functionality in production:
 
 This debugging session revealed that the issue was **code logic**, not environment differences, making the fix applicable to both localhost and production environments.
 
+---
+
+## 🎯 **Metadata Coverage Issue & Progressive Enhancement (September 2024)**
+
+### **Problem: Sparse Metadata Coverage**
+
+**Symptoms Observed:**
+- Most artist recommendations show `hasInfo: false`
+- Basic algorithm: "4 genres • 17% max genre" (only 4 of 20 have metadata)
+- Graph algorithm: "0 genres • -Infinity%" (none have metadata)
+- Diversity filtering falls back to name-based approach
+- Toggle between diverse/all shows minimal difference
+
+**Root Cause Analysis:**
+
+The metadata fetching strategy has a fundamental mismatch:
+
+1. **Candidate Pool Size**: 8 owned artists × 20 similar artists = **160 potential candidates**
+2. **Current Metadata Fetching**: Only fetches for **15 artists** (top 5 per source artist, max 15 total)
+3. **Recommendations Generated**: Returns top **20-30 artists** from the 160 candidates
+4. **Result**: 160 candidates, 15 have metadata, 20 are displayed → **~25% coverage at best**
+
+**Why Graph Algorithm Has 0% Coverage:**
+
+Graph algorithm completely bypasses the metadata fetching step:
+```javascript
+// Graph flow (no metadata!)
+graphService.generateGraphRecommendations() → return results
+// vs
+// Basic flow (limited metadata)
+fetchSimilarArtists() → fetchMetadataFor15Artists() → score160Artists() → return top 20
+```
+
+### **Current Architecture**
+
+**Metadata Fetch Timing (PROBLEM):**
+```
+1. Fetch similar artists (160 candidates)
+2. Fetch metadata for 15 artists ← TOO EARLY, TOO FEW!
+3. Score all 160 artists
+4. Return top 20 (only 2-4 have metadata)
+```
+
+**Why This Doesn't Work:**
+- We don't know which 20 artists will be top-ranked until AFTER scoring
+- Fetching metadata for 15 random artists is like buying lottery tickets
+- The 15 we fetch metadata for might not even make the top 20
+
+### **Solution: Two-Pass Approach with Progressive Enhancement**
+
+**Optimal Flow:**
+```
+1. Fetch similar artists (160 candidates)
+2. Score all 160 artists WITHOUT metadata (fast!)
+3. Take top 30 by score
+4. Fetch metadata ONLY for those 30 artists
+5. Merge metadata into recommendations
+6. Apply diversity filtering (now has real data)
+7. Return top 20 with 100% metadata coverage
+```
+
+### **Implementation Plan: Option A + Progressive Enhancement**
+
+#### **Phase 1: Immediate Load (0-2 seconds)**
+Show recommendations instantly with scoring, no metadata:
+
+```javascript
+// 1. Score artists (fast, no API calls)
+const scoredArtists = await scoreAllCandidates(candidatePool);
+
+// 2. Show top 20 immediately
+setRecommendations({
+  artists: scoredArtists.slice(0, 20),
+  metadata: {
+    status: 'loading-metadata',
+    coverage: '0%'
+  }
+});
+
+// 3. User sees recommendations right away (no 30 second wait!)
+```
+
+**User Experience:**
+- Recommendations appear instantly
+- Message: "⚡ Loading genre data..."
+- Diversity toggle disabled initially
+
+#### **Phase 2: Targeted Metadata Fetch (2-32 seconds)**
+Fetch metadata only for top 30 candidates:
+
+```javascript
+// 4. Extract top 30 for metadata
+const topCandidates = scoredArtists.slice(0, 30);
+const artistsToFetch = topCandidates.map(a => ({
+  name: a.artist,
+  mbid: a.mbid
+}));
+
+// 5. Fetch metadata (30 API calls × 1 second = 30 seconds)
+const artistMetadata = await fetchMetadataForArtists(artistsToFetch);
+
+// 6. Update recommendations with metadata
+setRecommendations(prev => ({
+  ...prev,
+  artists: mergeMetadata(prev.artists, artistMetadata),
+  metadata: {
+    status: 'complete',
+    coverage: '100%'
+  }
+}));
+```
+
+**User Experience:**
+- Progress indicator shows: "Loading genre data... 10/30"
+- Recommendations stay visible while metadata loads
+- Diversity toggle enables when metadata is ready
+- Stats update: "✅ 15 genres represented"
+
+#### **Phase 3: Background Cache Warming (Ongoing)**
+Pre-fetch remaining candidates in background:
+
+```javascript
+// 7. After showing top 20, warm cache for rest
+async function warmCacheInBackground() {
+  const remaining = scoredArtists.slice(30, 160); // Next 130 artists
+
+  for (const artist of remaining) {
+    // Check cache first
+    if (await hasMetadataInCache(artist.name)) continue;
+
+    // Fetch with low priority (doesn't block UI)
+    await fetchMetadata(artist, { priority: 'low' });
+
+    // Yield to browser between calls
+    await yieldToMainThread();
+  }
+
+  console.log('✅ Full metadata cache warmed (160 artists)');
+}
+
+// Run in background, non-blocking
+setTimeout(() => warmCacheInBackground(), 5000);
+```
+
+**Benefits:**
+- Next time user generates recommendations, most will be cached
+- Progressive improvement over time
+- No impact on current session
+
+### **New Service Method: `fetchMetadataForArtists()`**
+
+**Location:** `src/services/recommendationDataFetcher.js`
+
+```javascript
+/**
+ * Fetch metadata for a specific list of artists
+ * More efficient than fetchArtistInfoForSimilarArtists which uses arbitrary limits
+ * @param {Array} artists - [{name: "Artist", mbid: "abc123"}, ...]
+ * @param {Object} options - {maxConcurrent: 5, priority: 'high'}
+ * @returns {Promise<Object>} Map of artistName -> artistInfo
+ */
+async fetchMetadataForArtists(artists, options = {}) {
+  const {
+    maxConcurrent = 30,
+    priority = 'high',
+    onProgress = null
+  } = options;
+
+  const results = {};
+  let processed = 0;
+
+  for (const artist of artists.slice(0, maxConcurrent)) {
+    // Check persistent cache first
+    const cached = await this.cacheService?.getArtistMetadataCache(artist.name);
+    if (cached) {
+      results[artist.name] = cached.metadata;
+      processed++;
+      if (onProgress) onProgress(processed, artists.length);
+      continue;
+    }
+
+    // Fetch from Last.fm using MBID if available
+    await this.delay(this.options.requestDelayMs);
+    const response = await this.lastfm.getArtistInfo(
+      artist.name,
+      'en',
+      artist.mbid
+    );
+
+    if (response?.artist) {
+      results[artist.name] = {
+        tags: response.artist.tags?.tag || [],
+        playcount: response.artist.stats?.playcount || 0,
+        listeners: response.artist.stats?.listeners || 0,
+        mbid: response.artist.mbid
+      };
+
+      // Cache for future use
+      await this.cacheService?.setArtistMetadataCache(
+        artist.name,
+        response.artist.mbid,
+        results[artist.name],
+        'lastfm'
+      );
+    }
+
+    processed++;
+    if (onProgress) onProgress(processed, artists.length);
+  }
+
+  return results;
+}
+```
+
+### **Expected Outcomes**
+
+**Before Fix:**
+- Initial load: 30 seconds
+- Metadata coverage: 25% (5 of 20 artists)
+- Diversity stats: "4 genres • 17% max"
+- User experience: Long wait, poor diversity filtering
+
+**After Fix:**
+- Initial load: 2 seconds (instant recommendations)
+- Metadata coverage: 100% (20 of 20 artists after metadata loads)
+- Diversity stats: "15+ genres • 20% max"
+- User experience: Instant feedback, progressively enhanced
+
+**Performance Metrics:**
+- Time to first recommendation: **2 seconds** (vs 30 seconds)
+- Time to full metadata: **32 seconds** (same, but non-blocking)
+- API calls per session: **30** (vs 15)
+- Metadata coverage: **100%** (vs 25%)
+
+### **Progressive Enhancement UX**
+
+```
+[0-2s] 🎵 Check These Artists Out (20 suggestions)
+       [Artist cards appear with scores]
+       ⚡ Loading genre data... (progress bar)
+
+[2-32s] [Metadata progressively updates each card]
+        Progress: Loading genre data... 15/30
+
+[32s+]  ✅ Genre data complete
+        🎯 Diversity: 15 genres • Max genre: 20% • Score: 0.68
+        [Diversity toggle enabled]
+```
+
+### **Future Enhancements**
+
+1. **Idle Time Cache Warming**
+   - Detect when user is idle (30s no activity)
+   - Continue fetching metadata for remaining 130 candidates
+   - Pause when user becomes active
+
+2. **Server-Side Pre-warming** (Production)
+   - Supabase Edge Function runs nightly
+   - Pre-fetches metadata for popular artists
+   - Shared cache benefits all users
+   - Reduces individual API calls
+
+3. **Smart Prioritization**
+   - Track which artists are frequently recommended
+   - Pre-fetch metadata for "hot" artists
+   - Reduces cache misses
+
+### **Implementation Status**
+
+- 📋 **Phase 1**: Planned - Two-pass scoring with targeted metadata fetch
+- 📋 **Phase 2**: Planned - Progressive enhancement with progress indicators
+- 📋 **Phase 3**: Planned - Background cache warming
+- 📋 **Service Method**: Planned - `fetchMetadataForArtists()` implementation
+- 📋 **Graph Algorithm**: Planned - Add metadata fetching to graph flow
+
+**Priority**: High - Directly impacts diversity filtering effectiveness
+
+---
+

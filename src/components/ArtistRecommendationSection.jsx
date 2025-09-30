@@ -3,6 +3,49 @@ import { RecommendationService } from '../services/recommendationService.js';
 import { GraphRecommendationService } from '../services/graphRecommendationService.js';
 import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilter.js';
 
+/**
+ * Merge fetched metadata into artist recommendation objects
+ * @param {Array} artists - Artist recommendations
+ * @param {Object} artistMetadataMap - Map of artistName -> metadata
+ * @returns {Array} Artists with metadata populated
+ */
+function mergeMetadataIntoArtists(artists, artistMetadataMap) {
+  return artists.map(artist => {
+    const metadata = artistMetadataMap[artist.artist];
+
+    if (metadata) {
+      // Extract genres from tags if needed
+      const genres = metadata.genres ||
+                     (metadata.tags ? metadata.tags.map(tag =>
+                       typeof tag === 'object' ? tag.name : tag
+                     ).filter(Boolean).slice(0, 3) : []);
+
+      return {
+        ...artist,
+        metadata: {
+          tags: metadata.tags || [],
+          genres: genres,
+          playcount: metadata.playcount || 0,
+          listeners: metadata.listeners || 0,
+          bio: metadata.bio || null
+        }
+      };
+    }
+
+    // No metadata found - return with empty structure
+    return {
+      ...artist,
+      metadata: {
+        tags: [],
+        genres: [],
+        playcount: 0,
+        listeners: 0,
+        bio: null
+      }
+    };
+  });
+}
+
 const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [recommendations, setRecommendations] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -101,15 +144,43 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           });
 
           if (graphResult.success) {
+            console.log('🎯 Graph algorithm succeeded, now fetching metadata for recommendations...');
+
+            // TWO-PASS: Fetch metadata for top 30 graph recommendations
+            const topCandidates = graphResult.recommendations.slice(0, 30);
+            const artistsToFetch = topCandidates.map(a => ({
+              name: a.artist,
+              mbid: a.mbid || null
+            }));
+
+            // Fetch metadata using the data fetcher
+            const dataFetcher = recommendationService.dataFetcher;
+            const artistMetadata = await dataFetcher.fetchMetadataForArtists(artistsToFetch, {
+              maxConcurrent: 30,
+              onProgress: (processed, total) => {
+                console.log(`🎯 Graph metadata progress: ${processed}/${total}`);
+              }
+            });
+
+            console.log('📊 Graph metadata complete:', Object.keys(artistMetadata).length, 'artists');
+
+            // Merge metadata into graph recommendations
+            const artistsWithMetadata = mergeMetadataIntoArtists(
+              graphResult.recommendations,
+              artistMetadata
+            );
+
             artistRecommendations = {
-              artists: graphResult.recommendations,
-              total: graphResult.recommendations.length,
+              artists: artistsWithMetadata,
+              total: artistsWithMetadata.length,
               metadata: {
                 ...graphResult.metadata,
                 algorithm: 'graph_random_walk',
                 generatedAt: new Date().toISOString()
               }
             };
+
+            console.log('✅ Graph recommendations with metadata ready');
           } else {
             console.warn('Graph algorithm failed, falling back to basic algorithm');
             console.log('🔧 Graph failure reason:', graphResult.error);
@@ -249,18 +320,42 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       await dataFetcher.fetchSimilarArtistsData(profile.artists || []);
       console.log('📊 Similarity data fetched:', Object.keys(dataFetcher.results.similarArtists || {}));
 
-      // CRITICAL: Fetch artist info (tags/genres) for similar artists to enable diversity filtering
-      console.log('📊 Fetching artist metadata for diversity filtering...');
-      await dataFetcher.fetchArtistInfoForSimilarArtists();
-      console.log('📊 Artist metadata fetched:', Object.keys(dataFetcher.results.artistInfo || {}).length, 'artists');
-
       const externalData = dataFetcher.results;
 
       if (externalData && Object.keys(externalData.similarArtists || {}).length > 0) {
-        console.log('📊 Building artist recommendations from similarity data...');
+        // TWO-PASS APPROACH: Score first, then fetch metadata for top candidates
+        console.log('🎯 Pass 1: Building artist recommendations WITHOUT metadata (fast)...');
 
+        // Build recommendations without metadata first
         const artistRecs = await buildArtistRecommendations(externalData, albums);
-        console.log('📊 Built recommendations:', artistRecs?.total || 0, 'artists');
+        console.log('📊 Pass 1 complete:', artistRecs?.total || 0, 'artists scored');
+
+        if (artistRecs && artistRecs.artists && artistRecs.artists.length > 0) {
+          // TWO-PASS: Now fetch metadata ONLY for top 30 candidates
+          console.log('🎯 Pass 2: Fetching metadata for top 30 candidates...');
+
+          const topCandidates = artistRecs.artists.slice(0, 30);
+          const artistsToFetch = topCandidates.map(a => ({
+            name: a.artist,
+            mbid: a.mbid || null
+          }));
+
+          // Fetch metadata for these specific artists
+          const artistMetadata = await dataFetcher.fetchMetadataForArtists(artistsToFetch, {
+            maxConcurrent: 30,
+            onProgress: (processed, total) => {
+              console.log(`🎯 Metadata progress: ${processed}/${total}`);
+            }
+          });
+
+          console.log('📊 Pass 2 complete: metadata for', Object.keys(artistMetadata).length, 'artists');
+
+          // Merge metadata into recommendations
+          artistRecs.artists = mergeMetadataIntoArtists(artistRecs.artists, artistMetadata);
+
+          console.log('✅ Two-pass complete:', artistRecs.total, 'artists with metadata');
+        }
+
         return artistRecs;
       } else {
         console.log('📊 No similarity data available, falling back to genre-based approach');
