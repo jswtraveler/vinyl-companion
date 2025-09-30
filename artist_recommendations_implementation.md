@@ -250,7 +250,7 @@ const enhanceRecommendations = async (baseRecs, userPreferences) => {
 - ✅ Indexes for `similar_artist`, `tags (GIN)`, `source_artist`.
 
 **Service Layer:**
-- 📋 `CollectionScheduler`: background worker with staleness-aware queue.
+- 📋 `ServerSideProgressiveCollector`: Supabase Edge Function that runs nightly to generate recommendations and fetch metadata for all users.
 - 📋 `DataIntegrityService`: cleanup, deduplication, backoff retries.
 - 📋 `FeedbackLearningService`: online weight updates with counterfactual logging.
 
@@ -277,7 +277,7 @@ const enhanceRecommendations = async (baseRecs, userPreferences) => {
 ## 3. Evolution Summary
 
 - **MVP** ✅ → Global caches + normalized scoring + persisted recs (fast, simple, avoids re-fetching).
-- **Intermediate** 🔄 → Progressive data collection (server-side), novelty slider, confidence scoring, retry/backoff, richer UI.
+- **Intermediate** ✅ → Progressive data collection (client-side), graph algorithms, confidence scoring, retry/backoff, richer UI.
 - **Full** 📋 → Production-grade with MMR diversity, feedback learning, observability, and robust RLS-secured schema.
 
 ---
@@ -304,8 +304,9 @@ const enhanceRecommendations = async (baseRecs, userPreferences) => {
 ### 📋 **Next Steps:**
 - Deploy PostgreSQL function to production for enhanced graph performance
 - Add user-tunable discovery controls (sliders for walk depth, similarity threshold)
-- Background worker for progressive collection
+- Server-side progressive collection via Supabase Edge Function (runs nightly for all users)
 - MMR-based diversity constraints for balanced recommendations
+- Novelty scoring with user-tunable slider
 
 ---
 
@@ -702,11 +703,13 @@ async fetchMetadataForArtists(artists, options = {}) {
    - ✅ localStorage persistence across sessions
    - ✅ Exponential backoff for failed fetches
 
-2. **Server-Side Pre-warming** (Production) - PLANNED
-   - Supabase Edge Function runs nightly
-   - Pre-fetches metadata for popular artists
-   - Shared cache benefits all users
-   - Reduces individual API calls
+2. **Server-Side Progressive Collection** (Production) - PLANNED
+   - Supabase Edge Function runs nightly via cron
+   - Generates recommendations for each user's collection
+   - Fetches metadata for user-specific recommendation candidates
+   - Pre-populates cache so recommendations are ready when user opens app
+   - Same logic as client-side but runs independently of browser
+   - Benefits: Zero wait time, works even when app is closed
 
 3. ✅ **Smart Prioritization** - COMPLETED
    - ✅ Priority queue scores by recommendation score, connection count, frequency, popularity
