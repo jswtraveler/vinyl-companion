@@ -602,22 +602,6 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         )}
 
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-            <h3 className="text-lg font-semibold text-white">Check These Artists Out</h3>
-            {recommendations && (
-              <span className="text-sm text-gray-400">
-                ({recommendations.total} suggestions)
-              </span>
-            )}
-            {recommendations?.metadata?.algorithm && (
-              <span className="text-xs text-purple-300 bg-purple-900/30 px-2 py-1 rounded">
-                {recommendations.metadata.algorithm === 'graph_random_walk' ? '🕸️ Graph' : '📊 Basic'}
-              </span>
-            )}
-          </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -633,7 +617,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               } hover:bg-opacity-80 disabled:opacity-50`}
               title={`Switch to ${useGraphAlgorithm ? 'Basic' : 'Graph'} algorithm`}
             >
-              {useGraphAlgorithm ? '🕸️ Graph' : '📊 Basic'}
+              {useGraphAlgorithm ? 'Graph' : 'Basic'}
             </button>
             <button
               onClick={() => {
@@ -651,7 +635,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               } hover:bg-opacity-80 disabled:opacity-50`}
               title={`${diversityEnabled ? 'Disable' : 'Enable'} diversity filtering`}
             >
-              {diversityEnabled ? '🎯 Diverse' : '📋 All'}
+              {diversityEnabled ? 'Diverse' : 'All'}
             </button>
             <button
               onClick={handleRefresh}
@@ -660,20 +644,25 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             >
               {loading ? 'Finding...' : 'Refresh'}
             </button>
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-1 text-gray-400 hover:text-white"
-            >
-              <svg
-                className={`w-5 h-5 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+            {recommendations && (
+              <span className="text-sm text-gray-400 ml-2">
+                {recommendations.total} suggestions
+              </span>
+            )}
           </div>
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="p-1 text-gray-400 hover:text-white"
+          >
+            <svg
+              className={`w-5 h-5 transition-transform ${expanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
         </div>
 
         {loading && (
