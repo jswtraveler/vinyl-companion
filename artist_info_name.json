@@ -1,0 +1,229 @@
+{
+  "artist": {
+    "name": "Wishbone Ash",
+    "mbid": "406f1b42-0c9e-4427-aeb7-02f78e188ec4",
+    "url": "https://www.last.fm/music/Wishbone+Ash",
+    "image": [
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "small"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "medium"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "large"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "extralarge"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "mega"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": ""
+      }
+    ],
+    "streamable": "0",
+    "ontour": "1",
+    "stats": {
+      "listeners": "342120",
+      "playcount": "5786232"
+    },
+    "similar": {
+      "artist": [
+        {
+          "name": "Atomic Rooster",
+          "url": "https://www.last.fm/music/Atomic+Rooster",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "Jethro Tull",
+          "url": "https://www.last.fm/music/Jethro+Tull",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "Uriah Heep",
+          "url": "https://www.last.fm/music/Uriah+Heep",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "Barclay James Harvest",
+          "url": "https://www.last.fm/music/Barclay+James+Harvest",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "Renaissance",
+          "url": "https://www.last.fm/music/Renaissance",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        }
+      ]
+    },
+    "tags": {
+      "tag": [
+        {
+          "name": "Progressive rock",
+          "url": "https://www.last.fm/tag/Progressive+rock"
+        },
+        {
+          "name": "classic rock",
+          "url": "https://www.last.fm/tag/classic+rock"
+        },
+        {
+          "name": "hard rock",
+          "url": "https://www.last.fm/tag/hard+rock"
+        },
+        {
+          "name": "rock",
+          "url": "https://www.last.fm/tag/rock"
+        },
+        {
+          "name": "blues rock",
+          "url": "https://www.last.fm/tag/blues+rock"
+        }
+      ]
+    },
+    "bio": {
+      "links": {
+        "link": {
+          "#text": "",
+          "rel": "original",
+          "href": "https://last.fm/music/Wishbone+Ash/+wiki"
+        }
+      },
+      "published": "25 Apr 2006, 11:23",
+      "summary": "Wishbone Ash is a British rock band formed in 1969. The group is known for pioneering the use of twin lead guitars, which became a distinctive element of their sound. They gained significant popularity during the early to mid-1970s with albums such as \"Wishbone Ash\" (1970), \"Argus\" (1972), \"There's the Rub\" (1974), and \"New England\" (1976).\n\nThe band originated in Torquay, Devon, England, where bassist Martin Turner and drummer Steve Upton first played together before relocating to London to further their musical careers. <a href=\"https://www.last.fm/music/Wishbone+Ash\">Read more on Last.fm</a>",
+      "content": "Wishbone Ash is a British rock band formed in 1969. The group is known for pioneering the use of twin lead guitars, which became a distinctive element of their sound. They gained significant popularity during the early to mid-1970s with albums such as \"Wishbone Ash\" (1970), \"Argus\" (1972), \"There's the Rub\" (1974), and \"New England\" (1976).\n\nThe band originated in Torquay, Devon, England, where bassist Martin Turner and drummer Steve Upton first played together before relocating to London to further their musical careers. While seeking a keyboard player and a lead guitarist through an advertisement, they auditioned both Andy Powell and Ted Turner as guitarists. Unable to choose between the two, they incorporated both, resulting in their signature twin-guitar sound.\n\nWishbone Ash quickly gained attention, aided by music manager Miles Copeland. Their debut album \"Wishbone Ash\" was released in December 1970, followed by \"Pilgrimage\" in 1971, which reached number six on the NME charts. Their third album, \"Argus\", released in 1972, became their most commercially successful release, reaching number two on the UK charts and earning gold certification. The follow-up, \"Wishbone Four\" (1973), achieved silver certification.\n\nAfter \"Wishbone Four\", Ted Turner left the band and was replaced by Laurie Wisefield. His addition brought a slightly harder rock edge to the band\u2019s progressive and folk-influenced sound. The lineup of Powell and Wisefield remained stable for 11 years, during which time the band was influenced by American music and eventually relocated to the United States.\n\n\"There's the Rub\" (1974), recorded in Florida with producer Bill Szymczyk, achieved silver certification and featured the instrumental track \"F.U.B.B.\" An incident in New Zealand involving drummer Steve Upton referencing the track's title at a public concert led to his brief arrest due to local laws against public profanity. The publicity surrounding the incident contributed to the album reaching number three in the New Zealand charts.\n\nIn 1976, the band released \"Locked In\", which was not well received by critics or fans. However, subsequent albums were considered to be stronger, even though they did not achieve the same commercial success as earlier releases.\n\nMartin Turner left the group in 1980, initiating a period of frequent changes in the bass position. Notable bassists during this period included John Wetton and Trevor Bolder. Vocalist Claire Hamill briefly joined to supplement vocals after Turner\u2019s departure. She had contributed to \"Just Testing\" (1980) and co-wrote the track \"Living Proof\".\n\nWisefield left the band in 1985, and following a transitional period, the original lineup reunited in 1987 for a charity project. This reunion led to the recording of the instrumental album \"Nouveau Calls\", which marked a positive reception and was followed by three years of performances with the original members.\n\nSteve Upton retired from the music industry in 1990 and was replaced by Ray Weston. Martin Turner left again in 1991, and Ted Turner departed in 1993. Over the next few years, the band underwent further lineup changes. By 1998, a period of stability was achieved with Ray Weston returning and Bob Skeat joining on bass.\n\nIn the 2000s, guitarist roles were filled by Finnish musicians Ben Granfelt and later Muddy Manninen. The band celebrated its 35th anniversary in 2005. In 2006, they released \"Clan Destiny\", the first album featuring Manninen. Ray Weston left the band in 2007 and was replaced by Joe Crabtree. That same year, the band released \"First Light\", featuring original versions and outtakes from their debut album, and \"The Power of Eternity\", which included contributions from Crabtree.\n\nWishbone Ash continues to perform regularly, averaging around 150 live shows annually across Europe and the United States. While European shows typically attract larger audiences, the band retains a dedicated fan base in both regions. <a href=\"https://www.last.fm/music/Wishbone+Ash\">Read more on Last.fm</a>. User-contributed text is available under the Creative Commons By-SA License; additional terms may apply."
+    }
+  }
+}

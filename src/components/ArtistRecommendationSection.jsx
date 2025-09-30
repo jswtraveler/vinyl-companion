@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RecommendationService } from '../services/recommendationService.js';
 import { GraphRecommendationService } from '../services/graphRecommendationService.js';
 import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilter.js';
+import { ProgressiveCollectionService } from '../services/progressiveCollectionService.js';
+import ProgressiveCollectionStatus from './ProgressiveCollectionStatus.jsx';
 
 /**
  * Merge fetched metadata into artist recommendation objects
@@ -56,6 +58,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [useGraphAlgorithm, setUseGraphAlgorithm] = useState(false); // Temporarily disabled for local dev
   const isGeneratingRef = useRef(false); // Prevent duplicate calls
   const [diversityEnabled, setDiversityEnabled] = useState(true); // Enable diversity filtering by default
+  const [progressiveCollectionService, setProgressiveCollectionService] = useState(null);
 
   // Initialize recommendation services
   useEffect(() => {
@@ -85,6 +88,37 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       setError('Recommendation services unavailable');
     }
   }, [user, useCloudDatabase]);
+
+  // Initialize progressive collection service
+  useEffect(() => {
+    if (!recommendationService?.dataFetcher || !recommendationService?.cacheService) {
+      return;
+    }
+
+    console.log('📦 Initializing progressive collection service...');
+
+    const service = new ProgressiveCollectionService(
+      recommendationService.dataFetcher,
+      recommendationService.cacheService,
+      {
+        idleThreshold: 30000,        // 30 seconds
+        requestDelay: 1000,          // 1 second between requests
+        maxQueueSize: 100,
+        maxRetries: 3,
+        retryBackoff: 60000
+      }
+    );
+
+    // Load any saved progress from previous sessions
+    service.loadProgress();
+    setProgressiveCollectionService(service);
+
+    // Cleanup on unmount
+    return () => {
+      console.log('📦 Cleaning up progressive collection service...');
+      service.destroy();
+    };
+  }, [recommendationService]);
 
   // Check if we have enough albums for recommendations
   const hasEnoughAlbums = useMemo(() => {
@@ -296,6 +330,32 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       }
     }));
   }, [diversityEnabled]); // Only trigger when diversity setting changes
+
+  // Build progressive collection queue when recommendations are ready
+  useEffect(() => {
+    if (!recommendations || !progressiveCollectionService || !albums) {
+      return;
+    }
+
+    console.log('📦 Building progressive collection queue from recommendations...');
+
+    // Get all artist candidates (before diversity filtering)
+    const allCandidates = recommendations.metadata?.originalArtists || recommendations.artists;
+
+    if (allCandidates && allCandidates.length > 0) {
+      progressiveCollectionService.buildPriorityQueue(allCandidates, albums)
+        .then(queueSize => {
+          console.log(`📦 Priority queue built: ${queueSize} artists`);
+
+          // Start idle detection to begin background collection
+          progressiveCollectionService.startIdleDetection();
+          console.log('👁️ Idle detection started - will collect metadata during idle time');
+        })
+        .catch(err => {
+          console.error('Failed to build progressive collection queue:', err);
+        });
+    }
+  }, [recommendations, progressiveCollectionService, albums]);
 
   const generateBasicRecommendations = async (albums) => {
     try {
@@ -526,6 +586,11 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   return (
     <div className="mb-6 bg-gray-900 rounded-lg border border-gray-700">
       <div className="p-6">
+        {/* Progressive Collection Status */}
+        {progressiveCollectionService && (
+          <ProgressiveCollectionStatus service={progressiveCollectionService} />
+        )}
+
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

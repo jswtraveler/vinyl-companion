@@ -1,0 +1,229 @@
+{
+  "artist": {
+    "name": "John Lennon",
+    "mbid": "4d5447d7-c61c-4120-ba1b-d7f471d385b9",
+    "url": "https://www.last.fm/music/John+Lennon",
+    "image": [
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "small"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "medium"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "large"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "extralarge"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": "mega"
+      },
+      {
+        "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+        "size": ""
+      }
+    ],
+    "streamable": "0",
+    "ontour": "0",
+    "stats": {
+      "listeners": "3831487",
+      "playcount": "79453437"
+    },
+    "similar": {
+      "artist": [
+        {
+          "name": "The Beatles",
+          "url": "https://www.last.fm/music/The+Beatles",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "George Harrison",
+          "url": "https://www.last.fm/music/George+Harrison",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "Paul McCartney",
+          "url": "https://www.last.fm/music/Paul+McCartney",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "John Lennon & Yoko Ono",
+          "url": "https://www.last.fm/music/John+Lennon+&+Yoko+Ono",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        },
+        {
+          "name": "Wings",
+          "url": "https://www.last.fm/music/Wings",
+          "image": [
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/34s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "small"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/64s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "medium"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/174s/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "large"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "extralarge"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": "mega"
+            },
+            {
+              "#text": "https://lastfm.freetls.fastly.net/i/u/300x300/2a96cbd8b46e442fc41c2b86b821562f.png",
+              "size": ""
+            }
+          ]
+        }
+      ]
+    },
+    "tags": {
+      "tag": [
+        {
+          "name": "classic rock",
+          "url": "https://www.last.fm/tag/classic+rock"
+        },
+        {
+          "name": "rock",
+          "url": "https://www.last.fm/tag/rock"
+        },
+        {
+          "name": "singer-songwriter",
+          "url": "https://www.last.fm/tag/singer-songwriter"
+        },
+        {
+          "name": "british",
+          "url": "https://www.last.fm/tag/british"
+        },
+        {
+          "name": "pop",
+          "url": "https://www.last.fm/tag/pop"
+        }
+      ]
+    },
+    "bio": {
+      "links": {
+        "link": {
+          "#text": "",
+          "rel": "original",
+          "href": "https://last.fm/music/John+Lennon/+wiki"
+        }
+      },
+      "published": "19 Feb 2006, 19:44",
+      "summary": "John Winston Ono Lennon (born John Winston Lennon; 9 October 1940 \u2013 8 December 1980) was an English singer, songwriter and musician who gained worldwide fame as the founder, co-songwriter, co-lead vocalist and rhythm guitarist of the Beatles. His work included music, writing, drawings and film. His songwriting partnership with Paul McCartney remains the most successful in history.\n\nBorn in Liverpool, Lennon became involved in the skiffle craze as a teenager. <a href=\"https://www.last.fm/music/John+Lennon\">Read more on Last.fm</a>",
+      "content": "John Winston Ono Lennon (born John Winston Lennon; 9 October 1940 \u2013 8 December 1980) was an English singer, songwriter and musician who gained worldwide fame as the founder, co-songwriter, co-lead vocalist and rhythm guitarist of the Beatles. His work included music, writing, drawings and film. His songwriting partnership with Paul McCartney remains the most successful in history.\n\nBorn in Liverpool, Lennon became involved in the skiffle craze as a teenager. In 1956, he formed The Quarrymen, which evolved into the Beatles in 1960. Sometimes called \"the smart Beatle\", Lennon initially was the group's de facto leader, a role he gradually ceded to McCartney. Through his songwriting in the Beatles, he embraced myriad musical influences, initially writing and co-writing rock and pop-oriented hit songs in the band's early years, then later incorporating experimental elements into his compositions in the latter half of the Beatles' career as his songs became known for their increasing innovation. Lennon soon expanded his work into other media by participating in numerous films, including How I Won the War, and authoring In His Own Write and A Spaniard in the Works, both collections of nonsense writings and line drawings. Starting with \"All You Need Is Love\", his songs were adopted as anthems by the anti-war movement and the larger counterculture of the 1960s. In 1969, he started the Plastic Ono Band with his second wife, multimedia artist Yoko Ono, held the two-week-long anti-war demonstration Bed-ins for Peace and left the Beatles to embark on a solo career.\n\nBetween 1968 and 1972, Lennon and Ono collaborated on many works, including a trilogy of avant-garde albums, several more films, his solo debut John Lennon/Plastic Ono Band and the international top-10 singles \"Give Peace a Chance\", \"Instant Karma!\", \"Imagine\", and \"Happy Xmas (War Is Over)\". Moving to New York City in 1971, his criticism of the Vietnam War resulted in a three-year deportation attempt by the Nixon administration. Lennon and Ono separated from 1973 to 1975, during which time he produced Harry Nilsson's album Pussy Cats. He also had chart-topping collaborations with Elton John (\"Whatever Gets You thru the Night\") and David Bowie (\"Fame\"). Following a five-year hiatus, Lennon returned to music in 1980 with the Ono collaboration Double Fantasy. He was murdered by a Beatles fan, Mark David Chapman, three weeks after the album's release.\n\nAs a performer, writer or co-writer, Lennon had 25 number-one singles in the Billboard Hot 100 chart. Double Fantasy, his best-selling album, won the 1981 Grammy Award for Album of the Year. That year, he won the Brit Award for Outstanding Contribution to Music. In 2002, Lennon was voted eighth in a BBC history poll of the 100 Greatest Britons. Rolling Stone ranked him the fifth-greatest singer and 38th greatest artist of all time. He was inducted into the Songwriters Hall of Fame (in 1997) and the Rock and Roll Hall of Fame (twice, as a member of the Beatles in 1988 and as a solo artist in 1994).\n\nStudio albums\nJohn Lennon/Plastic Ono Band (1970)\nImagine (1971)\nSome Time in New York City (with Yoko Ono, 1972)\nMind Games (1973)\nWalls and Bridges (1974)\nRock 'n' Roll (1975)\nDouble Fantasy (with Yoko Ono, 1980)\nMilk and Honey (Posthumous with Yoko Ono, 1984)\n\nExperimental studio albums with Yoko Ono\nUnfinished Music No. 1: Two Virgins (1968)\nUnfinished Music No. 2: Life with the Lions (1969)\nWedding Album (1969) <a href=\"https://www.last.fm/music/John+Lennon\">Read more on Last.fm</a>. User-contributed text is available under the Creative Commons By-SA License; additional terms may apply."
+    }
+  }
+}
