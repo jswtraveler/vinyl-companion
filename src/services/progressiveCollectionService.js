@@ -171,10 +171,9 @@ export class ProgressiveCollectionService {
       });
     }
 
-    // Sort by priority (highest first) and limit queue size
+    // Sort by priority (highest first) - no queue size limit
     this.priorityQueue = scoredCandidates
-      .sort((a, b) => b.score - a.score)
-      .slice(0, this.options.maxQueueSize);
+      .sort((a, b) => b.score - a.score);
 
     console.log(`✅ Priority queue built: ${this.priorityQueue.length} artists`);
     console.log('📊 Top 5:', this.priorityQueue.slice(0, 5).map(a => a.name));
