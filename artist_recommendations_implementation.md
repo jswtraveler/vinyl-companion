@@ -133,7 +133,7 @@ const enhancedProfile = {
 
 **Goals:**
 - ✅ **Graph-based recommendation scoring** using random walk with restart algorithm.
-- 📋 Progressive collection service to fill gaps daily (server-side cron).
+- ✅ **Progressive collection service** - client-side idle-time metadata collection with priority queue.
 - 📋 Novelty scoring with user-tunable slider (δ factor).
 - ✅ Confidence scores based on data coverage & edge diversity.
 - ✅ Exponential backoff on API failures.
@@ -197,7 +197,7 @@ LIMIT 50;
 
 **Services:**
 - ✅ `GraphRecommendationService` (PostgreSQL + JavaScript fallback graph traversal)
-- 📋 `ProgressiveDataCollector` (server-side scheduling, budget-aware)
+- ✅ `ProgressiveCollectionService` (client-side idle detection, priority queue, rate limiting)
 - 📋 `BudgetManager` (daily/hourly API limits)
 - 📋 `SimilarityGraphBuilder` (builds coverage map + materialized views)
 - ✅ `GraphPathExplainer` (implemented as connection explanations in UI)
@@ -224,6 +224,7 @@ const enhanceRecommendations = async (baseRecs, userPreferences) => {
 ```
 
 **UI Enhancements:**
+- ✅ **Progressive collection status card**: Real-time progress with manual controls (pause/resume/clear).
 - ✅ Progress indicator (X/Y artists collected, completeness %).
 - 📋 **Graph visualization** for recommendation paths (optional, via cytoscape.js).
 - ✅ **Algorithm toggle**: Switch between Graph 🕸️ and Basic 📊 algorithms.
@@ -294,10 +295,11 @@ const enhanceRecommendations = async (baseRecs, userPreferences) => {
 - **Dual-Mode Operation**: PostgreSQL CTE + JavaScript fallback for graph traversal
 - **Advanced UI**: Algorithm toggle, connection explanations, enhanced metadata
 - **Production Debugging**: Full localhost/production parity achieved
+- **Progressive Collection System**: Idle-time background metadata collection with priority queue
+- **Two-Pass Metadata Fetching**: 100% coverage for displayed recommendations, progressive for long tail
 
 ### 🔄 **In Progress:**
 - Advanced diversity controls and novelty scoring
-- Progressive data collection for comprehensive coverage
 
 ### 📋 **Next Steps:**
 - Deploy PostgreSQL function to production for enhanced graph performance
@@ -693,31 +695,35 @@ async fetchMetadataForArtists(artists, options = {}) {
 
 ### **Future Enhancements**
 
-1. **Idle Time Cache Warming**
-   - Detect when user is idle (30s no activity)
-   - Continue fetching metadata for remaining 130 candidates
-   - Pause when user becomes active
+1. ✅ **Idle Time Cache Warming** - COMPLETED
+   - ✅ Detect when user is idle (30s no activity)
+   - ✅ Continue fetching metadata for remaining candidates
+   - ✅ Pause when user becomes active
+   - ✅ localStorage persistence across sessions
+   - ✅ Exponential backoff for failed fetches
 
-2. **Server-Side Pre-warming** (Production)
+2. **Server-Side Pre-warming** (Production) - PLANNED
    - Supabase Edge Function runs nightly
    - Pre-fetches metadata for popular artists
    - Shared cache benefits all users
    - Reduces individual API calls
 
-3. **Smart Prioritization**
-   - Track which artists are frequently recommended
-   - Pre-fetch metadata for "hot" artists
-   - Reduces cache misses
+3. ✅ **Smart Prioritization** - COMPLETED
+   - ✅ Priority queue scores by recommendation score, connection count, frequency, popularity
+   - ✅ Pre-fetch high-value artists first
+   - ✅ Reduces cache misses for most relevant recommendations
 
 ### **Implementation Status**
 
-- 📋 **Phase 1**: Planned - Two-pass scoring with targeted metadata fetch
-- 📋 **Phase 2**: Planned - Progressive enhancement with progress indicators
-- 📋 **Phase 3**: Planned - Background cache warming
-- 📋 **Service Method**: Planned - `fetchMetadataForArtists()` implementation
-- 📋 **Graph Algorithm**: Planned - Add metadata fetching to graph flow
+- ✅ **Phase 1**: COMPLETED - Two-pass scoring with targeted metadata fetch
+- ✅ **Phase 2**: COMPLETED - Progressive enhancement with progress indicators
+- ✅ **Phase 3**: COMPLETED - Background cache warming with idle detection
+- ✅ **Service Method**: COMPLETED - `fetchMetadataForArtists()` implementation
+- ✅ **Graph Algorithm**: COMPLETED - Add metadata fetching to graph flow
+- ✅ **ProgressiveCollectionService**: COMPLETED - Full implementation with UI
+- ✅ **ProgressiveCollectionStatus**: COMPLETED - Real-time progress component
 
-**Priority**: High - Directly impacts diversity filtering effectiveness
+**Priority**: ~~High~~ COMPLETED - Diversity filtering now has 100% metadata coverage
 
 ---
 
