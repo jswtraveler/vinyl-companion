@@ -204,13 +204,17 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               artistMetadata
             );
 
+            // Keep top 20 for display, store all for progressive collection
+            const topArtists = artistsWithMetadata.slice(0, 20);
+
             artistRecommendations = {
-              artists: artistsWithMetadata,
-              total: artistsWithMetadata.length,
+              artists: topArtists,
+              total: topArtists.length,
               metadata: {
                 ...graphResult.metadata,
                 algorithm: 'graph_random_walk',
-                generatedAt: new Date().toISOString()
+                generatedAt: new Date().toISOString(),
+                allCandidates: artistsWithMetadata // Store all candidates for progressive collection
               }
             };
 
@@ -339,17 +343,23 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
     console.log('📦 Building progressive collection queue from recommendations...');
 
-    // Get all artist candidates (before diversity filtering)
-    const allCandidates = recommendations.metadata?.originalArtists || recommendations.artists;
+    // Get ALL scored candidates (not just displayed top 20)
+    const allCandidates = recommendations.metadata?.allCandidates || recommendations.artists;
+
+    console.log(`📦 Found ${allCandidates.length} total candidates for progressive collection`);
 
     if (allCandidates && allCandidates.length > 0) {
       progressiveCollectionService.buildPriorityQueue(allCandidates, albums)
         .then(queueSize => {
-          console.log(`📦 Priority queue built: ${queueSize} artists`);
+          console.log(`📦 Priority queue built: ${queueSize} artists to fetch`);
 
-          // Start idle detection to begin background collection
-          progressiveCollectionService.startIdleDetection();
-          console.log('👁️ Idle detection started - will collect metadata during idle time');
+          if (queueSize > 0) {
+            // Start idle detection to begin background collection
+            progressiveCollectionService.startIdleDetection();
+            console.log('👁️ Idle detection started - will collect metadata during idle time');
+          } else {
+            console.log('✅ All candidates already have metadata cached');
+          }
         })
         .catch(err => {
           console.error('Failed to build progressive collection queue:', err);
@@ -541,10 +551,9 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       };
     });
 
-    // Sort by score and take top recommendations
-    const topArtists = scoredArtists
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 20);
+    // Sort by score (keep ALL scored artists for progressive collection)
+    const sortedArtists = scoredArtists.sort((a, b) => b.score - a.score);
+    const topArtists = sortedArtists.slice(0, 20);
 
     return {
       total: topArtists.length,
@@ -554,7 +563,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         totalCandidates: artistScores.size,
         averageConnections: topArtists.length > 0
           ? Math.round(topArtists.reduce((sum, a) => sum + a.connectionCount, 0) / topArtists.length * 10) / 10
-          : 0
+          : 0,
+        allCandidates: sortedArtists // Store all candidates for progressive collection
       }
     };
   };
