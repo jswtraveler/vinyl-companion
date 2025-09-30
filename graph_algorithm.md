@@ -2,9 +2,13 @@
 
 ## Overview
 
-The graph algorithm uses **Random Walk with Restart (RWR)** to discover artists by traversing a similarity network. Instead of just looking at direct similar artists, it explores multi-hop connections to find deeper recommendations.
+The graph algorithm uses **Random Walk with Restart (RWR)** to discover artists by traversing a similarity network. Instead of scoring artists individually based on similarity, it explores the **network structure** created by overlapping similar artist lists.
 
-Think of it like this: If you own The Beatles, it doesn't just recommend The Rolling Stones. It walks through the network (Beatles → Stones → Led Zeppelin → Deep Purple → Uriah Heep) to find artists 2-3 steps away that you might not have discovered otherwise.
+**Key Concept:** We fetch similar artists for your 69 owned artists (~1,500 unique candidates). Many of these candidates appear in multiple similar artist lists, creating a **mesh network**. The random walk explores this network to find artists that are well-connected to your overall collection, not just similar to one artist.
+
+**Example:** If you own The Beatles, Rolling Stones, Led Zeppelin, and Pink Floyd, and "The Who" appears in all four similar artist lists, the graph algorithm will rank The Who very highly because it's at the **intersection** of your tastes.
+
+**Important Constraint:** This is a **closed graph**. We don't recursively fetch similar artists for candidates. All recommendations come from the initial ~1,500 candidates, but they're ranked differently based on network centrality.
 
 ---
 
@@ -254,6 +258,28 @@ Imagine you're exploring a city:
 
 This explores both **direct neighbors** (1-hop) and **distant connections** (2-3 hops) while still favoring artists closer to what you own.
 
+### ⚠️ **Important Constraint: Closed Graph**
+
+**We only fetch similar artists for your 69 owned artists.** We do NOT fetch similar artists for the candidate artists.
+
+This means the random walk is exploring a **closed graph** built from those 69 API calls. You can only discover artists that appear somewhere in those 69 similar artist lists.
+
+**How can we do multi-hop walks then?**
+
+Through **shared connections**. Many artists appear in multiple similar artist lists:
+- The Beatles → The Who (0.87)
+- Rolling Stones → The Who (0.88)
+- Led Zeppelin → The Who (0.80)
+
+Even though we didn't fetch "similar artists for The Who," The Who has multiple edges connecting it to different owned artists. The random walk can traverse these **bidirectional connections** (if Beatles→Who exists, we can walk Who→Beatles).
+
+**What this means:**
+- ✅ Discovers artists at the intersection of your tastes
+- ✅ Finds well-connected "hub" artists
+- ✅ Explores network structure within the closed graph
+- ❌ Cannot discover artists that don't appear in any of the 69 similar artist lists
+- ❌ Not true "3-hops beyond your collection" in the global Last.fm network
+
 ### Algorithm Parameters
 
 ```javascript
@@ -294,28 +320,40 @@ stateDiagram-v2
 **Walk #1:**
 ```
 Start: The Beatles (owned)
-  → Step 1: The Kinks (similarity: 0.89) ✓
-  → Step 2: The Who (similarity: 0.87) ✓
-  → Step 3: Small Faces (similarity: 0.72) ✓
+  → Step 1: The Kinks (from Beatles' similar list, similarity: 0.89) ✓
+  → Step 2: The Who (The Who appears in Stones' similar list - walk via that edge) ✓
+  → Step 3: Small Faces (from Stones' similar list, via Who→Stones connection) ✓
   → Restart → The Beatles
 ```
+
+**Why this works:** Even though we never fetched similar artists for The Kinks, The Who also appears in Rolling Stones' similar list. The graph has edges:
+- Beatles → Kinks (0.89)
+- Beatles → Who (0.87)
+- Stones → Who (0.88)
+- Stones → Kinks (0.90)
+- Stones → Small Faces (0.75)
+
+So we can walk Kinks → Who by traversing through the shared connection to Rolling Stones.
 
 **Walk #2:**
 ```
 Start: Led Zeppelin (owned)
-  → Step 1: Deep Purple (similarity: 0.75) ✓
+  → Step 1: Deep Purple (from Zeppelin's similar list, similarity: 0.75) ✓
   → Restart (15% probability triggered)
   → Start: Pink Floyd (owned)
-  → Step 1: Genesis (similarity: 0.81) ✓
-  → Step 2: Yes (similarity: 0.76) ✓
+  → Step 1: Genesis (from Pink Floyd's similar list, similarity: 0.81) ✓
+  → Step 2: Yes (Yes appears in multiple lists, walk via shared connections) ✓
 ```
 
 **Walk #3:**
 ```
 Start: Rolling Stones (owned)
-  → Step 1: The Who (similarity: 0.88) ✓ (visited again!)
-  → Step 2: The Kinks (similarity: 0.85) ✓ (visited again!)
+  → Step 1: The Who (from Stones' similar list, similarity: 0.88) ✓ (visited again!)
+  → Step 2: The Beatles (owned, but Who connects back via Beatles' similar list) ✓
+  → Step 3: The Kinks (from Beatles' similar list) ✓ (visited again!)
 ```
+
+**Key Insight:** Artists that appear in multiple similar lists create a **mesh network** that allows multi-hop traversal without fetching new similar artists.
 
 ### Scoring: Counting Visits
 
@@ -600,30 +638,37 @@ flowchart TD
 
 ## Advantages of Graph Algorithm
 
-### 1. Multi-Hop Discovery
+### 1. Network Traversal (Not True Multi-Hop)
+
+**Important:** The graph algorithm explores a **closed network** built from your 69 owned artists' similar lists. It doesn't recursively fetch similar artists for candidates.
 
 **Basic Algorithm:**
 ```
 You own: The Beatles
-Recommends: Direct similar artists only
-  → Rolling Stones ✓
-  → The Kinks ✓
-  → The Who ✓
+Recommends: Direct similar artists (scored individually)
+  → Rolling Stones (similarity: 0.95)
+  → The Kinks (similarity: 0.89)
+  → The Who (similarity: 0.87)
 ```
 
 **Graph Algorithm:**
 ```
-You own: The Beatles
-Walks through network:
-  Beatles → Stones → Faces → Steve Marriott
-  Beatles → Kinks → Ray Davies → solo work
-  Beatles → Who → Pete Townshend
+You own: The Beatles, Rolling Stones, Led Zeppelin, Pink Floyd
+Graph shows The Who appears in multiple similar lists:
+  Beatles → Who (0.87)
+  Stones → Who (0.88)
+  Zeppelin → Who (0.80)
+  Floyd → Who (0.72)
 
-Recommends: Multi-hop discoveries
-  → The Who ✓ (direct, but higher confidence)
-  → Small Faces ✓ (2-hops)
-  → Steve Marriott ✓ (3-hops, deep cut!)
+Recommends: The Who with MUCH HIGHER confidence
+  → The Who is visited frequently during walks
+  → Connected to 4 different owned artists
+  → Central "hub" in your taste network
 ```
+
+**Advantage:** Finds artists at the **intersection** of your different tastes, not just similar to one artist.
+
+**Note:** All recommended artists still come from the initial 69 similar artist lists. The graph algorithm ranks them differently based on network structure, not discovers completely new artists beyond that pool.
 
 ### 2. Network Centrality
 
@@ -648,12 +693,27 @@ Obscure Artist connects to:
 Score: Lower (peripheral node)
 ```
 
-### 3. Serendipitous Discovery
+### 3. Exploration Within Constraints
 
-Random walks occasionally find unexpected gems:
-- Artist 3 hops away from your collection
-- Not obvious from direct similarity alone
-- Still musically coherent due to network structure
+Random walks explore the network structure to find less obvious recommendations:
+- Artists with lower direct similarity to any single owned artist
+- But well-connected to your overall collection
+- Still musically coherent due to network mesh
+
+**Example:**
+```
+Small Faces might have:
+  → Low similarity to Beatles individually (0.65)
+  → But appears in multiple similar lists:
+     Stones → Small Faces (0.75)
+     Kinks → Small Faces (0.70)
+     Who → Small Faces (0.68)
+
+Graph algorithm: Ranks higher due to multiple connections
+Basic algorithm: Might not rank as high (lower individual scores)
+```
+
+**Limitation:** Can only discover artists already in the ~1,500 candidate pool from the 69 API calls.
 
 ---
 
@@ -661,13 +721,76 @@ Random walks occasionally find unexpected gems:
 
 | Aspect | Basic Algorithm | Graph Algorithm |
 |--------|----------------|-----------------|
-| **Data Source** | Direct similar artists only | Full similarity network |
-| **Depth** | 1-hop (direct neighbors) | 3-hop (network traversal) |
+| **Data Source** | Direct similar artists only | Full similarity network (mesh) |
+| **Depth** | 1-hop (direct neighbors) | 3-hop (within closed graph) |
+| **Candidate Pool** | ~1,500 artists from 69 API calls | Same ~1,500 artists |
 | **Scoring** | Simple similarity scores | Visit frequency + centrality |
-| **Discovery** | Safe, predictable | Adventurous, serendipitous |
+| **Discovery** | Individual artist similarity | Network intersection/hubs |
 | **Computation** | ~10ms (simple scoring) | ~500ms (random walks) |
-| **Cache Usage** | Same as graph | Same as graph |
-| **Best For** | Quick, obvious recommendations | Deep cuts, network effects |
+| **API Calls** | 69 (same as graph) | 69 (same as basic) |
+| **Best For** | Quick, obvious recommendations | Taste intersection, connected artists |
+
+---
+
+## True Multi-Hop Discovery (What It Would Require)
+
+The current implementation explores a **closed graph** from 69 API calls. To do **true recursive multi-hop discovery**, you'd need:
+
+### Recursive Fetching Strategy
+
+```python
+# Phase 1: Owned Artists (69 API calls)
+for artist in user_collection:
+    similar_artists = fetch_similar(artist)
+    graph.add_edges(artist, similar_artists)
+
+# Phase 2: Top Candidates (50 API calls)
+top_50_candidates = get_top_candidates(graph)
+for artist in top_50_candidates:
+    similar_artists = fetch_similar(artist)  # ← NEW API CALLS
+    graph.add_edges(artist, similar_artists)
+
+# Phase 3: Second-Tier Candidates (100 API calls)
+next_100_candidates = get_next_candidates(graph)
+for artist in next_100_candidates:
+    similar_artists = fetch_similar(artist)  # ← MORE NEW API CALLS
+    graph.add_edges(artist, similar_artists)
+
+# Total: 69 + 50 + 100 = 219 API calls
+# With 1s rate limit = ~4 minutes
+```
+
+### Cost-Benefit Analysis
+
+**Benefits:**
+- ✅ Truly discovers artists 3+ hops beyond your collection
+- ✅ Explores the global Last.fm similarity network
+- ✅ Can find very obscure recommendations
+
+**Costs:**
+- ❌ 219+ API calls (vs. 69 currently)
+- ❌ ~4+ minutes to generate recommendations (vs. ~1 minute)
+- ❌ Exponentially growing network (thousands of nodes)
+- ❌ Cache becomes massive (thousands of artists)
+- ❌ Diminishing returns (2-hop discoveries usually sufficient)
+
+### Why We Don't Do This
+
+1. **Performance:** 4+ minute wait for recommendations is poor UX
+2. **API Rate Limits:** Last.fm would throttle/ban excessive requests
+3. **Diminishing Returns:** The closed graph already has ~1,500 candidates
+4. **Cache Explosion:** Would need to cache thousands of similar artist lists
+5. **Recommendation Quality:** 3+ hops often become musically incoherent
+
+### Alternative: Hybrid Approach
+
+A compromise could be:
+1. **Initial:** Use closed graph (69 API calls)
+2. **Background:** Slowly fetch similar artists for top candidates
+3. **Progressive:** Recommendations improve over time as graph expands
+4. **Capped:** Limit to 200-300 total cached artist similarity lists
+
+This gives benefits of recursive fetching without the upfront cost.
 
 ---
 
