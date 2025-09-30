@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-const AlbumSearchModal = ({ onClose, onSelectAlbum }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+const AlbumSearchModal = ({ onClose, onSelectAlbum, initialSearchQuery = '' }) => {
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery);
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
@@ -10,12 +10,12 @@ const AlbumSearchModal = ({ onClose, onSelectAlbum }) => {
   useEffect(() => {
     const originalBodyStyle = document.body.style.overflow;
     const originalDocumentStyle = document.documentElement.style.overflow;
-    
+
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
     document.body.style.position = 'fixed';
     document.body.style.width = '100%';
-    
+
     return () => {
       document.body.style.overflow = originalBodyStyle;
       document.documentElement.style.overflow = originalDocumentStyle;
@@ -29,19 +29,19 @@ const AlbumSearchModal = ({ onClose, onSelectAlbum }) => {
 
     setIsSearching(true);
     setHasSearched(true);
-    
+
     try {
       // Use Discogs client directly for album-only search
       const { DiscogsClient } = await import('../services/apiClients.js');
       const results = await DiscogsClient.searchReleases(searchQuery.trim());
-      
+
       // Transform results to include source info
       const transformedResults = results.map(result => ({
         ...result,
         source: 'discogs',
         identificationMethod: 'manual-discogs-search'
       }));
-      
+
       setSearchResults(transformedResults);
     } catch (error) {
       console.error('Album search failed:', error);
@@ -50,6 +50,13 @@ const AlbumSearchModal = ({ onClose, onSelectAlbum }) => {
       setIsSearching(false);
     }
   };
+
+  // Auto-trigger search if initial query provided
+  useEffect(() => {
+    if (initialSearchQuery && initialSearchQuery.trim()) {
+      handleSearch();
+    }
+  }, []);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
