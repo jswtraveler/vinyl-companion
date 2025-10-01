@@ -126,14 +126,15 @@ async function processSimilarArtists(
   lastfmApiKey: string
 ) {
   // Check if we already have cached similar artists (within 30 days)
-  const { data: existingCache } = await supabase
+  const { data: existingCache, error: cacheError } = await supabase
     .from('artist_similarity_cache')
     .select('cached_at')
     .eq('source_artist', artist.artist_name)
-    .single()
+    .limit(1)
 
-  if (existingCache) {
-    const cacheAge = Date.now() - new Date(existingCache.cached_at).getTime()
+  // Check if cache exists and is fresh (ignore "no rows" errors)
+  if (existingCache && existingCache.length > 0) {
+    const cacheAge = Date.now() - new Date(existingCache[0].cached_at).getTime()
     const thirtyDays = 30 * 24 * 60 * 60 * 1000
 
     if (cacheAge < thirtyDays) {
@@ -195,14 +196,15 @@ async function processArtistMetadata(
   lastfmApiKey: string
 ) {
   // Check if we already have cached metadata (within 14 days)
-  const { data: existingCache } = await supabase
+  const { data: existingCache, error: cacheError } = await supabase
     .from('artist_metadata_cache')
     .select('cached_at')
     .eq('artist_name', artist.artist_name)
-    .single()
+    .limit(1)
 
-  if (existingCache) {
-    const cacheAge = Date.now() - new Date(existingCache.cached_at).getTime()
+  // Check if cache exists and is fresh (ignore "no rows" errors)
+  if (existingCache && existingCache.length > 0) {
+    const cacheAge = Date.now() - new Date(existingCache[0].cached_at).getTime()
     const fourteenDays = 14 * 24 * 60 * 60 * 1000
 
     if (cacheAge < fourteenDays) {
