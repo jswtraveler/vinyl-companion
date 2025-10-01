@@ -167,7 +167,7 @@ async function processSimilarArtists(
 
   // Store in cache
   for (const similar of similarArtists) {
-    await supabase
+    const { error } = await supabase
       .from('artist_similarity_cache')
       .upsert({
         source_artist: artist.artist_name,
@@ -180,6 +180,10 @@ async function processSimilarArtists(
       }, {
         onConflict: 'source_artist,target_artist'
       })
+
+    if (error) {
+      console.error(`Error caching similarity for ${similar.name}:`, error)
+    }
   }
 
   console.log(`Cached ${similarArtists.length} similar artists for ${artist.artist_name}`)
@@ -233,7 +237,7 @@ async function processArtistMetadata(
   }
 
   // Store in cache
-  await supabase
+  const { error } = await supabase
     .from('artist_metadata_cache')
     .upsert({
       artist_name: artist.artist_name,
@@ -244,6 +248,11 @@ async function processArtistMetadata(
     }, {
       onConflict: 'artist_name'
     })
+
+  if (error) {
+    console.error(`Error caching metadata for ${artist.artist_name}:`, error)
+    return
+  }
 
   console.log(`Cached metadata for ${artist.artist_name}`)
 }
