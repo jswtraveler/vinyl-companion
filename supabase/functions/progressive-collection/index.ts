@@ -103,7 +103,7 @@ async function processUserCollection(
   // Get user's owned artists
   const { data: ownedArtists, error: artistsError } = await supabase
     .from('user_owned_artists')
-    .select('artist_id, artist_name, artist_mbid')
+    .select('artist_name, artist_mbid')
     .eq('user_id', userId)
 
   if (artistsError) throw artistsError
