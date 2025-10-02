@@ -18,14 +18,12 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    WITH RECURSIVE artist_walk AS (
-        -- Base case: Start random walks from user's owned artists
+    WITH base_similarities AS (
+        -- Pre-filter base case to limit search space
         SELECT
-            similarity.target_artist::TEXT as current_artist,
-            similarity.similarity_score * (1 - p_restart_probability) as walk_score,
-            1 as depth,
-            owned.artist_name::TEXT as origin_artist,
-            ARRAY[owned.artist_name::TEXT, similarity.target_artist::TEXT] as path
+            similarity.target_artist,
+            similarity.similarity_score,
+            owned.artist_name as source_artist
         FROM user_owned_artists owned
         JOIN artist_similarity_cache similarity
             ON LOWER(owned.artist_name) = LOWER(similarity.source_artist)
@@ -35,9 +33,16 @@ BEGIN
           AND LOWER(similarity.target_artist) != ALL(
               SELECT LOWER(unnest(p_user_artists))
           )
-        -- Limit base case results to prevent explosion
-        ORDER BY similarity.similarity_score DESC
-        LIMIT 200
+    ),
+    artist_walk AS (
+        -- Base case: Start random walks from filtered base
+        SELECT
+            base.target_artist::TEXT as current_artist,
+            base.similarity_score * (1 - p_restart_probability) as walk_score,
+            1 as depth,
+            base.source_artist::TEXT as origin_artist,
+            ARRAY[base.source_artist::TEXT, base.target_artist::TEXT] as path
+        FROM base_similarities base
 
         UNION ALL
 
@@ -59,8 +64,6 @@ BEGIN
           )
           AND next_sim.target_artist != ALL(walk.path) -- Prevent cycles
           AND walk.walk_score > 0.01 -- More aggressive pruning
-          -- Limit recursive results
-          AND walk.depth <= 100
     ),
 
     -- Aggregate walk results by target artist
