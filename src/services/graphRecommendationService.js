@@ -180,12 +180,13 @@ export class GraphRecommendationService {
     const { data, error } = await this.supabase
       .from('artist_similarity_cache')
       .select(`
-        source_artist_name,
-        similar_artists,
+        source_artist,
+        target_artist,
+        similarity_score,
         data_source
       `)
-      .in('source_artist_name', artistNames)
-      .gt('expires_at', new Date().toISOString());
+      .in('source_artist', artistNames)
+      .eq('data_source', 'lastfm');
 
     if (error) {
       console.warn('Failed to fetch similarity graph:', error);
@@ -201,28 +202,24 @@ export class GraphRecommendationService {
   buildAdjacencyList(similarityData) {
     const graph = new Map();
 
+    // New schema: each record is one relationship (source -> target)
     similarityData.forEach(record => {
-      const sourceArtist = record.source_artist_name.toLowerCase();
-      const similarArtists = record.similar_artists || [];
+      const sourceArtist = record.source_artist.toLowerCase();
+      const targetArtist = record.target_artist.toLowerCase();
+      const similarity = parseFloat(record.similarity_score) || 0;
 
       if (!graph.has(sourceArtist)) {
         graph.set(sourceArtist, []);
       }
 
-      similarArtists.forEach(similar => {
-        const targetArtist = similar.name?.toLowerCase();
-        const similarity = parseFloat(similar.match) || 0;
-
-        if (targetArtist && similarity >= this.config.minSimilarityThreshold) {
-          graph.get(sourceArtist).push({
-            artist: targetArtist,
-            weight: similarity,
-            originalName: similar.name,
-            mbid: similar.mbid,
-            image: similar.image
-          });
-        }
-      });
+      if (similarity >= this.config.minSimilarityThreshold) {
+        graph.get(sourceArtist).push({
+          artist: targetArtist,
+          weight: similarity,
+          originalName: record.target_artist,
+          mbid: record.target_mbid
+        });
+      }
     });
 
     return graph;
