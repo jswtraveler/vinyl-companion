@@ -18,7 +18,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    WITH base_similarities AS (
+    WITH RECURSIVE base_similarities AS (
         -- Pre-filter base case to limit search space
         SELECT
             similarity.target_artist,
