@@ -112,28 +112,38 @@ function App() {
 
   // Handle mobile app lifecycle - reload albums when app becomes visible again
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && !authLoading) {
+    let reloadTimeout = null
+
+    const debouncedReload = () => {
+      // Debounce to prevent multiple rapid reloads from different events
+      if (reloadTimeout) clearTimeout(reloadTimeout)
+      reloadTimeout = setTimeout(() => {
         console.log('App became visible - reloading albums...')
         loadAlbums(useCloudDatabase)
+      }, 100)
+    }
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !authLoading) {
+        debouncedReload()
       }
     }
 
     const handleFocus = () => {
       if (!authLoading) {
-        console.log('App focused - reloading albums...')
-        loadAlbums(useCloudDatabase)
+        debouncedReload()
       }
     }
 
     // Listen for mobile app lifecycle events
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleFocus)
-    
+
     // iOS Safari specific - handles when user switches back to browser
     window.addEventListener('pageshow', handleFocus)
 
     return () => {
+      if (reloadTimeout) clearTimeout(reloadTimeout)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
       window.removeEventListener('pageshow', handleFocus)
