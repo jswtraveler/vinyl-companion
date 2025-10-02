@@ -175,25 +175,35 @@ export class GraphRecommendationService {
    * Fetch similarity graph data from cache
    */
   async fetchSimilarityGraph(userArtists) {
-    const artistNames = userArtists.map(a => a.toLowerCase());
+    try {
+      // Build case-insensitive filter using .or() with ilike
+      const orFilters = userArtists
+        .map(artist => `source_artist.ilike.${artist}`)
+        .join(',');
 
-    const { data, error } = await this.supabase
-      .from('artist_similarity_cache')
-      .select(`
-        source_artist,
-        target_artist,
-        similarity_score,
-        data_source
-      `)
-      .in('source_artist', artistNames)
-      .eq('data_source', 'lastfm');
+      const { data, error } = await this.supabase
+        .from('artist_similarity_cache')
+        .select(`
+          source_artist,
+          target_artist,
+          similarity_score,
+          data_source
+        `)
+        .eq('data_source', 'lastfm')
+        .or(orFilters);
 
-    if (error) {
-      console.warn('Failed to fetch similarity graph:', error);
+      if (error) {
+        console.warn('Failed to fetch similarity graph:', error);
+        return [];
+      }
+
+      this.log(`📊 Fetched ${(data || []).length} similarity relationships for ${userArtists.length} artists`);
+      return data || [];
+
+    } catch (error) {
+      console.error('Failed to fetch similarity graph:', error);
       return [];
     }
-
-    return data || [];
   }
 
   /**
