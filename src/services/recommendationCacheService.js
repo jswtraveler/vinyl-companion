@@ -26,7 +26,7 @@ export class RecommendationCacheService {
         .select('*')
         .eq('source_artist', artistName)
         .eq('data_source', dataSource)
-        .limit(1);
+        .order('similarity_score', { ascending: false });
 
       if (error) {
         console.warn('Error fetching similarity cache:', error);
