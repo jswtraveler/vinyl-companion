@@ -24,9 +24,8 @@ export class RecommendationCacheService {
       const { data, error } = await this.supabase
         .from('artist_similarity_cache')
         .select('*')
-        .eq('source_artist_name', artistName)
+        .eq('source_artist', artistName)
         .eq('data_source', dataSource)
-        .gt('expires_at', new Date().toISOString())
         .limit(1);
 
       if (error) {
@@ -39,20 +38,20 @@ export class RecommendationCacheService {
         return null;
       }
 
-      const cacheRecord = data[0];
-
-      // Update last accessed timestamp
-      await this.updateCacheAccess('artist_similarity_cache', cacheRecord.id);
+      // Convert row-per-relationship format to array format
+      const similarArtists = data.map(row => ({
+        name: row.target_artist,
+        mbid: row.target_mbid,
+        match: row.similarity_score
+      }));
 
       this.log(`✅ Cache hit: Similar artists for ${artistName} (${dataSource})`);
       return {
-        similarArtists: cacheRecord.similar_artists,
+        similarArtists: similarArtists,
         metadata: {
           cached: true,
-          cachedAt: cacheRecord.created_at,
-          expiresAt: cacheRecord.expires_at,
-          accessCount: cacheRecord.access_count + 1,
-          dataSource: cacheRecord.data_source
+          cachedAt: data[0].cached_at,
+          dataSource: data[0].data_source
         }
       };
 
@@ -72,20 +71,20 @@ export class RecommendationCacheService {
    */
   async setSimilarArtistsCache(artistName, artistMBID, similarArtists, dataSource = 'lastfm', metadata = {}) {
     try {
-      const cacheData = {
-        source_artist_name: artistName,
-        source_artist_mbid: artistMBID || null,
-        similar_artists: similarArtists,
-        data_source: dataSource,
-        total_similar_count: Array.isArray(similarArtists) ? similarArtists.length : 0,
-        api_response_raw: metadata.rawResponse || null,
-        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
-      };
+      // Convert array format to row-per-relationship format
+      const cacheRows = similarArtists.map(similar => ({
+        source_artist: artistName,
+        source_mbid: artistMBID || null,
+        target_artist: similar.name,
+        target_mbid: similar.mbid || null,
+        similarity_score: similar.match || 0.5,
+        data_source: dataSource
+      }));
 
       const { data, error } = await this.supabase
         .from('artist_similarity_cache')
-        .upsert(cacheData, {
-          onConflict: 'source_artist_name,data_source'
+        .upsert(cacheRows, {
+          onConflict: 'source_artist,target_artist'
         })
         .select();
 
@@ -99,7 +98,7 @@ export class RecommendationCacheService {
         return false;
       }
 
-      this.log(`💾 Cached: Similar artists for ${artistName} (${dataSource})`);
+      this.log(`💾 Cached: ${cacheRows.length} similar artists for ${artistName} (${dataSource})`);
       return true;
 
     } catch (error) {
@@ -120,8 +119,6 @@ export class RecommendationCacheService {
         .from('artist_metadata_cache')
         .select('*')
         .eq('artist_name', artistName)
-        .eq('data_source', dataSource)
-        .gt('expires_at', new Date().toISOString())
         .limit(1);
 
       if (error) {
@@ -136,23 +133,11 @@ export class RecommendationCacheService {
 
       const cacheRecord = data[0];
 
-      await this.updateCacheAccess('artist_metadata_cache', cacheRecord.id);
-
       this.log(`✅ Cache hit: Metadata for ${artistName} (${dataSource})`);
       return {
-        metadata: {
-          listeners: cacheRecord.listeners,
-          playcount: cacheRecord.playcount,
-          tags: cacheRecord.tags,
-          topAlbums: cacheRecord.top_albums,
-          artistInfo: cacheRecord.artist_info,
-          genres: cacheRecord.genre_tags,
-          primaryGenre: cacheRecord.primary_genre,
-          popularityScore: cacheRecord.popularity_score
-        },
+        metadata: cacheRecord.metadata || {},
         cached: true,
-        cachedAt: cacheRecord.created_at,
-        accessCount: cacheRecord.access_count + 1
+        cachedAt: cacheRecord.cached_at
       };
 
     } catch (error) {
@@ -173,23 +158,14 @@ export class RecommendationCacheService {
       const cacheData = {
         artist_name: artistName,
         artist_mbid: artistMBID || null,
-        normalized_name: artistName.toLowerCase().trim(),
-        listeners: metadata.listeners || null,
-        playcount: metadata.playcount || null,
-        tags: metadata.tags || null,
-        top_albums: metadata.topAlbums || null,
-        artist_info: metadata.artistInfo || null,
-        genre_tags: metadata.genres || null,
-        primary_genre: metadata.primaryGenre || null,
-        popularity_score: metadata.popularityScore || null,
-        data_source: dataSource,
-        expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() // 14 days
+        metadata: metadata, // Store all metadata as JSONB
+        data_source: dataSource
       };
 
       const { data, error } = await this.supabase
         .from('artist_metadata_cache')
         .upsert(cacheData, {
-          onConflict: 'artist_name,data_source'
+          onConflict: 'artist_name'
         })
         .select();
 
@@ -510,25 +486,6 @@ export class RecommendationCacheService {
            null;
   }
 
-  /**
-   * Update cache access timestamp and count
-   * @private
-   */
-  async updateCacheAccess(tableName, id) {
-    try {
-      // Use RPC call for atomic increment since supabase.raw() is not available in JS client
-      await this.supabase
-        .from(tableName)
-        .update({
-          last_accessed_at: new Date().toISOString()
-          // Note: access_count increment would need a custom RPC function for atomic operation
-        })
-        .eq('id', id);
-    } catch (error) {
-      // Non-critical error, don't throw
-      console.warn('Failed to update cache access:', error);
-    }
-  }
 
   /**
    * Logging helper
