@@ -140,18 +140,58 @@ export class GraphRecommendationService {
     this.log('🔄 Using JavaScript fallback for graph traversal...');
 
     try {
-      // Get similarity data for user artists
-      const similarityData = await this.fetchSimilarityGraph(userArtists);
+      const maxDepth = options.maxWalkDepth || this.config.maxWalkDepth;
 
-      if (!similarityData.length) {
+      // Build multi-hop graph by fetching similarity data iteratively
+      const graph = new Map();
+      const toFetch = new Set(userArtists.map(a => a.toLowerCase()));
+      const fetched = new Set();
+
+      // Fetch similarity data up to maxDepth levels
+      for (let depth = 0; depth < maxDepth && toFetch.size > 0; depth++) {
+        const currentBatch = Array.from(toFetch);
+        toFetch.clear();
+
+        this.log(`📊 Fetching depth ${depth + 1}: ${currentBatch.length} artists`);
+
+        const similarityData = await this.fetchSimilarityGraph(currentBatch);
+
+        // Build adjacency list from this batch
+        similarityData.forEach(record => {
+          const sourceArtist = record.source_artist.toLowerCase();
+          const targetArtist = record.target_artist.toLowerCase();
+          const similarity = parseFloat(record.similarity_score) || 0;
+
+          if (!graph.has(sourceArtist)) {
+            graph.set(sourceArtist, []);
+          }
+
+          if (similarity >= this.config.minSimilarityThreshold) {
+            graph.get(sourceArtist).push({
+              artist: targetArtist,
+              weight: similarity,
+              originalName: record.target_artist,
+              mbid: record.target_mbid
+            });
+
+            // Queue target for next depth if not already fetched
+            if (!fetched.has(targetArtist) && depth < maxDepth - 1) {
+              toFetch.add(targetArtist);
+            }
+          }
+        });
+
+        currentBatch.forEach(a => fetched.add(a.toLowerCase()));
+      }
+
+      if (graph.size === 0) {
         return {
           success: false,
           error: 'No similarity data available for graph traversal'
         };
       }
 
-      // Build adjacency list representation
-      const graph = this.buildAdjacencyList(similarityData);
+      this.log(`🕸️ Built graph with ${graph.size} nodes`);
 
       // Execute random walk algorithm in JavaScript
       const walkResults = this.performRandomWalk(graph, userArtists, options);
