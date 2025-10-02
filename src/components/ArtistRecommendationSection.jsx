@@ -302,37 +302,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     }));
   }, [diversityEnabled]); // Only trigger when diversity setting changes
 
-  // Build progressive collection queue when recommendations are ready
-  useEffect(() => {
-    if (!recommendations || !progressiveCollectionService || !albums) {
-      return;
-    }
-
-    console.log('📦 Building progressive collection queue from recommendations...');
-
-    // Get ALL scored candidates (not just displayed top 20)
-    const allCandidates = recommendations.metadata?.allCandidates || recommendations.artists;
-
-    console.log(`📦 Found ${allCandidates.length} total candidates for progressive collection`);
-
-    if (allCandidates && allCandidates.length > 0) {
-      progressiveCollectionService.buildPriorityQueue(allCandidates, albums)
-        .then(queueSize => {
-          console.log(`📦 Priority queue built: ${queueSize} artists to fetch`);
-
-          if (queueSize > 0) {
-            // Start idle detection to begin background collection
-            progressiveCollectionService.startIdleDetection();
-            console.log('👁️ Idle detection started - will collect metadata during idle time');
-          } else {
-            console.log('✅ All candidates already have metadata cached');
-          }
-        })
-        .catch(err => {
-          console.error('Failed to build progressive collection queue:', err);
-        });
-    }
-  }, [recommendations, progressiveCollectionService, albums]);
+  // Progressive collection is now handled server-side by Edge Function
+  // Client no longer needs to manage background collection queue
 
   const generateBasicRecommendations = async (albums) => {
     try {
