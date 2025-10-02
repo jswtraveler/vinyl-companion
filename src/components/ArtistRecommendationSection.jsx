@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RecommendationService } from '../services/recommendationService.js';
 import { GraphRecommendationService } from '../services/graphRecommendationService.js';
 import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilter.js';
-import { ProgressiveCollectionService } from '../services/progressiveCollectionService.js';
-import ProgressiveCollectionStatus from './ProgressiveCollectionStatus.jsx';
 
 /**
  * Merge fetched metadata into artist recommendation objects
@@ -58,7 +56,6 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [useGraphAlgorithm, setUseGraphAlgorithm] = useState(false); // Temporarily disabled for local dev
   const isGeneratingRef = useRef(false); // Prevent duplicate calls
   const [diversityEnabled, setDiversityEnabled] = useState(true); // Enable diversity filtering by default
-  const [progressiveCollectionService, setProgressiveCollectionService] = useState(null);
 
   // Initialize recommendation services
   useEffect(() => {
@@ -89,36 +86,6 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     }
   }, [user, useCloudDatabase]);
 
-  // Initialize progressive collection service
-  useEffect(() => {
-    if (!recommendationService?.dataFetcher || !recommendationService?.cacheService) {
-      return;
-    }
-
-    console.log('📦 Initializing progressive collection service...');
-
-    const service = new ProgressiveCollectionService(
-      recommendationService.dataFetcher,
-      recommendationService.cacheService,
-      {
-        idleThreshold: 30000,        // 30 seconds
-        requestDelay: 1000,          // 1 second between requests
-        maxQueueSize: 100,
-        maxRetries: 3,
-        retryBackoff: 60000
-      }
-    );
-
-    // Load any saved progress from previous sessions
-    service.loadProgress();
-    setProgressiveCollectionService(service);
-
-    // Cleanup on unmount
-    return () => {
-      console.log('📦 Cleaning up progressive collection service...');
-      service.destroy();
-    };
-  }, [recommendationService]);
 
   // Check if we have enough albums for recommendations
   const hasEnoughAlbums = useMemo(() => {
@@ -596,11 +563,6 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   return (
     <div className="mb-6 bg-gray-900 rounded-lg border border-gray-700">
       <div className="p-6">
-        {/* Progressive Collection Status */}
-        {progressiveCollectionService && (
-          <ProgressiveCollectionStatus service={progressiveCollectionService} />
-        )}
-
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <button
