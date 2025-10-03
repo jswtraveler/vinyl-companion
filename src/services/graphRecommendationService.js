@@ -413,21 +413,36 @@ export class GraphRecommendationService {
 
         // Query similarity scores for this recommendation's connections
         try {
+          const lowerTarget = result.target_artist.toLowerCase();
+          const lowerSources = result.connected_to.map(a => a.toLowerCase());
+
+          // Simple query: get all edges where target matches and source is in list
           const { data, error } = await this.supabase
             .from('artist_similarity_cache')
             .select('source_artist, similarity_score')
-            .eq('target_artist', result.target_artist)
-            .in('source_artist', result.connected_to.map(a => a.toLowerCase()));
+            .eq('target_artist', lowerTarget)
+            .in('source_artist', lowerSources);
 
-          if (!error && data) {
+          if (!error && data && data.length > 0) {
+            this.log(`📊 Found ${data.length} similarity scores for ${result.target_artist}`);
             const connectionsWithScores = result.connected_to.map(artist => {
-              const scoreData = data.find(d => d.source_artist.toLowerCase() === artist.toLowerCase());
+              const scoreData = data.find(d =>
+                d.source_artist.toLowerCase() === artist.toLowerCase()
+              );
+              const similarity = scoreData ? parseFloat(scoreData.similarity_score) : 0.5;
+              this.log(`  ${artist} → ${result.target_artist}: ${Math.round(similarity * 100)}%`);
               return {
                 sourceArtist: artist,
-                similarity: scoreData ? parseFloat(scoreData.similarity_score) : 0.5
+                similarity: similarity
               };
             });
             return { ...result, connectionsWithScores };
+          }
+
+          if (error) {
+            console.warn('Similarity query error:', error);
+          } else {
+            this.log(`⚠️ No similarity data found for ${result.target_artist} from ${result.connected_to.join(', ')}`);
           }
         } catch (err) {
           console.warn('Failed to fetch connection scores:', err);
@@ -447,17 +462,44 @@ export class GraphRecommendationService {
     // Filter out user's existing artists and process scores
     const candidates = enrichedData
       .filter(result => !userArtistSet.has(result.target_artist?.toLowerCase()))
-      .map(result => {
+      .map((result, index, array) => {
         // Calculate display score (scale up small PPR scores for better UX)
         let displayScore;
+
+        // Debug logging
+        if (index === 0) {
+          this.log(`🔍 Score debugging - first result:`);
+          this.log(`  normalized_score: ${result.normalized_score}`);
+          this.log(`  ppr_score: ${result.ppr_score}`);
+          this.log(`  graph_score: ${result.graph_score}`);
+        }
+
         if (result.normalized_score) {
-          // PPR scores are typically 0.0001-0.01, scale to 1-100 range
-          const minScore = 0.0001;
-          const maxScore = Math.max(...enrichedData.map(r => r.normalized_score || 0));
-          displayScore = Math.round(((result.normalized_score - minScore) / (maxScore - minScore)) * 100);
-          displayScore = Math.max(1, Math.min(100, displayScore)); // Clamp to 1-100
+          // Get all normalized scores for scaling
+          const allScores = array.map(r => r.normalized_score || 0).filter(s => s > 0);
+          const maxScore = Math.max(...allScores);
+          const minScore = Math.min(...allScores);
+
+          if (index === 0) {
+            this.log(`  Score range: ${minScore} - ${maxScore}`);
+          }
+
+          if (maxScore > 0 && maxScore !== minScore) {
+            // Scale from min-max to 1-100 range
+            displayScore = Math.round(((result.normalized_score - minScore) / (maxScore - minScore)) * 99 + 1);
+          } else if (maxScore > 0) {
+            // All same score
+            displayScore = 50;
+          } else {
+            // All zero
+            displayScore = 1;
+          }
         } else {
           displayScore = Math.round((result.graph_score || 0) * 100);
+        }
+
+        if (index === 0) {
+          this.log(`  Final display score: ${displayScore}%`);
         }
 
         return {
