@@ -1,4 +1,17 @@
 import { MusicBrainzClient, DiscogsClient, CoverArtClient } from './apiClients.js';
+import { LastFmClient } from './lastfmClient.js';
+
+// Initialize Last.fm client
+const LASTFM_API_KEY = import.meta.env.VITE_LASTFM_API_KEY;
+let lastfmClient = null;
+
+// Lazy initialization of Last.fm client
+const getLastFmClient = () => {
+  if (!lastfmClient && LASTFM_API_KEY) {
+    lastfmClient = new LastFmClient(LASTFM_API_KEY);
+  }
+  return lastfmClient;
+};
 
 /**
  * Album Metadata Enrichment Service
@@ -163,14 +176,15 @@ export class MetadataEnricher {
   }
 
   /**
-   * Add album cover images to metadata results
+   * Add album cover images and Last.fm tags to metadata results
    * @param {Array} results - Metadata results
-   * @returns {Promise<Array>} Results with cover images
+   * @returns {Promise<Array>} Results with cover images and tags
    */
   static async addAlbumCovers(results) {
     const enrichedResults = await Promise.all(
       results.map(async (result) => {
         let coverUrl = null;
+        let lastfmTags = [];
 
         try {
           // Try MusicBrainz Cover Art Archive first (highest quality)
@@ -183,10 +197,14 @@ export class MetadataEnricher {
             coverUrl = result.coverImage;
           }
 
+          // Fetch Last.fm tags for the album
+          lastfmTags = await this.fetchLastFmTags(result.artist, result.title);
+
           return {
             ...result,
             coverUrl,
-            hasCover: !!coverUrl
+            hasCover: !!coverUrl,
+            lastfmTags
           };
 
         } catch (error) {
@@ -194,13 +212,88 @@ export class MetadataEnricher {
           return {
             ...result,
             coverUrl: null,
-            hasCover: false
+            hasCover: false,
+            lastfmTags: []
           };
         }
       })
     );
 
     return enrichedResults;
+  }
+
+  /**
+   * Fetch Last.fm tags for an album
+   * @param {string} artist - Artist name
+   * @param {string} album - Album title
+   * @returns {Promise<Array>} Array of genre/tag strings
+   */
+  static async fetchLastFmTags(artist, album) {
+    const client = getLastFmClient();
+    if (!client || !artist || !album) {
+      return [];
+    }
+
+    try {
+      console.log(`🎵 Fetching Last.fm tags for: ${artist} - ${album}`);
+      const albumInfo = await client.getAlbumInfo(artist, album);
+
+      if (albumInfo?.album?.tags?.tag) {
+        const tags = Array.isArray(albumInfo.album.tags.tag)
+          ? albumInfo.album.tags.tag
+          : [albumInfo.album.tags.tag];
+
+        // Extract top 5 tags and capitalize properly
+        const genreTags = tags
+          .slice(0, 5)
+          .map(tag => {
+            const name = typeof tag === 'string' ? tag : tag.name;
+            return this.capitalizeGenre(name);
+          })
+          .filter(Boolean);
+
+        console.log(`🎵 Found ${genreTags.length} Last.fm tags:`, genreTags);
+        return genreTags;
+      }
+
+      return [];
+    } catch (error) {
+      console.error(`Error fetching Last.fm tags for ${artist} - ${album}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Capitalize genre names properly
+   * @param {string} genre - Genre name
+   * @returns {string} Properly capitalized genre
+   */
+  static capitalizeGenre(genre) {
+    if (!genre) return '';
+
+    // Special cases
+    const specialCases = {
+      'r&b': 'R&B',
+      'rnb': 'R&B',
+      'hiphop': 'Hip Hop',
+      'hip-hop': 'Hip Hop',
+      'hip hop': 'Hip Hop',
+      'dnb': 'Drum & Bass',
+      'drum and bass': 'Drum & Bass',
+      'uk garage': 'UK Garage',
+      'edm': 'EDM'
+    };
+
+    const lower = genre.toLowerCase().trim();
+    if (specialCases[lower]) {
+      return specialCases[lower];
+    }
+
+    // Title case for normal genres
+    return genre
+      .split(/[\s-]+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
   }
 
   /**
@@ -266,11 +359,18 @@ export class MetadataEnricher {
  * @returns {Object} Album object ready for database
  */
 export function createAlbumFromMetadata(metadata, userOverrides = {}) {
+  // Merge genres from different sources
+  const genresFromApi = Array.isArray(metadata.genre) ? metadata.genre : (metadata.genre ? [metadata.genre] : []);
+  const genresFromLastFm = metadata.lastfmTags || [];
+
+  // Combine and deduplicate genres (prioritize Last.fm tags as they're more specific)
+  const allGenres = [...new Set([...genresFromLastFm, ...genresFromApi])];
+
   const baseAlbum = {
     title: metadata.title || '',
     artist: metadata.artist || '',
     year: metadata.year || null,
-    genre: Array.isArray(metadata.genre) ? metadata.genre : (metadata.genre ? [metadata.genre] : []),
+    genre: allGenres,
     label: metadata.label || '',
     catalogNumber: metadata.catalogNumber || '',
     format: metadata.format || 'LP',
@@ -282,7 +382,8 @@ export function createAlbumFromMetadata(metadata, userOverrides = {}) {
       discogsId: metadata.source === 'discogs' ? metadata.id : null,
       source: metadata.source,
       confidence: metadata.confidence || 0.5,
-      relevanceScore: metadata.relevanceScore || 0.5
+      relevanceScore: metadata.relevanceScore || 0.5,
+      lastfmTagCount: genresFromLastFm.length
     }
   };
 
