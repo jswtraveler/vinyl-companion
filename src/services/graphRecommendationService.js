@@ -423,12 +423,13 @@ export class GraphRecommendationService {
           const lowerTarget = result.target_artist.toLowerCase();
           const lowerSources = result.connected_to.map(a => a.toLowerCase());
 
-          // Simple query: get all edges where target matches and source is in list
+          // Query with LOWER() to handle case mismatches in database
+          // Note: Database stores artist names with original casing
           const { data, error } = await this.supabase
-            .from('artist_similarity_cache')
-            .select('source_artist, similarity_score')
-            .eq('target_artist', lowerTarget)
-            .in('source_artist', lowerSources);
+            .rpc('get_similarity_scores', {
+              p_target: lowerTarget,
+              p_sources: lowerSources
+            });
 
           if (!error && data && data.length > 0) {
             this.log(`📊 Found ${data.length}/${lowerSources.length} similarity scores for ${result.target_artist}`);
