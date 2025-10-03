@@ -404,22 +404,76 @@ export class GraphRecommendationService {
   async processGraphResults(graphData, userArtists, options = {}) {
     const userArtistSet = new Set(userArtists.map(a => a.toLowerCase()));
 
+    // Fetch similarity scores for connections in parallel
+    const enrichedData = await Promise.all(
+      graphData.map(async (result) => {
+        if (!result.connected_to || result.connected_to.length === 0) {
+          return { ...result, connectionsWithScores: [] };
+        }
+
+        // Query similarity scores for this recommendation's connections
+        try {
+          const { data, error } = await this.supabase
+            .from('artist_similarity_cache')
+            .select('source_artist, similarity_score')
+            .eq('target_artist', result.target_artist)
+            .in('source_artist', result.connected_to.map(a => a.toLowerCase()));
+
+          if (!error && data) {
+            const connectionsWithScores = result.connected_to.map(artist => {
+              const scoreData = data.find(d => d.source_artist.toLowerCase() === artist.toLowerCase());
+              return {
+                sourceArtist: artist,
+                similarity: scoreData ? parseFloat(scoreData.similarity_score) : 0.5
+              };
+            });
+            return { ...result, connectionsWithScores };
+          }
+        } catch (err) {
+          console.warn('Failed to fetch connection scores:', err);
+        }
+
+        // Fallback: use default similarity
+        return {
+          ...result,
+          connectionsWithScores: result.connected_to.map(artist => ({
+            sourceArtist: artist,
+            similarity: 0.5 // Default if query fails
+          }))
+        };
+      })
+    );
+
     // Filter out user's existing artists and process scores
-    const candidates = graphData
+    const candidates = enrichedData
       .filter(result => !userArtistSet.has(result.target_artist?.toLowerCase()))
-      .map(result => ({
-        artist: this.capitalizeArtistName(result.target_artist),
-        // Use normalized_score if available (PPR), otherwise fall back to graph_score
-        score: Math.round((result.normalized_score || result.graph_score || 0) * 100),
-        pprScore: result.ppr_score,
-        normalizedScore: result.normalized_score,
-        nodeDegree: result.node_degree,
-        connectionCount: result.connected_to?.length || result.connection_breadth || 1,
-        connections: (result.connected_to || []).map(artist => ({
-          sourceArtist: this.capitalizeArtistName(artist)
-        })),
-        reason: this.generateGraphReason(result)
-      }))
+      .map(result => {
+        // Calculate display score (scale up small PPR scores for better UX)
+        let displayScore;
+        if (result.normalized_score) {
+          // PPR scores are typically 0.0001-0.01, scale to 1-100 range
+          const minScore = 0.0001;
+          const maxScore = Math.max(...enrichedData.map(r => r.normalized_score || 0));
+          displayScore = Math.round(((result.normalized_score - minScore) / (maxScore - minScore)) * 100);
+          displayScore = Math.max(1, Math.min(100, displayScore)); // Clamp to 1-100
+        } else {
+          displayScore = Math.round((result.graph_score || 0) * 100);
+        }
+
+        return {
+          artist: this.capitalizeArtistName(result.target_artist),
+          score: displayScore,
+          pprScore: result.ppr_score,
+          normalizedScore: result.normalized_score,
+          nodeDegree: result.node_degree,
+          connectionCount: result.connected_to?.length || result.connection_breadth || 1,
+          connections: (result.connectionsWithScores || []).map(conn => ({
+            sourceArtist: this.capitalizeArtistName(conn.sourceArtist),
+            similarity: conn.similarity
+          })),
+          reason: this.generateGraphReason(result)
+        };
+      })
       .sort((a, b) => b.score - a.score)
       .slice(0, this.config.maxRecommendations);
 
