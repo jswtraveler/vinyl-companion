@@ -431,13 +431,17 @@ export class GraphRecommendationService {
             .in('source_artist', lowerSources);
 
           if (!error && data && data.length > 0) {
-            this.log(`📊 Found ${data.length} similarity scores for ${result.target_artist}`);
+            this.log(`📊 Found ${data.length}/${lowerSources.length} similarity scores for ${result.target_artist}`);
             const connectionsWithScores = result.connected_to.map(artist => {
               const scoreData = data.find(d =>
                 d.source_artist.toLowerCase() === artist.toLowerCase()
               );
               const similarity = scoreData ? parseFloat(scoreData.similarity_score) : 0.5;
-              this.log(`  ${artist} → ${result.target_artist}: ${Math.round(similarity * 100)}%`);
+              if (scoreData) {
+                this.log(`  ✓ ${artist} → ${result.target_artist}: ${Math.round(similarity * 100)}%`);
+              } else {
+                this.log(`  ✗ ${artist} → ${result.target_artist}: not found in DB (using 50%)`);
+              }
               return {
                 sourceArtist: artist,
                 similarity: similarity
@@ -449,7 +453,7 @@ export class GraphRecommendationService {
           if (error) {
             console.warn('Similarity query error:', error);
           } else {
-            this.log(`⚠️ No similarity data found for ${result.target_artist} from ${result.connected_to.join(', ')}`);
+            this.log(`⚠️ No similarity data: searching for target="${lowerTarget}", sources=[${lowerSources.join(', ')}]`);
           }
         } catch (err) {
           console.warn('Failed to fetch connection scores:', err);
