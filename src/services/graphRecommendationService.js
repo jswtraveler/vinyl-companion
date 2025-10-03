@@ -115,12 +115,19 @@ export class GraphRecommendationService {
       });
 
       if (error) {
-        console.error('PPR SQL error:', error);
+        console.error('❌ PPR SQL error:', error);
+        console.error('Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        });
+        this.log('⚠️ Falling back to JavaScript PPR implementation');
         // Fallback to JavaScript-based PPR algorithm
         return await this.fallbackPPRTraversal(userArtists, options);
       }
 
-      this.log(`📊 PPR found ${data?.length || 0} candidates`);
+      this.log(`✅ PostgreSQL PPR succeeded - found ${data?.length || 0} candidates`);
 
       return {
         success: true,
@@ -384,12 +391,12 @@ export class GraphRecommendationService {
 
       results.push({
         target_artist: artist,
-        ppr_score: score,
-        normalized_score: normalizedScore,
+        ppr_score: parseFloat(score.toFixed(6)),
+        normalized_score: parseFloat(normalizedScore.toFixed(6)),
         node_degree: degree,
         connected_to: Array.from(connectedTo),
         // For compatibility with existing code
-        graph_score: normalizedScore,
+        graph_score: parseFloat(normalizedScore.toFixed(6)),
         connection_breadth: connectedTo.size
       });
     }
@@ -474,7 +481,7 @@ export class GraphRecommendationService {
           this.log(`  graph_score: ${result.graph_score}`);
         }
 
-        if (result.normalized_score) {
+        if (result.normalized_score !== null && result.normalized_score !== undefined) {
           // Get all normalized scores for scaling
           const allScores = array.map(r => r.normalized_score || 0).filter(s => s > 0);
           const maxScore = Math.max(...allScores);
@@ -482,6 +489,7 @@ export class GraphRecommendationService {
 
           if (index === 0) {
             this.log(`  Score range: ${minScore} - ${maxScore}`);
+            this.log(`  Total candidates: ${allScores.length}`);
           }
 
           if (maxScore > 0 && maxScore !== minScore) {
@@ -494,8 +502,11 @@ export class GraphRecommendationService {
             // All zero
             displayScore = 1;
           }
-        } else {
+        } else if (result.graph_score) {
           displayScore = Math.round((result.graph_score || 0) * 100);
+        } else {
+          // Fallback: use ppr_score directly if normalized_score is null
+          displayScore = 1;
         }
 
         if (index === 0) {
