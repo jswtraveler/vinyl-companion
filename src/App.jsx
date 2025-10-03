@@ -852,6 +852,10 @@ function App() {
             stats={stats}
             showStats={showStats}
             onToggleStats={toggleStats}
+            onUpdateAlbum={async (albumId, updates) => {
+              await SupabaseDatabase.updateAlbum(albumId, updates);
+              await loadAlbums(); // Reload albums to reflect changes
+            }}
           />
         );
 

@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import AlbumCard from '../components/AlbumCard';
 import SearchBar from '../components/SearchBar';
+import TagBackfillModal from '../components/TagBackfillModal';
 
 /**
  * CollectionPage Component
@@ -21,10 +22,12 @@ const CollectionPage = ({
   onQuickAdd,
   stats,
   showStats,
-  onToggleStats
+  onToggleStats,
+  onUpdateAlbum
 }) => {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
+  const [showTagBackfill, setShowTagBackfill] = useState(false);
   const sortDropdownRef = useRef(null);
 
   // Extract unique genres from albums
@@ -201,7 +204,19 @@ const CollectionPage = ({
       {/* Stats Panel */}
       {showStats && stats && (
         <div className="mb-6 bg-gray-800 border border-gray-700 rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-white mb-4">Collection Statistics</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-white">Collection Statistics</h3>
+            <button
+              onClick={() => setShowTagBackfill(true)}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
+              title="Fetch Last.fm tags for existing albums"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+              Backfill Genre Tags
+            </button>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div className="bg-gray-900 p-4 rounded-lg">
@@ -269,6 +284,14 @@ const CollectionPage = ({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v8m-4-4h8" />
         </svg>
       </button>
+
+      {/* Tag Backfill Modal */}
+      <TagBackfillModal
+        isOpen={showTagBackfill}
+        onClose={() => setShowTagBackfill(false)}
+        albums={albums}
+        onUpdateAlbum={onUpdateAlbum}
+      />
     </div>
   );
 };
