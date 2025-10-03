@@ -56,6 +56,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [useGraphAlgorithm, setUseGraphAlgorithm] = useState(false); // Temporarily disabled for local dev
   const isGeneratingRef = useRef(false); // Prevent duplicate calls
   const [diversityEnabled, setDiversityEnabled] = useState(true); // Enable diversity filtering by default
+  const lastGeneratedFingerprintRef = useRef(null); // Track last collection fingerprint
 
   // Initialize recommendation services
   useEffect(() => {
@@ -102,6 +103,20 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     }
     if (!recommendationService || !albums || albums.length < 5) {
       return;
+    }
+
+    // Check if collection fingerprint changed (avoid regenerating on tab switch)
+    const cacheService = recommendationService.cacheService;
+    if (cacheService) {
+      const currentFingerprint = cacheService.generateCollectionFingerprint(albums);
+      const algorithmSuffix = useGraphAlgorithm ? '_graph' : '_basic';
+      const fullFingerprint = `${currentFingerprint}${algorithmSuffix}`;
+
+      if (lastGeneratedFingerprintRef.current === fullFingerprint && recommendations && recommendations.total > 0) {
+        console.log('✅ Skipping regeneration - collection unchanged since last generation');
+        return;
+      }
+      lastGeneratedFingerprintRef.current = fullFingerprint;
     }
 
     isGeneratingRef.current = true;
