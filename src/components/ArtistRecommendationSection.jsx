@@ -71,10 +71,11 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       });
       setRecommendationService(service);
 
-      // Initialize graph recommendation service
+      // Initialize graph recommendation service (now using PPR)
       const graphRecommendationService = new GraphRecommendationService({
-        maxWalkDepth: 3,
-        restartProbability: 0.15,
+        maxIterations: 20,
+        dampingFactor: 0.85,
+        convergenceThreshold: 0.0001,
         minSimilarityThreshold: 0.3,
         maxRecommendations: 20,
         enableLogging: true
@@ -137,10 +138,10 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         if (useGraphAlgorithm && graphService) {
           console.log('🕸️ Using graph-based algorithm for artist recommendations...');
 
-          // Use graph algorithm for enhanced discovery
+          // Use PPR algorithm for enhanced discovery
           const graphResult = await graphService.generateGraphRecommendations(userId, albums, {
-            maxWalkDepth: 3,
-            restartProbability: 0.15,
+            maxIterations: 20,
+            dampingFactor: 0.85,
             minSimilarityThreshold: 0.3
           });
 
@@ -179,7 +180,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               total: topArtists.length,
               metadata: {
                 ...graphResult.metadata,
-                algorithm: 'graph_random_walk',
+                algorithm: 'personalized_pagerank',
                 generatedAt: new Date().toISOString(),
                 allCandidates: artistsWithMetadata // Store all candidates for progressive collection
               }
@@ -645,11 +646,12 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             {/* Metadata */}
             {expanded && recommendations.metadata && (
               <div className="text-xs text-gray-500 pt-2 border-t border-gray-700">
-                {recommendations.metadata.algorithm === 'graph_random_walk' ? (
+                {recommendations.metadata.algorithm === 'personalized_pagerank' ? (
                   <>
-                    🕸️ Graph algorithm • {recommendations.metadata.seedArtists} seed artists •
-                    Walk depth: {recommendations.metadata.walkDepth} •
-                    Found {recommendations.metadata.totalCandidates} candidates •
+                    🎯 PageRank • {recommendations.metadata.seedArtists} restart nodes •
+                    α={recommendations.metadata.dampingFactor} •
+                    {recommendations.metadata.totalCandidates} candidates •
+                    Avg degree: {recommendations.metadata.averageDegree || 'N/A'} •
                     {recommendations.metadata.duration}ms •
                     {recommendations.metadata.cached ? 'Cached' : 'Fresh'} data
                   </>

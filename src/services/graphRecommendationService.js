@@ -1,7 +1,7 @@
 /**
  * Graph-based Recommendation Service
- * Implements random walk with restart algorithm for multi-hop artist discovery
- * Uses PostgreSQL recursive CTEs for efficient graph traversal
+ * Implements Personalized PageRank algorithm for multi-hop artist discovery
+ * Uses PostgreSQL for efficient graph computation with degree normalization
  */
 
 import { supabase } from './supabase.js';
@@ -10,8 +10,9 @@ export class GraphRecommendationService {
   constructor(options = {}) {
     this.supabase = options.supabaseClient || supabase;
     this.config = {
-      maxWalkDepth: options.maxWalkDepth || 3,
-      restartProbability: options.restartProbability || 0.15,
+      maxIterations: options.maxIterations || 20,
+      dampingFactor: options.dampingFactor || 0.85,
+      convergenceThreshold: options.convergenceThreshold || 0.0001,
       minSimilarityThreshold: options.minSimilarityThreshold || 0.3,
       maxRecommendations: options.maxRecommendations || 50,
       enableLogging: options.enableLogging !== false
@@ -19,63 +20,63 @@ export class GraphRecommendationService {
   }
 
   /**
-   * Generate artist recommendations using graph traversal
+   * Generate artist recommendations using Personalized PageRank
    * @param {string} userId - User ID
    * @param {Array} userAlbums - User's album collection
    * @param {Object} options - Additional options
-   * @returns {Promise<Object>} Graph-based recommendations
+   * @returns {Promise<Object>} PPR-based recommendations
    */
   async generateGraphRecommendations(userId, userAlbums, options = {}) {
     const startTime = Date.now();
 
     try {
-      this.log('🕸️ Starting graph-based artist discovery...');
+      this.log('🎯 Starting PPR-based artist discovery...');
 
-      // Extract user artists for graph seed points
+      // Extract user artists for restart nodes
       const userArtists = this.extractUserArtists(userAlbums);
 
       if (userArtists.length === 0) {
         return {
           success: false,
-          error: 'No user artists found for graph traversal'
+          error: 'No user artists found for PPR'
         };
       }
 
-      this.log(`📍 Graph seed points: ${userArtists.length} artists`);
+      this.log(`📍 Restart nodes: ${userArtists.length} artists`);
 
-      // Execute random walk algorithm via PostgreSQL
-      const graphResults = await this.executeRandomWalk(userId, userArtists, options);
+      // Execute Personalized PageRank algorithm via PostgreSQL
+      const pprResults = await this.executePersonalizedPageRank(userId, userArtists, options);
 
-      if (!graphResults.success) {
-        return graphResults;
+      if (!pprResults.success) {
+        return pprResults;
       }
 
-      // Process and score graph traversal results
+      // Process and score PPR results
       const recommendations = await this.processGraphResults(
-        graphResults.data,
+        pprResults.data,
         userArtists,
         options
       );
 
       const duration = Date.now() - startTime;
-      this.log(`✅ Graph recommendations generated in ${duration}ms`);
+      this.log(`✅ PPR recommendations generated in ${duration}ms`);
 
       return {
         success: true,
         recommendations: recommendations.artists,
         metadata: {
-          algorithm: 'random_walk_with_restart',
+          algorithm: 'personalized_pagerank',
           duration,
           seedArtists: userArtists.length,
           totalCandidates: recommendations.totalCandidates,
-          walkDepth: this.config.maxWalkDepth,
-          restartProbability: this.config.restartProbability,
+          dampingFactor: options.dampingFactor || this.config.dampingFactor,
+          maxIterations: options.maxIterations || this.config.maxIterations,
           ...recommendations.metadata
         }
       };
 
     } catch (error) {
-      console.error('❌ Graph recommendation generation failed:', error);
+      console.error('❌ PPR recommendation generation failed:', error);
       return {
         success: false,
         error: error.message
@@ -84,63 +85,65 @@ export class GraphRecommendationService {
   }
 
   /**
-   * Execute random walk with restart algorithm using PostgreSQL recursive CTE
+   * Execute Personalized PageRank algorithm using PostgreSQL
    * @param {string} userId - User ID
-   * @param {Array} userArtists - User's artists as seed points
-   * @param {Object} options - Walk parameters
-   * @returns {Promise<Object>} Raw graph traversal results
+   * @param {Array} userArtists - User's artists as restart nodes
+   * @param {Object} options - PPR parameters
+   * @returns {Promise<Object>} Raw PPR results
    */
-  async executeRandomWalk(userId, userArtists, options = {}) {
+  async executePersonalizedPageRank(userId, userArtists, options = {}) {
     try {
-      const walkDepth = options.maxWalkDepth || this.config.maxWalkDepth;
-      const restartProb = options.restartProbability || this.config.restartProbability;
+      const maxIterations = options.maxIterations || this.config.maxIterations;
+      const dampingFactor = options.dampingFactor || this.config.dampingFactor;
       const minSimilarity = options.minSimilarityThreshold || this.config.minSimilarityThreshold;
+      const convergenceThreshold = options.convergenceThreshold || this.config.convergenceThreshold;
 
       // Build user artists filter for SQL
       const userArtistNames = userArtists.map(a => a.toLowerCase());
 
-      this.log(`🚶 Executing random walk: depth=${walkDepth}, restart=${restartProb}, threshold=${minSimilarity}`);
+      this.log(`🎯 Executing PPR: iterations=${maxIterations}, α=${dampingFactor}, threshold=${minSimilarity}`);
 
-      // Execute the recursive CTE query
-      const { data, error } = await this.supabase.rpc('graph_artist_recommendations', {
+      // Execute the PPR function
+      const { data, error } = await this.supabase.rpc('personalized_pagerank_recommendations', {
         p_user_id: userId,
         p_user_artists: userArtistNames,
-        p_max_depth: walkDepth,
-        p_restart_probability: restartProb,
+        p_max_iterations: maxIterations,
+        p_damping_factor: dampingFactor,
         p_min_similarity: minSimilarity,
+        p_convergence_threshold: convergenceThreshold,
         p_max_results: this.config.maxRecommendations
       });
 
       if (error) {
-        console.error('Graph traversal SQL error:', error);
-        // Fallback to JavaScript-based graph algorithm
-        return await this.fallbackGraphTraversal(userArtists, options);
+        console.error('PPR SQL error:', error);
+        // Fallback to JavaScript-based PPR algorithm
+        return await this.fallbackPPRTraversal(userArtists, options);
       }
 
-      this.log(`📊 Graph traversal found ${data?.length || 0} candidates`);
+      this.log(`📊 PPR found ${data?.length || 0} candidates`);
 
       return {
         success: true,
         data: data || [],
-        method: 'postgresql_cte'
+        method: 'postgresql_ppr'
       };
 
     } catch (error) {
-      console.error('Random walk execution failed:', error);
+      console.error('PPR execution failed:', error);
       // Fallback to JavaScript implementation
-      return await this.fallbackGraphTraversal(userArtists, options);
+      return await this.fallbackPPRTraversal(userArtists, options);
     }
   }
 
   /**
-   * Fallback JavaScript implementation of graph traversal
+   * Fallback JavaScript implementation of PPR
    * Used when PostgreSQL function is not available
    */
-  async fallbackGraphTraversal(userArtists, options = {}) {
-    this.log('🔄 Using JavaScript fallback for graph traversal...');
+  async fallbackPPRTraversal(userArtists, options = {}) {
+    this.log('🔄 Using JavaScript fallback for PPR...');
 
     try {
-      const maxDepth = options.maxWalkDepth || this.config.maxWalkDepth;
+      const maxDepth = 3; // Still fetch graph up to 3 hops for data
 
       // Build multi-hop graph by fetching similarity data iteratively
       const graph = new Map();
@@ -170,8 +173,7 @@ export class GraphRecommendationService {
             graph.get(sourceArtist).push({
               artist: targetArtist,
               weight: similarity,
-              originalName: record.target_artist,
-              mbid: record.target_mbid
+              originalName: record.target_artist
             });
 
             // Queue target for next depth if not already fetched
@@ -187,23 +189,23 @@ export class GraphRecommendationService {
       if (graph.size === 0) {
         return {
           success: false,
-          error: 'No similarity data available for graph traversal'
+          error: 'No similarity data available for PPR'
         };
       }
 
       this.log(`🕸️ Built graph with ${graph.size} nodes`);
 
-      // Execute random walk algorithm in JavaScript
-      const walkResults = this.performRandomWalk(graph, userArtists, options);
+      // Execute PPR algorithm in JavaScript
+      const pprResults = this.performPersonalizedPageRank(graph, userArtists, options);
 
       return {
         success: true,
-        data: walkResults,
-        method: 'javascript_fallback'
+        data: pprResults,
+        method: 'javascript_ppr_fallback'
       };
 
     } catch (error) {
-      console.error('Fallback graph traversal failed:', error);
+      console.error('Fallback PPR traversal failed:', error);
       return {
         success: false,
         error: error.message
@@ -276,116 +278,128 @@ export class GraphRecommendationService {
   }
 
   /**
-   * Perform random walk with restart algorithm
+   * Perform Personalized PageRank algorithm in JavaScript
+   * @param {Map} graph - Adjacency list representation of similarity graph
+   * @param {Array} userArtists - User's artists (restart nodes)
+   * @param {Object} options - PPR parameters
+   * @returns {Array} PPR results with scores
    */
-  performRandomWalk(graph, userArtists, options = {}) {
-    const walkDepth = options.maxWalkDepth || this.config.maxWalkDepth;
-    const restartProb = options.restartProbability || this.config.restartProbability;
+  performPersonalizedPageRank(graph, userArtists, options = {}) {
+    const maxIterations = options.maxIterations || this.config.maxIterations;
+    const dampingFactor = options.dampingFactor || this.config.dampingFactor;
+    const convergenceThreshold = options.convergenceThreshold || this.config.convergenceThreshold;
     const userArtistSet = new Set(userArtists.map(a => a.toLowerCase()));
 
-    // Track artist scores from random walks
-    const artistScores = new Map();
-    const walkPaths = new Map();
+    // Initialize scores and degrees
+    const scores = new Map();
+    const degrees = new Map();
 
-    // Perform multiple random walks from each user artist
-    const walksPerArtist = 10; // Number of walks to perform from each seed
+    // Calculate initial scores and node degrees
+    const initialScore = 1.0 / userArtists.length;
+    const restartProb = (1.0 - dampingFactor) / userArtists.length;
 
-    userArtists.forEach(seedArtist => {
-      const normalizedSeed = seedArtist.toLowerCase();
+    // Initialize all nodes in graph
+    for (const [artist, neighbors] of graph.entries()) {
+      scores.set(artist, userArtistSet.has(artist) ? initialScore : 0.0);
+      degrees.set(artist, neighbors.length);
+    }
 
-      for (let walkNum = 0; walkNum < walksPerArtist; walkNum++) {
-        this.performSingleWalk(
-          graph,
-          normalizedSeed,
-          userArtistSet,
-          walkDepth,
-          restartProb,
-          artistScores,
-          walkPaths
-        );
-      }
-    });
-
-    // Convert to result format
-    const results = [];
-    artistScores.forEach((score, artist) => {
-      const paths = walkPaths.get(artist) || [];
-      results.push({
-        target_artist: artist,
-        graph_score: score,
-        connection_breadth: paths.length,
-        connected_to: [...new Set(paths.map(p => p.sourceArtist))],
-        walk_paths: paths.slice(0, 3) // Keep top 3 paths for explanation
-      });
-    });
-
-    return results.sort((a, b) => b.graph_score - a.graph_score);
-  }
-
-  /**
-   * Perform a single random walk
-   */
-  performSingleWalk(graph, startArtist, userArtistSet, maxDepth, restartProb, artistScores, walkPaths) {
-    let currentArtist = startArtist;
-    const path = [startArtist];
-
-    for (let depth = 0; depth < maxDepth; depth++) {
-      // Random restart check
-      if (Math.random() < restartProb && depth > 0) {
-        break;
-      }
-
-      // Get neighbors of current artist
-      const neighbors = graph.get(currentArtist) || [];
-      if (neighbors.length === 0) {
-        break;
-      }
-
-      // Weighted random selection of next artist
-      const totalWeight = neighbors.reduce((sum, n) => sum + n.weight, 0);
-      const random = Math.random() * totalWeight;
-      let cumulativeWeight = 0;
-
-      let nextArtist = null;
+    // Add neighbor artists not yet in scores
+    for (const neighbors of graph.values()) {
       for (const neighbor of neighbors) {
-        cumulativeWeight += neighbor.weight;
-        if (random <= cumulativeWeight) {
-          nextArtist = neighbor;
-          break;
+        if (!scores.has(neighbor.artist)) {
+          scores.set(neighbor.artist, 0.0);
+          degrees.set(neighbor.artist, 0);
         }
-      }
-
-      if (!nextArtist) {
-        break;
-      }
-
-      currentArtist = nextArtist.artist;
-      path.push(currentArtist);
-
-      // Score non-user artists encountered in walk
-      if (!userArtistSet.has(currentArtist)) {
-        const walkWeight = Math.pow(restartProb, depth); // Decay with distance
-        artistScores.set(
-          currentArtist,
-          (artistScores.get(currentArtist) || 0) + walkWeight
-        );
-
-        // Track path for explanation
-        if (!walkPaths.has(currentArtist)) {
-          walkPaths.set(currentArtist, []);
-        }
-        walkPaths.get(currentArtist).push({
-          sourceArtist: startArtist,
-          path: [...path],
-          weight: walkWeight,
-          depth: depth + 1
-        });
       }
     }
+
+    this.log(`🔄 PPR: ${scores.size} nodes, ${userArtists.length} restart nodes`);
+
+    // PageRank iterations
+    let iteration = 0;
+    let maxChange = Infinity;
+
+    while (iteration < maxIterations && maxChange > convergenceThreshold) {
+      iteration++;
+      const newScores = new Map();
+
+      // Initialize with restart probability for user artists
+      for (const artist of scores.keys()) {
+        newScores.set(artist, userArtistSet.has(artist) ? restartProb : 0.0);
+      }
+
+      // Propagate scores along edges
+      for (const [artist, neighbors] of graph.entries()) {
+        const currentScore = scores.get(artist) || 0.0;
+        if (currentScore === 0.0 || neighbors.length === 0) continue;
+
+        // Calculate total outgoing similarity for normalization
+        const totalSimilarity = neighbors.reduce((sum, n) => sum + n.weight, 0);
+
+        // Distribute score to neighbors (weighted by edge similarity)
+        for (const neighbor of neighbors) {
+          const propagatedScore =
+            currentScore * dampingFactor * (neighbor.weight / totalSimilarity);
+
+          const currentNew = newScores.get(neighbor.artist) || 0.0;
+          newScores.set(neighbor.artist, currentNew + propagatedScore);
+        }
+      }
+
+      // Calculate convergence
+      maxChange = 0;
+      for (const [artist, score] of scores.entries()) {
+        const newScore = newScores.get(artist) || 0.0;
+        maxChange = Math.max(maxChange, Math.abs(newScore - score));
+      }
+
+      // Update scores
+      for (const [artist, score] of newScores.entries()) {
+        scores.set(artist, score);
+      }
+
+      this.log(`🔄 PPR iteration ${iteration}: max_change=${maxChange.toFixed(6)}`);
+    }
+
+    this.log(`✅ PPR converged in ${iteration} iterations`);
+
+    // Apply degree normalization and format results
+    const results = [];
+    for (const [artist, score] of scores.entries()) {
+      if (userArtistSet.has(artist)) continue; // Skip user's own artists
+      if (score < 0.0001) continue; // Filter very low scores
+
+      const degree = degrees.get(artist) || 1;
+      const normalizedScore = score / Math.sqrt(degree);
+
+      // Find connections to user artists
+      const connectedTo = new Set();
+      for (const userArtist of userArtists) {
+        const neighbors = graph.get(userArtist.toLowerCase()) || [];
+        if (neighbors.some(n => n.artist === artist)) {
+          connectedTo.add(userArtist);
+        }
+      }
+
+      results.push({
+        target_artist: artist,
+        ppr_score: score,
+        normalized_score: normalizedScore,
+        node_degree: degree,
+        connected_to: Array.from(connectedTo),
+        // For compatibility with existing code
+        graph_score: normalizedScore,
+        connection_breadth: connectedTo.size
+      });
+    }
+
+    // Sort by normalized score
+    return results.sort((a, b) => b.normalized_score - a.normalized_score);
   }
 
   /**
-   * Process graph traversal results into final recommendations
+   * Process PPR results into final recommendations
    */
   async processGraphResults(graphData, userArtists, options = {}) {
     const userArtistSet = new Set(userArtists.map(a => a.toLowerCase()));
@@ -395,13 +409,15 @@ export class GraphRecommendationService {
       .filter(result => !userArtistSet.has(result.target_artist?.toLowerCase()))
       .map(result => ({
         artist: this.capitalizeArtistName(result.target_artist),
-        score: Math.round((result.graph_score || 0) * 100),
-        connectionCount: result.connection_breadth || 1,
+        // Use normalized_score if available (PPR), otherwise fall back to graph_score
+        score: Math.round((result.normalized_score || result.graph_score || 0) * 100),
+        pprScore: result.ppr_score,
+        normalizedScore: result.normalized_score,
+        nodeDegree: result.node_degree,
+        connectionCount: result.connected_to?.length || result.connection_breadth || 1,
         connections: (result.connected_to || []).map(artist => ({
-          sourceArtist: this.capitalizeArtistName(artist),
-          paths: result.walk_paths || []
+          sourceArtist: this.capitalizeArtistName(artist)
         })),
-        walkPaths: result.walk_paths || [],
         reason: this.generateGraphReason(result)
       }))
       .sort((a, b) => b.score - a.score)
@@ -415,7 +431,10 @@ export class GraphRecommendationService {
           ? Math.round(candidates.reduce((sum, a) => sum + a.connectionCount, 0) / candidates.length * 10) / 10
           : 0,
         maxScore: candidates[0]?.score || 0,
-        graphCoverage: Math.min(1, graphData.length / (userArtists.length * 10)) // Rough coverage estimate
+        averageDegree: candidates.length > 0
+          ? Math.round(candidates.reduce((sum, a) => sum + (a.nodeDegree || 0), 0) / candidates.length)
+          : 0,
+        graphCoverage: Math.min(1, graphData.length / (userArtists.length * 10))
       }
     };
   }
