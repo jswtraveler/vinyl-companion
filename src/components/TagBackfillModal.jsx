@@ -93,8 +93,8 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
             <div className="space-y-4">
               <p className="text-gray-300">
                 {forceRefetch
-                  ? "This will re-fetch genre tags from Last.fm for ALL albums, replacing existing tags with high-quality filtered ones."
-                  : "This will fetch genre tags from Last.fm for albums that have fewer than 3 tags."}
+                  ? "This will re-fetch genre tags from Last.fm for ALL albums, REPLACING existing tags with MusicBrainz-validated genres only."
+                  : "This will fetch genre tags from Last.fm for albums that have fewer than 3 tags and merge them with existing genres."}
               </p>
 
               <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
@@ -122,7 +122,7 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
                   <div className="flex-1">
                     <div className="text-white font-medium">Force re-fetch all albums</div>
                     <div className="text-sm text-gray-400 mt-1">
-                      Re-fetch tags for ALL albums, even those with existing tags. Use this to clean up low-quality tags from a previous backfill.
+                      Re-fetch tags for ALL albums and REPLACE existing tags (not merge). Use this to clean up invalid tags from previous backfills.
                     </div>
                   </div>
                 </label>
@@ -139,8 +139,8 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
                       <li>This process respects Last.fm's rate limit (1 request/second)</li>
                       <li>{forceRefetch ? "All albums will be processed" : "Albums with 3+ tags will be skipped"}</li>
                       <li>You can close this tab and the process will continue</li>
-                      <li>Only tags with 10+ users will be kept (quality filter)</li>
-                      <li>New tags will be merged with existing genres</li>
+                      <li>Only MusicBrainz-validated genres will be kept</li>
+                      <li>{forceRefetch ? "New tags will REPLACE existing genres" : "New tags will be merged with existing genres"}</li>
                     </ul>
                   </div>
                 </div>

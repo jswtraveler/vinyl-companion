@@ -76,15 +76,22 @@ export async function backfillAlbumTags(albums, onProgress, updateAlbum, force =
           .filter(Boolean);
 
         if (newTags.length > 0) {
-          // Merge with existing genres (deduplicate)
-          const existingGenres = album.genre || [];
-          const mergedGenres = [...new Set([...newTags, ...existingGenres])];
+          let finalGenres;
 
-          console.log(`✅ Found ${newTags.length} tags:`, newTags);
-          console.log(`   Merged to ${mergedGenres.length} total genres:`, mergedGenres);
+          if (force) {
+            // Force mode: Replace existing tags with new filtered tags
+            finalGenres = newTags;
+            console.log(`✅ Found ${newTags.length} tags (replacing existing):`, newTags);
+          } else {
+            // Normal mode: Merge with existing genres (deduplicate)
+            const existingGenres = album.genre || [];
+            finalGenres = [...new Set([...newTags, ...existingGenres])];
+            console.log(`✅ Found ${newTags.length} tags:`, newTags);
+            console.log(`   Merged to ${finalGenres.length} total genres:`, finalGenres);
+          }
 
           // Update album in database
-          await updateAlbum(album.id, { genre: mergedGenres });
+          await updateAlbum(album.id, { genre: finalGenres });
           results.updated++;
         } else {
           console.log(`⚠️  No tags found for "${album.title}"`);
