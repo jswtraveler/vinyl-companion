@@ -4,6 +4,7 @@
  */
 
 import { LastFmClient } from './lastfmClient.js';
+import { isValidGenre } from '../data/musicbrainz-genres.js';
 
 const LASTFM_API_KEY = import.meta.env.VITE_LASTFM_API_KEY;
 
@@ -56,25 +57,22 @@ export async function backfillAlbumTags(albums, onProgress, updateAlbum, force =
           ? albumInfo.album.tags.tag
           : [albumInfo.album.tags.tag];
 
-        // Filter and extract tags with quality threshold
+        // Filter tags against MusicBrainz genre whitelist
         const newTags = tags
-          .filter(tag => {
-            // Each tag object has { name: string, count: number, url: string }
-            const count = typeof tag === 'object' ? parseInt(tag.count || 0) : 0;
-
-            // Only keep tags with 10+ user applications (quality threshold)
-            if (count < 10) {
-              console.log(`  ⏭️  Skipping low-quality tag "${tag.name || tag}" (count: ${count})`);
+          .map(tag => {
+            const name = typeof tag === 'string' ? tag : tag.name;
+            return name;
+          })
+          .filter(tagName => {
+            // Check if tag is a valid MusicBrainz genre
+            if (!isValidGenre(tagName)) {
+              console.log(`  ⏭️  Skipping invalid genre tag "${tagName}" (not in MusicBrainz)`);
               return false;
             }
-
             return true;
           })
           .slice(0, 5) // Take top 5 after filtering
-          .map(tag => {
-            const name = typeof tag === 'string' ? tag : tag.name;
-            return capitalizeGenre(name);
-          })
+          .map(tagName => capitalizeGenre(tagName))
           .filter(Boolean);
 
         if (newTags.length > 0) {
