@@ -1,16 +1,34 @@
-import React, { useState } from 'react';
+import React from 'react';
 
-const SearchBar = ({ onSearch, placeholder = "Search albums..." }) => {
-  const [query, setQuery] = useState('');
+/**
+ * SearchBar Component
+ * Supports both controlled (value + onChange) and uncontrolled (onSearch) modes
+ */
+const SearchBar = ({ value, onChange, onSearch, placeholder = "Search albums..." }) => {
+  // Support both controlled and uncontrolled mode
+  const isControlled = value !== undefined && onChange !== undefined;
+
+  const handleChange = (e) => {
+    if (onChange) {
+      onChange(e);
+    }
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSearch(query);
+    if (onSearch) {
+      onSearch(value || '');
+    }
   };
 
   const handleClear = () => {
-    setQuery('');
-    onSearch('');
+    if (onChange) {
+      // For controlled mode, create synthetic event
+      onChange({ target: { value: '' } });
+    }
+    if (onSearch) {
+      onSearch('');
+    }
   };
 
   return (
@@ -18,8 +36,8 @@ const SearchBar = ({ onSearch, placeholder = "Search albums..." }) => {
       <div className="relative">
         <input
           type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          value={isControlled ? value : undefined}
+          onChange={handleChange}
           placeholder={placeholder}
           className="w-full px-4 py-2 pl-10 pr-10 bg-gray-800 border border-gray-600 text-white placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
         />
@@ -28,7 +46,7 @@ const SearchBar = ({ onSearch, placeholder = "Search albums..." }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
-        {query && (
+        {value && (
           <button
             type="button"
             onClick={handleClear}
