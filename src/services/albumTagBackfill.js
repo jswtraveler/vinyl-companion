@@ -12,9 +12,10 @@ const LASTFM_API_KEY = import.meta.env.VITE_LASTFM_API_KEY;
  * @param {Array} albums - Array of album objects from database
  * @param {Function} onProgress - Callback for progress updates (current, total, album)
  * @param {Function} updateAlbum - Function to update album in database
+ * @param {boolean} force - If true, re-fetch tags for all albums regardless of existing tag count
  * @returns {Promise<Object>} Results summary
  */
-export async function backfillAlbumTags(albums, onProgress, updateAlbum) {
+export async function backfillAlbumTags(albums, onProgress, updateAlbum, force = false) {
   if (!LASTFM_API_KEY) {
     throw new Error('Last.fm API key not configured');
   }
@@ -38,8 +39,8 @@ export async function backfillAlbumTags(albums, onProgress, updateAlbum) {
         onProgress(i + 1, albums.length, album);
       }
 
-      // Skip if album already has 3+ tags
-      if (album.genre && Array.isArray(album.genre) && album.genre.length >= 3) {
+      // Skip if album already has 3+ tags (unless force mode)
+      if (!force && album.genre && Array.isArray(album.genre) && album.genre.length >= 3) {
         console.log(`⏭️  Skipping "${album.title}" - already has ${album.genre.length} tags`);
         results.skipped++;
         results.processed++;

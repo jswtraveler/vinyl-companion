@@ -10,8 +10,9 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0, album: null });
   const [results, setResults] = useState(null);
+  const [forceRefetch, setForceRefetch] = useState(false);
 
-  const handleStartBackfill = async () => {
+  const handleStartBackfill = async (force = false) => {
     setIsRunning(true);
     setResults(null);
     setProgress({ current: 0, total: albums.length, album: null });
@@ -25,7 +26,8 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
         async (albumId, updates) => {
           // Update album in database
           await onUpdateAlbum(albumId, updates);
-        }
+        },
+        force // Pass force flag to backfill service
       );
 
       setResults(finalResults);
@@ -90,7 +92,9 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
           {!isRunning && !results && (
             <div className="space-y-4">
               <p className="text-gray-300">
-                This will fetch genre tags from Last.fm for all albums in your collection that have fewer than 3 tags.
+                {forceRefetch
+                  ? "This will re-fetch genre tags from Last.fm for ALL albums, replacing existing tags with high-quality filtered ones."
+                  : "This will fetch genre tags from Last.fm for albums that have fewer than 3 tags."}
               </p>
 
               <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
@@ -106,6 +110,24 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
                 </div>
               </div>
 
+              {/* Force Refetch Option */}
+              <div className="bg-gray-900 border border-gray-700 rounded-lg p-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={forceRefetch}
+                    onChange={(e) => setForceRefetch(e.target.checked)}
+                    className="mt-1 w-4 h-4 text-purple-600 bg-gray-800 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+                  />
+                  <div className="flex-1">
+                    <div className="text-white font-medium">Force re-fetch all albums</div>
+                    <div className="text-sm text-gray-400 mt-1">
+                      Re-fetch tags for ALL albums, even those with existing tags. Use this to clean up low-quality tags from a previous backfill.
+                    </div>
+                  </div>
+                </label>
+              </div>
+
               <div className="bg-blue-900 bg-opacity-30 border border-blue-700 rounded-lg p-4">
                 <div className="flex items-start gap-3">
                   <svg className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,8 +137,9 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
                     <p className="font-medium mb-1">Note:</p>
                     <ul className="list-disc list-inside space-y-1 text-blue-300">
                       <li>This process respects Last.fm's rate limit (1 request/second)</li>
-                      <li>Albums with 3+ tags will be skipped</li>
+                      <li>{forceRefetch ? "All albums will be processed" : "Albums with 3+ tags will be skipped"}</li>
                       <li>You can close this tab and the process will continue</li>
+                      <li>Only tags with 10+ users will be kept (quality filter)</li>
                       <li>New tags will be merged with existing genres</li>
                     </ul>
                   </div>
@@ -131,7 +154,7 @@ const TagBackfillModal = ({ isOpen, onClose, albums, onUpdateAlbum }) => {
                   Cancel
                 </button>
                 <button
-                  onClick={handleStartBackfill}
+                  onClick={() => handleStartBackfill(forceRefetch)}
                   className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors font-medium"
                 >
                   Start Backfill
