@@ -856,6 +856,9 @@ function App() {
               await SupabaseDatabase.updateAlbum(albumId, updates);
               await loadAlbums(); // Reload albums to reflect changes
             }}
+            user={user}
+            authLoading={authLoading}
+            useCloudDatabase={useCloudDatabase}
           />
         );
 
@@ -884,28 +887,36 @@ function App() {
 
   return (
     <div className="min-h-screen bg-black">
-      <header className="bg-gray-900 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center gap-4">
-            {/* Database Status Indicator */}
-            <div className="flex items-center gap-2">
-              {authLoading ? (
-                <span className="text-sm text-gray-400">Loading...</span>
-              ) : useCloudDatabase && user ? (
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span className="text-sm text-gray-300">Cloud ({user.email})</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span className="text-sm text-gray-300">Local</span>
-                </div>
-              )}
+      {/* Minimal header - only shown on non-collection pages or as fallback */}
+      {currentTab !== 'collection' && (
+        <header className="bg-gray-900 border-b border-gray-800">
+          <div className="max-w-7xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-between">
+              {/* App name on desktop, hidden on mobile */}
+              <div className="hidden md:block">
+                <h1 className="text-lg font-semibold text-white">Vinyl Companion</h1>
+              </div>
+
+              {/* Database Status - compact */}
+              <div className="flex items-center gap-2 ml-auto">
+                {authLoading ? (
+                  <span className="text-xs text-gray-400">Loading...</span>
+                ) : useCloudDatabase && user ? (
+                  <div className="flex items-center gap-2 group cursor-pointer" title={user.email}>
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span className="text-xs text-gray-400 hidden md:inline">Cloud</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span className="text-xs text-gray-400 hidden md:inline">Local</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {error && (

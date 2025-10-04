@@ -23,7 +23,10 @@ const CollectionPage = ({
   stats,
   showStats,
   onToggleStats,
-  onUpdateAlbum
+  onUpdateAlbum,
+  user,
+  authLoading,
+  useCloudDatabase
 }) => {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
@@ -62,34 +65,41 @@ const CollectionPage = ({
 
   return (
     <div className="pb-20">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
-        <h2 className="text-xl font-semibold text-white">
-          Your Collection ({loading ? '...' : `${filteredAndSortedAlbums.length} of ${albums.length}`} albums)
-        </h2>
-      </div>
-
-      {/* Search and Sort Controls */}
-      <div className="mb-4 flex gap-2">
-        <div className="flex-1">
-          <SearchBar
-            value={searchQuery}
-            onChange={onSearchChange}
-            placeholder="Search your collection..."
-          />
+      {/* Mobile Header - Minimal */}
+      <div className="md:hidden mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm text-gray-400">
+            {loading ? '...' : `${filteredAndSortedAlbums.length} albums`}
+          </div>
+          {/* Database Status Indicator - Mobile */}
+          <div className="flex items-center gap-2">
+            {authLoading ? (
+              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+            ) : useCloudDatabase && user ? (
+              <div className="w-2 h-2 bg-green-500 rounded-full" title="Cloud sync active"></div>
+            ) : (
+              <div className="w-2 h-2 bg-blue-500 rounded-full" title="Local storage"></div>
+            )}
+          </div>
         </div>
-
-        {/* Sort Dropdown */}
-        <div className="relative" ref={sortDropdownRef}>
-          <button
-            onClick={() => setShowSortDropdown(!showSortDropdown)}
-            className="px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
-            </svg>
-            Sort
-          </button>
+        <div className="flex gap-2">
+          <div className="flex-1">
+            <SearchBar
+              value={searchQuery}
+              onChange={onSearchChange}
+              placeholder="Search..."
+            />
+          </div>
+          <div className="relative" ref={sortDropdownRef}>
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              title="Sort"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+              </svg>
+            </button>
 
           {showSortDropdown && (
             <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10">
@@ -145,18 +155,128 @@ const CollectionPage = ({
               </div>
             </div>
           )}
+          </div>
+          <button
+            onClick={onToggleStats}
+            className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            title={showStats ? 'Hide Stats' : 'Show Stats'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </button>
         </div>
+      </div>
 
-        {/* Stats Toggle */}
-        <button
-          onClick={onToggleStats}
-          className="px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-          title={showStats ? 'Hide Stats' : 'Show Stats'}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-        </button>
+      {/* Desktop Header - Option 4 Style */}
+      <div className="hidden md:flex items-center justify-between mb-4 gap-4">
+        <h2 className="text-xl font-semibold text-white">
+          Your Collection ({loading ? '...' : `${filteredAndSortedAlbums.length} albums`})
+        </h2>
+
+        <div className="flex items-center gap-2">
+          <div className="w-64">
+            <SearchBar
+              value={searchQuery}
+              onChange={onSearchChange}
+              placeholder="Search your collection..."
+            />
+          </div>
+
+          <div className="relative" ref={sortDropdownRef}>
+            <button
+              onClick={() => setShowSortDropdown(!showSortDropdown)}
+              className="px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+              </svg>
+              Sort
+            </button>
+
+            {showSortDropdown && (
+              <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      onSortChange('artist', sortBy === 'artist' && sortOrder === 'asc' ? 'desc' : 'asc');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                  >
+                    <span>Artist</span>
+                    {sortBy === 'artist' && (
+                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onSortChange('title', sortBy === 'title' && sortOrder === 'asc' ? 'desc' : 'asc');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                  >
+                    <span>Title</span>
+                    {sortBy === 'title' && (
+                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onSortChange('year', sortBy === 'year' && sortOrder === 'asc' ? 'desc' : 'asc');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                  >
+                    <span>Year</span>
+                    {sortBy === 'year' && (
+                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      onSortChange('dateAdded', sortBy === 'dateAdded' && sortOrder === 'asc' ? 'desc' : 'asc');
+                      setShowSortDropdown(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                  >
+                    <span>Date Added</span>
+                    {sortBy === 'dateAdded' && (
+                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={onToggleStats}
+            className="px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            title={showStats ? 'Hide Stats' : 'Show Stats'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </button>
+
+          {/* Database Status - Desktop */}
+          <div className="flex items-center gap-2 ml-2">
+            {authLoading ? (
+              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
+            ) : useCloudDatabase && user ? (
+              <div className="flex items-center gap-2 group cursor-pointer" title={user.email}>
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-xs text-gray-400">Cloud</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                <span className="text-xs text-gray-400">Local</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Genre Filter Buttons */}
