@@ -243,16 +243,28 @@ export class MetadataEnricher {
           ? albumInfo.album.tags.tag
           : [albumInfo.album.tags.tag];
 
-        // Extract top 5 tags and capitalize properly
+        // Filter and extract tags with quality threshold
         const genreTags = tags
-          .slice(0, 5)
+          .filter(tag => {
+            // Each tag object has { name: string, count: number, url: string }
+            const count = typeof tag === 'object' ? parseInt(tag.count || 0) : 0;
+
+            // Only keep tags with 10+ user applications (quality threshold)
+            if (count < 10) {
+              console.log(`  ⏭️  Skipping low-quality tag "${tag.name || tag}" (count: ${count})`);
+              return false;
+            }
+
+            return true;
+          })
+          .slice(0, 5) // Take top 5 after filtering
           .map(tag => {
             const name = typeof tag === 'string' ? tag : tag.name;
             return this.capitalizeGenre(name);
           })
           .filter(Boolean);
 
-        console.log(`🎵 Found ${genreTags.length} Last.fm tags:`, genreTags);
+        console.log(`🎵 Found ${genreTags.length} quality tags (10+ users):`, genreTags);
         return genreTags;
       }
 

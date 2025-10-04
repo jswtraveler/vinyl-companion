@@ -55,9 +55,21 @@ export async function backfillAlbumTags(albums, onProgress, updateAlbum) {
           ? albumInfo.album.tags.tag
           : [albumInfo.album.tags.tag];
 
-        // Extract and capitalize tags
+        // Filter and extract tags with quality threshold
         const newTags = tags
-          .slice(0, 5)
+          .filter(tag => {
+            // Each tag object has { name: string, count: number, url: string }
+            const count = typeof tag === 'object' ? parseInt(tag.count || 0) : 0;
+
+            // Only keep tags with 10+ user applications (quality threshold)
+            if (count < 10) {
+              console.log(`  ⏭️  Skipping low-quality tag "${tag.name || tag}" (count: ${count})`);
+              return false;
+            }
+
+            return true;
+          })
+          .slice(0, 5) // Take top 5 after filtering
           .map(tag => {
             const name = typeof tag === 'string' ? tag : tag.name;
             return capitalizeGenre(name);
