@@ -35,7 +35,7 @@ const AlbumCard = ({
   };
 
   return (
-    <article className="bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group relative">
+    <article className="bg-gray-800 shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group relative">
       {/* Cover Image */}
       <div className="aspect-square bg-gray-700 relative">
         {album.coverImage ? (
@@ -145,7 +145,7 @@ const AlbumCard = ({
       
       {/* AI Description Popup */}
       {showDescription && hasAIDescription && (
-        <div className="absolute inset-0 bg-black bg-opacity-90 rounded-lg p-4 z-20 flex flex-col">
+        <div className="absolute inset-0 bg-black bg-opacity-90 p-4 z-20 flex flex-col">
           <div className="flex items-center justify-between mb-2">
             <h4 className="text-white font-medium text-sm">AI Analysis</h4>
             <button

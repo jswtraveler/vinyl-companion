@@ -213,7 +213,7 @@ const CollectionPage = ({
         </div>
       </div>
 
-      {/* Genre Filter Buttons with Sort Dropdown */}
+      {/* Genre Filter Buttons */}
       {availableGenres.length > 0 && (
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
@@ -243,72 +243,6 @@ const CollectionPage = ({
                 </button>
               ))}
             </div>
-            <div className="relative">
-              <button
-                onClick={() => setShowSortDropdown(!showSortDropdown)}
-                className="px-3 py-1 text-xs bg-gray-800 border border-gray-600 text-gray-300 rounded-full hover:bg-gray-700 transition-colors flex items-center gap-1"
-              >
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
-                </svg>
-                Sort by {sortBy === 'dateAdded' ? 'Date' : sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
-              </button>
-
-              {showSortDropdown && (
-                <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10">
-                  <div className="py-1">
-                    <button
-                      onClick={() => {
-                        onSortChange('artist', sortBy === 'artist' && sortOrder === 'asc' ? 'desc' : 'asc');
-                        setShowSortDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                    >
-                      <span>Artist</span>
-                      {sortBy === 'artist' && (
-                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        onSortChange('title', sortBy === 'title' && sortOrder === 'asc' ? 'desc' : 'asc');
-                        setShowSortDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                    >
-                      <span>Title</span>
-                      {sortBy === 'title' && (
-                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        onSortChange('year', sortBy === 'year' && sortOrder === 'asc' ? 'desc' : 'asc');
-                        setShowSortDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                    >
-                      <span>Year</span>
-                      {sortBy === 'year' && (
-                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => {
-                        onSortChange('dateAdded', sortBy === 'dateAdded' && sortOrder === 'asc' ? 'desc' : 'asc');
-                        setShowSortDropdown(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                    >
-                      <span>Date Added</span>
-                      {sortBy === 'dateAdded' && (
-                        <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       )}
@@ -323,6 +257,76 @@ const CollectionPage = ({
           </span>
         </div>
       )}
+
+      {/* Sort Dropdown */}
+      <div className="mb-4 flex justify-end">
+        <div className="relative">
+          <button
+            onClick={() => setShowSortDropdown(!showSortDropdown)}
+            className="px-3 py-1 text-xs bg-gray-800 border border-gray-600 text-gray-300 rounded-full hover:bg-gray-700 transition-colors flex items-center gap-1"
+          >
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+            </svg>
+            Sort by {sortBy === 'dateAdded' ? 'Date' : sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
+          </button>
+
+          {showSortDropdown && (
+            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10">
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    onSortChange('artist', sortBy === 'artist' && sortOrder === 'asc' ? 'desc' : 'asc');
+                    setShowSortDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                >
+                  <span>Artist</span>
+                  {sortBy === 'artist' && (
+                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    onSortChange('title', sortBy === 'title' && sortOrder === 'asc' ? 'desc' : 'asc');
+                    setShowSortDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                >
+                  <span>Title</span>
+                  {sortBy === 'title' && (
+                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    onSortChange('year', sortBy === 'year' && sortOrder === 'asc' ? 'desc' : 'asc');
+                    setShowSortDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                >
+                  <span>Year</span>
+                  {sortBy === 'year' && (
+                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    onSortChange('dateAdded', sortBy === 'dateAdded' && sortOrder === 'asc' ? 'desc' : 'asc');
+                    setShowSortDropdown(false);
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                >
+                  <span>Date Added</span>
+                  {sortBy === 'dateAdded' && (
+                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Stats Panel */}
       {showStats && stats && (
