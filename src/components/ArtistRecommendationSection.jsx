@@ -113,7 +113,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       const fullFingerprint = `${currentFingerprint}${algorithmSuffix}`;
 
       if (lastGeneratedFingerprintRef.current === fullFingerprint && recommendations && recommendations.total > 0) {
-        console.log('✅ Skipping regeneration - collection unchanged since last generation');
+        console.log('✅ Skipping regeneration - collection and algorithm unchanged since last generation');
         return;
       }
       lastGeneratedFingerprintRef.current = fullFingerprint;
@@ -221,14 +221,20 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           await cacheService.setUserRecommendationsCache(userId, cacheKey, {
             artists: artistRecommendations.artists,
             total: artistRecommendations.total,
-            metadata: artistRecommendations.metadata
+            metadata: {
+              ...artistRecommendations.metadata,
+              originalArtists: artistRecommendations.artists // Store unfiltered list for diversity toggling
+            }
           });
         }
       }
 
       if (artistRecommendations && artistRecommendations.total > 0) {
+        // Get original artists (either from fresh generation or from cache)
+        const originalArtists = artistRecommendations.metadata?.originalArtists || artistRecommendations.artists;
+
         // Apply diversity filtering if enabled
-        let finalArtists = artistRecommendations.artists;
+        let finalArtists = [...originalArtists]; // Start with original unfiltered list
         let diversityStats = null;
 
         if (diversityEnabled && finalArtists.length > 0) {
@@ -242,6 +248,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
           diversityStats = getDiversityStats(finalArtists);
           console.log('🎯 Diversity stats:', diversityStats);
+        } else {
+          console.log('🎯 Diversity filter disabled - showing all recommendations');
         }
 
         setRecommendations({
@@ -253,10 +261,10 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             cached: fromCache,
             diversityEnabled,
             diversityStats,
-            originalArtists: artistRecommendations.artists // Store original unfiltered list
+            originalArtists // Preserve original unfiltered list for toggling
           }
         });
-        console.log('✅ Artist recommendations ready');
+        console.log(`✅ Artist recommendations ready (${finalArtists.length} shown, ${originalArtists.length} total)`);
       } else {
         setError('No artist recommendations available at this time');
       }
@@ -267,7 +275,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       setLoading(false);
       isGeneratingRef.current = false;
     }
-  }, [recommendationService, graphService, albums, useGraphAlgorithm, diversityEnabled]);
+  }, [recommendationService, graphService, albums, useGraphAlgorithm]); // Removed diversityEnabled - handled separately
 
   // Effect to trigger recommendations when dependencies change
   useEffect(() => {
