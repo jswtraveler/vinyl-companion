@@ -830,10 +830,11 @@ function App() {
   };
 
   // Render the appropriate page based on current tab
+  // Keep all tabs mounted but hide inactive ones to preserve component state
   const renderPage = () => {
-    switch (currentTab) {
-      case 'collection':
-        return (
+    return (
+      <>
+        <div style={{ display: currentTab === 'collection' ? 'block' : 'none' }}>
           <CollectionPage
             albums={albums}
             loading={loading}
@@ -860,29 +861,25 @@ function App() {
             authLoading={authLoading}
             useCloudDatabase={useCloudDatabase}
           />
-        );
+        </div>
 
-      case 'discover':
-        return (
+        <div style={{ display: currentTab === 'discover' ? 'block' : 'none' }}>
           <DiscoverPage
             albums={albums}
             user={user}
             useCloudDatabase={useCloudDatabase}
           />
-        );
+        </div>
 
-      case 'add':
-        return (
+        <div style={{ display: currentTab === 'add' ? 'block' : 'none' }}>
           <AddAlbumPage
             onFindByName={handleAddPageFindByName}
             onIdentifyImage={handleAddPageIdentifyImage}
             onManualEntry={handleAddPageManualEntry}
           />
-        );
-
-      default:
-        return null;
-    }
+        </div>
+      </>
+    );
   };
 
   return (
