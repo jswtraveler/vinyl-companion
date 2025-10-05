@@ -78,7 +78,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         dampingFactor: 0.85,
         convergenceThreshold: 0.0001,
         minSimilarityThreshold: 0.3,
-        maxRecommendations: 20,
+        maxRecommendations: 50, // Fetch 50 for diversity filtering
         enableLogging: true
       });
       setGraphService(graphRecommendationService);
@@ -161,10 +161,10 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           });
 
           if (graphResult.success) {
-            console.log('🎯 Graph algorithm succeeded, now fetching metadata for recommendations...');
+            console.log('🎯 PPR algorithm succeeded, now fetching metadata for recommendations...');
 
-            // TWO-PASS: Fetch metadata for top 30 graph recommendations
-            const topCandidates = graphResult.recommendations.slice(0, 30);
+            // TWO-PASS: Fetch metadata for top 50 PPR recommendations (more data for diversity filtering)
+            const topCandidates = graphResult.recommendations.slice(0, 50);
             const artistsToFetch = topCandidates.map(a => ({
               name: a.artist,
               mbid: a.mbid || null
@@ -173,13 +173,13 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             // Fetch metadata using the data fetcher
             const dataFetcher = recommendationService.dataFetcher;
             const artistMetadata = await dataFetcher.fetchMetadataForArtists(artistsToFetch, {
-              maxConcurrent: 30,
+              maxConcurrent: 50,
               onProgress: (processed, total) => {
-                console.log(`🎯 Graph metadata progress: ${processed}/${total}`);
+                console.log(`🎯 PPR metadata progress: ${processed}/${total}`);
               }
             });
 
-            console.log('📊 Graph metadata complete:', Object.keys(artistMetadata).length, 'artists');
+            console.log('📊 PPR metadata complete:', Object.keys(artistMetadata).length, 'artists');
 
             // Merge metadata into graph recommendations
             const artistsWithMetadata = mergeMetadataIntoArtists(
@@ -187,21 +187,19 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               artistMetadata
             );
 
-            // Keep top 20 for display, store all for progressive collection
-            const topArtists = artistsWithMetadata.slice(0, 20);
-
+            // Store ALL candidates for diversity filtering (don't slice here)
             artistRecommendations = {
-              artists: topArtists,
-              total: topArtists.length,
+              artists: artistsWithMetadata, // Keep all 50 for diversity filtering
+              total: artistsWithMetadata.length,
               metadata: {
                 ...graphResult.metadata,
                 algorithm: 'personalized_pagerank',
                 generatedAt: new Date().toISOString(),
-                allCandidates: artistsWithMetadata // Store all candidates for progressive collection
+                fullCandidateCount: artistsWithMetadata.length
               }
             };
 
-            console.log('✅ Graph recommendations with metadata ready');
+            console.log(`✅ PPR recommendations with metadata ready (${artistsWithMetadata.length} candidates for filtering)`);
           } else {
             console.warn('Graph algorithm failed, falling back to basic algorithm');
             console.log('🔧 Graph failure reason:', graphResult.error);
@@ -238,7 +236,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         let diversityStats = null;
 
         if (diversityEnabled && finalArtists.length > 0) {
-          console.log('🎯 Applying diversity filter to artist recommendations...');
+          console.log(`🎯 Applying diversity filter to ${finalArtists.length} artist recommendations...`);
           finalArtists = applyDiversityFilter(finalArtists, {
             maxSameGenre: 3,
             maxSameDecade: 4,
@@ -246,10 +244,15 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             genreDistributionTarget: 0.4
           });
 
+          // Limit to top 20 after diversity filtering
+          finalArtists = finalArtists.slice(0, 20);
+
           diversityStats = getDiversityStats(finalArtists);
           console.log('🎯 Diversity stats:', diversityStats);
         } else {
-          console.log('🎯 Diversity filter disabled - showing all recommendations');
+          console.log(`🎯 Diversity filter disabled - showing top 20 of ${finalArtists.length} recommendations`);
+          // When diversity is off, just show top 20 by score
+          finalArtists = finalArtists.slice(0, 20);
         }
 
         setRecommendations({
@@ -316,7 +319,10 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             diversityWeight: 0.3,
             genreDistributionTarget: 0.4
           });
+          finalArtists = finalArtists.slice(0, 20);
           diversityStats = getDiversityStats(finalArtists);
+        } else {
+          finalArtists = finalArtists.slice(0, 20);
         }
 
         setRecommendations({
@@ -357,16 +363,20 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     let diversityStats = null;
 
     if (diversityEnabled) {
-      console.log('🎯 Applying diversity filter to existing recommendations...');
+      console.log(`🎯 Applying diversity filter to ${originalArtists.length} existing recommendations...`);
       finalArtists = applyDiversityFilter(originalArtists, {
         maxSameGenre: 3,
         maxSameDecade: 4,
         diversityWeight: 0.3,
         genreDistributionTarget: 0.4
       });
+      finalArtists = finalArtists.slice(0, 20);
 
       diversityStats = getDiversityStats(finalArtists);
       console.log('🎯 Diversity stats:', diversityStats);
+    } else {
+      console.log(`🎯 Diversity disabled - showing top 20 of ${originalArtists.length}`);
+      finalArtists = finalArtists.slice(0, 20);
     }
 
     // Update recommendations with new diversity filtering
@@ -570,20 +580,20 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       };
     });
 
-    // Sort by score (keep ALL scored artists for progressive collection)
+    // Sort by score and keep top 50 for diversity filtering
     const sortedArtists = scoredArtists.sort((a, b) => b.score - a.score);
-    const topArtists = sortedArtists.slice(0, 20);
+    const topCandidates = sortedArtists.slice(0, 50); // Keep 50 for diversity filtering
 
     return {
-      total: topArtists.length,
-      artists: topArtists,
+      total: topCandidates.length,
+      artists: topCandidates, // Return all 50 for diversity filtering
       metadata: {
         generatedAt: new Date().toISOString(),
         totalCandidates: artistScores.size,
-        averageConnections: topArtists.length > 0
-          ? Math.round(topArtists.reduce((sum, a) => sum + a.connectionCount, 0) / topArtists.length * 10) / 10
+        averageConnections: topCandidates.length > 0
+          ? Math.round(topCandidates.reduce((sum, a) => sum + a.connectionCount, 0) / topCandidates.length * 10) / 10
           : 0,
-        allCandidates: sortedArtists // Store all candidates for progressive collection
+        fullCandidateCount: topCandidates.length
       }
     };
   };
@@ -621,7 +631,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               onClick={() => {
                 const newAlgorithm = !useGraphAlgorithm;
                 setUseGraphAlgorithm(newAlgorithm);
-                console.log(`🔄 Switching to ${newAlgorithm ? 'Graph' : 'Basic'} algorithm`);
+                console.log(`🔄 Switching to ${newAlgorithm ? 'PPR' : 'Basic'} algorithm`);
               }}
               disabled={loading}
               className={`px-3 py-1 text-xs rounded border ${
@@ -629,9 +639,9 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
                   ? 'bg-purple-700 border-purple-600 text-white'
                   : 'bg-gray-700 border-gray-600 text-gray-300'
               } hover:bg-opacity-80 disabled:opacity-50`}
-              title={`Switch to ${useGraphAlgorithm ? 'Basic' : 'Graph'} algorithm`}
+              title={`Switch to ${useGraphAlgorithm ? 'Basic' : 'PPR'} algorithm`}
             >
-              {useGraphAlgorithm ? 'Graph' : 'Basic'}
+              {useGraphAlgorithm ? 'PPR' : 'Basic'}
             </button>
             <button
               onClick={() => {
