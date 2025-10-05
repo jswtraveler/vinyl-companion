@@ -286,13 +286,13 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     generateArtistRecommendations();
   }, [generateArtistRecommendations, hasEnoughAlbums]);
 
-  // Separate effect to handle algorithm switching (load from cache, don't regenerate)
+  // Separate effect to handle algorithm switching (load from cache or regenerate)
   useEffect(() => {
     if (!recommendations || !recommendationService?.cacheService || !user?.id) {
       return;
     }
 
-    const loadCachedForAlgorithm = async () => {
+    const loadOrGenerateForAlgorithm = async () => {
       const cacheService = recommendationService.cacheService;
       const userId = user.id;
       const collectionFingerprint = cacheService.generateCollectionFingerprint(albums);
@@ -332,11 +332,15 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           }
         });
       } else {
-        console.log(`⚠️ No cached ${useGraphAlgorithm ? 'graph' : 'basic'} recommendations found - use refresh to generate`);
+        console.log(`⚠️ No cached ${useGraphAlgorithm ? 'graph' : 'basic'} recommendations found - generating...`);
+        // Update fingerprint ref to allow regeneration for this algorithm
+        const fullFingerprint = `${collectionFingerprint}${algorithmSuffix}`;
+        lastGeneratedFingerprintRef.current = null; // Clear to allow generation
+        await generateArtistRecommendations();
       }
     };
 
-    loadCachedForAlgorithm();
+    loadOrGenerateForAlgorithm();
   }, [useGraphAlgorithm]); // Only trigger when algorithm changes
 
   // Separate effect to handle diversity changes on existing recommendations
