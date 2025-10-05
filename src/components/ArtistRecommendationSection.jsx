@@ -275,7 +275,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       setLoading(false);
       isGeneratingRef.current = false;
     }
-  }, [recommendationService, graphService, albums, useGraphAlgorithm]); // Removed diversityEnabled - handled separately
+  }, [recommendationService, graphService, albums]); // Removed useGraphAlgorithm - handled separately
 
   // Effect to trigger recommendations when dependencies change
   useEffect(() => {
@@ -285,6 +285,59 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
     generateArtistRecommendations();
   }, [generateArtistRecommendations, hasEnoughAlbums]);
+
+  // Separate effect to handle algorithm switching (load from cache, don't regenerate)
+  useEffect(() => {
+    if (!recommendations || !recommendationService?.cacheService || !user?.id) {
+      return;
+    }
+
+    const loadCachedForAlgorithm = async () => {
+      const cacheService = recommendationService.cacheService;
+      const userId = user.id;
+      const collectionFingerprint = cacheService.generateCollectionFingerprint(albums);
+      const algorithmSuffix = useGraphAlgorithm ? '_graph' : '_basic';
+      const cacheKey = `artist_recs_${collectionFingerprint}${algorithmSuffix}`;
+
+      // Try to load from cache for this algorithm
+      const cachedArtistRecs = await cacheService.getUserRecommendationsCache(userId, cacheKey);
+
+      if (cachedArtistRecs && cachedArtistRecs.recommendations?.artists) {
+        console.log(`✅ Switching to cached ${useGraphAlgorithm ? 'graph' : 'basic'} recommendations`);
+
+        const originalArtists = cachedArtistRecs.recommendations.metadata?.originalArtists || cachedArtistRecs.recommendations.artists;
+        let finalArtists = [...originalArtists];
+        let diversityStats = null;
+
+        if (diversityEnabled) {
+          finalArtists = applyDiversityFilter(finalArtists, {
+            maxSameGenre: 3,
+            maxSameDecade: 4,
+            diversityWeight: 0.3,
+            genreDistributionTarget: 0.4
+          });
+          diversityStats = getDiversityStats(finalArtists);
+        }
+
+        setRecommendations({
+          ...cachedArtistRecs.recommendations,
+          artists: finalArtists,
+          total: finalArtists.length,
+          metadata: {
+            ...cachedArtistRecs.recommendations.metadata,
+            cached: true,
+            diversityEnabled,
+            diversityStats,
+            originalArtists
+          }
+        });
+      } else {
+        console.log(`⚠️ No cached ${useGraphAlgorithm ? 'graph' : 'basic'} recommendations found - use refresh to generate`);
+      }
+    };
+
+    loadCachedForAlgorithm();
+  }, [useGraphAlgorithm]); // Only trigger when algorithm changes
 
   // Separate effect to handle diversity changes on existing recommendations
   useEffect(() => {
