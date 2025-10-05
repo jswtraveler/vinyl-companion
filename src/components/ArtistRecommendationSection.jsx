@@ -430,10 +430,10 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         console.log('📊 Pass 1 complete:', artistRecs?.total || 0, 'artists scored');
 
         if (artistRecs && artistRecs.artists && artistRecs.artists.length > 0) {
-          // TWO-PASS: Now fetch metadata ONLY for top 30 candidates
-          console.log('🎯 Pass 2: Fetching metadata for top 30 candidates...');
+          // TWO-PASS: Now fetch metadata for top 50 candidates (for diversity filtering)
+          console.log('🎯 Pass 2: Fetching metadata for top 50 candidates...');
 
-          const topCandidates = artistRecs.artists.slice(0, 30);
+          const topCandidates = artistRecs.artists.slice(0, 50);
           const artistsToFetch = topCandidates.map(a => ({
             name: a.artist,
             mbid: a.mbid || null
@@ -441,7 +441,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
           // Fetch metadata for these specific artists
           const artistMetadata = await dataFetcher.fetchMetadataForArtists(artistsToFetch, {
-            maxConcurrent: 30,
+            maxConcurrent: 50,
             onProgress: (processed, total) => {
               console.log(`🎯 Metadata progress: ${processed}/${total}`);
             }

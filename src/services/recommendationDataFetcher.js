@@ -563,17 +563,18 @@ export class RecommendationDataFetcher {
    */
   async fetchMetadataForArtists(artists, options = {}) {
     const {
-      maxConcurrent = 30,
+      maxConcurrent = 50, // Increased default for diversity filtering
       onProgress = null
     } = options;
 
-    console.log(`🎯 Fetching metadata for ${Math.min(artists.length, maxConcurrent)} specific artists...`);
+    console.log(`🎯 Fetching metadata for ${artists.length} specific artists...`);
 
     const results = {};
     let processed = 0;
     const startTime = Date.now();
 
-    for (const artist of artists.slice(0, maxConcurrent)) {
+    // Process all artists, not just maxConcurrent
+    for (const artist of artists) {
       try {
         const artistName = artist.name;
         const artistMbid = artist.mbid;
@@ -591,7 +592,7 @@ export class RecommendationDataFetcher {
               mbid: cached.metadata.mbid || artistMbid
             };
             processed++;
-            if (onProgress) onProgress(processed, Math.min(artists.length, maxConcurrent));
+            if (onProgress) onProgress(processed, artists.length);
             console.log(`⚡ Cache hit for ${artistName}`);
             continue;
           }
@@ -644,12 +645,12 @@ export class RecommendationDataFetcher {
         }
 
         processed++;
-        if (onProgress) onProgress(processed, Math.min(artists.length, maxConcurrent));
+        if (onProgress) onProgress(processed, artists.length);
 
       } catch (error) {
         console.error(`❌ Failed to fetch metadata for ${artist.name}:`, error);
         processed++;
-        if (onProgress) onProgress(processed, Math.min(artists.length, maxConcurrent));
+        if (onProgress) onProgress(processed, artists.length);
       }
     }
 
