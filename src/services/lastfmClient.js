@@ -206,7 +206,10 @@ export class LastFmClient {
     // Either artist name or mbid is required
     if (!artist && !mbid) throw new Error('Artist name or MBID is required');
 
-    const params = { lang };
+    const params = {
+      lang,
+      autocorrect: 1 // Enable autocorrect to get better tag data
+    };
 
     // Prefer MBID for more accurate lookups
     if (mbid && mbid.trim()) {

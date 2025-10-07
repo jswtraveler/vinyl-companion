@@ -605,6 +605,15 @@ export class RecommendationDataFetcher {
         if (response?.artist) {
           const artistData = response.artist;
 
+          // Debug: Log raw response for first artist
+          if (processed === 0) {
+            console.log('🔍 Raw Last.fm response for', artistName, ':', {
+              hasTags: !!artistData.tags,
+              tagsStructure: artistData.tags,
+              hasStats: !!artistData.stats
+            });
+          }
+
           // Extract genres from tags
           const genres = artistData.tags?.tag ? artistData.tags.tag.map(tag => tag.name) : [];
 
