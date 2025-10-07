@@ -449,8 +449,19 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
           console.log('📊 Pass 2 complete: metadata for', Object.keys(artistMetadata).length, 'artists');
 
+          // Debug: Check what metadata looks like
+          const sampleKey = Object.keys(artistMetadata)[0];
+          if (sampleKey) {
+            console.log('🔍 Sample metadata for', sampleKey, ':', artistMetadata[sampleKey]);
+          }
+
           // Merge metadata into recommendations
           artistRecs.artists = mergeMetadataIntoArtists(artistRecs.artists, artistMetadata);
+
+          // Debug: Check merged result
+          if (artistRecs.artists[0]) {
+            console.log('🔍 Sample merged artist:', artistRecs.artists[0]);
+          }
 
           console.log('✅ Two-pass complete:', artistRecs.total, 'artists with metadata');
         }
