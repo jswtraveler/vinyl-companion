@@ -906,7 +906,10 @@ function App() {
                 ) : (
                   <div
                     className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
-                    onClick={() => setShowAuth(true)}
+                    onClick={() => {
+                      console.log('Local indicator clicked, opening auth modal');
+                      setShowAuth(true);
+                    }}
                     title="Click to sign in"
                   >
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
