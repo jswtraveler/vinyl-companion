@@ -609,12 +609,23 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     };
   };
 
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     if (recommendationService) {
       recommendationService.clearCache();
+
+      // Also clear artist metadata cache in Supabase
+      if (recommendationService.cacheService && user?.id) {
+        console.log('🧹 Clearing artist metadata cache...');
+        // Clear all artist metadata cache entries (they'll be refetched with fresh data)
+        await recommendationService.cacheService.clearArtistMetadataCache();
+      }
+
+      // Reset the fingerprint to force regeneration
+      lastGeneratedFingerprintRef.current = null;
+
       generateArtistRecommendations();
     }
-  }, [recommendationService, generateArtistRecommendations]);
+  }, [recommendationService, generateArtistRecommendations, user]);
 
   // Don't render if not enough albums
   if (!hasEnoughAlbums) {

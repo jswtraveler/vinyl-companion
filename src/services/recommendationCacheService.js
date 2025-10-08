@@ -486,6 +486,31 @@ export class RecommendationCacheService {
            null;
   }
 
+  /**
+   * Clear all artist metadata cache entries
+   * Used when user wants to refresh and get fresh Last.fm data
+   * @returns {Promise<number>} Number of entries deleted
+   */
+  async clearArtistMetadataCache() {
+    try {
+      // Delete all rows from artist_metadata_cache
+      const { error, count } = await this.supabase
+        .from('artist_metadata_cache')
+        .delete()
+        .not('id', 'is', null); // Match all rows (id is always not null)
+
+      if (error) {
+        console.error('Error clearing artist metadata cache:', error);
+        return 0;
+      }
+
+      this.log(`🧹 Cleared artist metadata cache (${count || 'unknown'} entries)`);
+      return count || 0;
+    } catch (error) {
+      console.error('Failed to clear artist metadata cache:', error);
+      return 0;
+    }
+  }
 
   /**
    * Logging helper
