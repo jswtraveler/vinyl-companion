@@ -904,7 +904,11 @@ function App() {
                     <span className="text-xs text-gray-400 hidden md:inline">Cloud</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div
+                    className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
+                    onClick={() => setShowAuth(true)}
+                    title="Click to sign in"
+                  >
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                     <span className="text-xs text-gray-400 hidden md:inline">Local</span>
                   </div>
