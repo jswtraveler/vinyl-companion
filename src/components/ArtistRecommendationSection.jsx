@@ -165,6 +165,14 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           if (graphResult.success) {
             console.log('🎯 PPR algorithm succeeded, now fetching metadata for recommendations...');
 
+            // Extract ALL PPR candidates for metadata refresh (not just top 50)
+            const allPPRCandidates = graphResult.recommendations.map(a => ({
+              artist: a.artist,
+              mbid: a.mbid || null
+            }));
+
+            console.log(`📊 Extracted ${allPPRCandidates.length} PPR candidates for metadata refresh`);
+
             // TWO-PASS: Fetch metadata for top 50 PPR recommendations (more data for diversity filtering)
             const topCandidates = graphResult.recommendations.slice(0, 50);
             const artistsToFetch = topCandidates.map(a => ({
@@ -197,7 +205,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
                 ...graphResult.metadata,
                 algorithm: 'personalized_pagerank',
                 generatedAt: new Date().toISOString(),
-                fullCandidateCount: artistsWithMetadata.length
+                fullCandidateCount: artistsWithMetadata.length,
+                allSimilarArtists: allPPRCandidates // Store all for metadata refresh
               }
             };
 
@@ -424,6 +433,25 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       const externalData = dataFetcher.results;
 
       if (externalData && Object.keys(externalData.similarArtists || {}).length > 0) {
+        // Extract ALL similar artists from externalData for metadata refresh
+        const allSimilarArtists = [];
+        const seenArtists = new Set();
+
+        Object.values(externalData.similarArtists || {}).forEach(artistData => {
+          artistData.similarArtists.forEach(similarArtist => {
+            const normalizedName = similarArtist.name.toLowerCase();
+            if (!seenArtists.has(normalizedName)) {
+              seenArtists.add(normalizedName);
+              allSimilarArtists.push({
+                artist: similarArtist.name,
+                mbid: similarArtist.mbid || null
+              });
+            }
+          });
+        });
+
+        console.log(`📊 Extracted ${allSimilarArtists.length} unique similar artists for metadata refresh`);
+
         // TWO-PASS APPROACH: Score first, then fetch metadata for top candidates
         console.log('🎯 Pass 1: Building artist recommendations WITHOUT metadata (fast)...');
 
@@ -466,6 +494,12 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           }
 
           console.log('✅ Two-pass complete:', artistRecs.total, 'artists with metadata');
+
+          // Add all similar artists to metadata for refresh functionality
+          artistRecs.metadata = {
+            ...artistRecs.metadata,
+            allSimilarArtists: allSimilarArtists
+          };
         }
 
         return artistRecs;
@@ -820,7 +854,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       <ArtistMetadataRefreshModal
         isOpen={showMetadataRefreshModal}
         onClose={() => setShowMetadataRefreshModal(false)}
-        artists={recommendations?.artists || []}
+        artists={recommendations?.metadata?.allSimilarArtists || recommendations?.artists || []}
         cacheService={recommendationService?.cacheService}
         onRefreshComplete={handleMetadataRefreshComplete}
       />
