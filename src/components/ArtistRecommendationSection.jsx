@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RecommendationService } from '../services/recommendationService.js';
 import { GraphRecommendationService } from '../services/graphRecommendationService.js';
 import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilter.js';
+import ArtistMetadataRefreshModal from './ArtistMetadataRefreshModal.jsx';
 
 /**
  * Merge fetched metadata into artist recommendation objects
@@ -57,6 +58,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const isGeneratingRef = useRef(false); // Prevent duplicate calls
   const [diversityEnabled, setDiversityEnabled] = useState(true); // Enable diversity filtering by default
   const lastGeneratedFingerprintRef = useRef(null); // Track last collection fingerprint
+  const [showMetadataRefreshModal, setShowMetadataRefreshModal] = useState(false);
 
   // Initialize recommendation services
   useEffect(() => {
@@ -627,6 +629,23 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     }
   }, [recommendationService, generateArtistRecommendations, user]);
 
+  const handleMetadataRefreshComplete = useCallback(async () => {
+    console.log('🔄 Metadata refresh complete, regenerating recommendations...');
+
+    // Clear recommendation cache to force regeneration with new metadata
+    if (recommendationService) {
+      recommendationService.clearCache();
+    }
+
+    // Reset the fingerprint to force regeneration
+    lastGeneratedFingerprintRef.current = null;
+
+    // Regenerate recommendations with fresh metadata
+    await generateArtistRecommendations();
+
+    console.log('✅ Recommendations regenerated with fresh metadata');
+  }, [recommendationService, generateArtistRecommendations]);
+
   // Don't render if not enough albums
   if (!hasEnoughAlbums) {
     return (
@@ -687,8 +706,17 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
               onClick={handleRefresh}
               disabled={loading}
               className="px-3 py-1 text-sm bg-gray-700 hover:bg-gray-600 text-white rounded border border-gray-600 disabled:opacity-50"
+              title="Clear cache and regenerate recommendations"
             >
               {loading ? 'Finding...' : 'Refresh'}
+            </button>
+            <button
+              onClick={() => setShowMetadataRefreshModal(true)}
+              disabled={loading || !recommendations || recommendations.artists.length === 0}
+              className="px-3 py-1 text-xs bg-blue-700 hover:bg-blue-600 text-white rounded border border-blue-600 disabled:opacity-50"
+              title="Force re-fetch genre metadata from Last.fm for all artists"
+            >
+              Fix Genres
             </button>
             {recommendations && (
               <span className="text-sm text-gray-400 ml-2">
@@ -787,6 +815,15 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           </div>
         )}
       </div>
+
+      {/* Artist Metadata Refresh Modal */}
+      <ArtistMetadataRefreshModal
+        isOpen={showMetadataRefreshModal}
+        onClose={() => setShowMetadataRefreshModal(false)}
+        artists={recommendations?.artists || []}
+        cacheService={recommendationService?.cacheService}
+        onRefreshComplete={handleMetadataRefreshComplete}
+      />
     </div>
   );
 };
