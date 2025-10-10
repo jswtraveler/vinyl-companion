@@ -681,6 +681,21 @@ export class RecommendationDataFetcher {
             results[artistName].spotifyImage = imageData.url;
             results[artistName].spotifyId = imageData.spotifyId;
             results[artistName].spotifyUrl = imageData.spotifyUrl;
+
+            // Update cache with Spotify image data
+            if (this.cacheService) {
+              await this.cacheService.setArtistMetadataCache(
+                artistName,
+                results[artistName].mbid || null,
+                {
+                  ...results[artistName],
+                  spotifyImage: imageData.url,
+                  spotifyId: imageData.spotifyId,
+                  spotifyUrl: imageData.spotifyUrl
+                },
+                'lastfm'
+              );
+            }
           }
         } catch (error) {
           console.error(`Failed to fetch Spotify image for ${artistName}:`, error);
