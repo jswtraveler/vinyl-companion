@@ -296,7 +296,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       setLoading(false);
       isGeneratingRef.current = false;
     }
-  }, [recommendationService, graphService, albums]); // Removed useGraphAlgorithm - handled separately
+  }, [recommendationService, graphService, albums, useGraphAlgorithm, diversityEnabled]);
 
   // Effect to trigger recommendations when dependencies change
   useEffect(() => {
