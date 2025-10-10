@@ -12,13 +12,6 @@ import SpotifyClient from './spotifyClient.js';
  * @returns {Promise<Object>} Results summary
  */
 export async function backfillSpotifyImages(cacheService, onProgress = null) {
-  const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-  const SPOTIFY_CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
-
-  if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
-    throw new Error('Spotify credentials not configured');
-  }
-
   if (!cacheService) {
     throw new Error('Cache service is required');
   }
@@ -33,9 +26,9 @@ export async function backfillSpotifyImages(cacheService, onProgress = null) {
   };
 
   try {
-    // Initialize Spotify client
-    const spotifyClient = new SpotifyClient(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET);
-    console.log('🎨 Spotify client initialized for backfill');
+    // Initialize Spotify client (uses Edge Function proxy)
+    const spotifyClient = new SpotifyClient();
+    console.log('🎨 Spotify client initialized for backfill (using Edge Function)');
 
     // Get all artists from metadata cache that don't have Spotify images
     console.log('📊 Fetching artists from cache...');

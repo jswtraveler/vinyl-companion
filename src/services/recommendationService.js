@@ -20,8 +20,6 @@ export class RecommendationService {
     this.config = {
       lastfmApiKey: import.meta.env.VITE_LASTFM_API_KEY,
       listenBrainzToken: import.meta.env.VITE_LISTENBRAINZ_TOKEN,
-      spotifyClientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID,
-      spotifyClientSecret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET,
       userId: options.userId || null, // Required for persistent caching
       useListenBrainz: false, // Feature flag for ListenBrainz
       listenBrainzFallbackToLastfm: true, // Graceful degradation
@@ -66,19 +64,12 @@ export class RecommendationService {
         console.log('🎵 Using in-memory caching only');
       }
 
-      // Initialize Spotify client for artist images
-      if (this.config.spotifyClientId && this.config.spotifyClientSecret) {
-        try {
-          this.spotifyClient = new SpotifyClient(
-            this.config.spotifyClientId,
-            this.config.spotifyClientSecret
-          );
-          console.log('🎨 Spotify client initialized for artist images');
-        } catch (error) {
-          console.warn('⚠️ Failed to initialize Spotify client:', error.message);
-        }
-      } else {
-        console.log('🎨 Spotify credentials not found - artist images will use Last.fm fallback');
+      // Initialize Spotify client for artist images (uses Edge Function proxy)
+      try {
+        this.spotifyClient = new SpotifyClient();
+        console.log('🎨 Spotify client initialized (using Edge Function proxy)');
+      } catch (error) {
+        console.warn('⚠️ Failed to initialize Spotify client:', error.message);
       }
 
       if (this.config.useListenBrainz) {
@@ -89,9 +80,9 @@ export class RecommendationService {
           cacheExpirationHours: this.config.cacheExpirationHours
         });
 
-        // Initialize fallback Last.fm client if configured
-        if (this.config.listenBrainzFallbackToLastfm && this.config.lastfmApiKey) {
-          this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
+        // Initialize fallback Last.fm client (uses Edge Function proxy)
+        if (this.config.listenBrainzFallbackToLastfm) {
+          this.lastfmClient = new LastFmClient(); // No API key needed
         }
 
         this.dataFetcher = new RecommendationDataFetcher(this.listenBrainzClient, this.lastfmClient, {
@@ -100,18 +91,13 @@ export class RecommendationService {
         });
         console.log('🎵 Recommendation service initialized with ListenBrainz');
       } else {
-        // Default to Last.fm
-        if (!this.config.lastfmApiKey) {
-          console.warn('⚠️ Last.fm API key not found. External recommendations will be limited.');
-          return;
-        }
-
-        this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
+        // Default to Last.fm (uses Edge Function proxy)
+        this.lastfmClient = new LastFmClient(); // No API key needed
         this.dataFetcher = new RecommendationDataFetcher(this.lastfmClient, null, {
           cacheService: this.cacheService,
           spotifyClient: this.spotifyClient
         });
-        console.log('🎵 Recommendation service initialized with Last.fm');
+        console.log('🎵 Recommendation service initialized with Last.fm (Edge Function proxy)');
       }
     } catch (error) {
       console.error('❌ Failed to initialize recommendation service:', error);
