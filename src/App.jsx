@@ -860,6 +860,7 @@ function App() {
             user={user}
             authLoading={authLoading}
             useCloudDatabase={useCloudDatabase}
+            onSignIn={handleSignIn}
           />
         </div>
 

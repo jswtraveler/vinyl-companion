@@ -26,7 +26,8 @@ const CollectionPage = ({
   onUpdateAlbum,
   user,
   authLoading,
-  useCloudDatabase
+  useCloudDatabase,
+  onSignIn
 }) => {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
@@ -78,7 +79,14 @@ const CollectionPage = ({
             ) : useCloudDatabase && user ? (
               <div className="w-2 h-2 bg-green-500 rounded-full" title="Cloud sync active"></div>
             ) : (
-              <div className="w-2 h-2 bg-blue-500 rounded-full" title="Local storage"></div>
+              <div
+                className="w-2 h-2 bg-blue-500 rounded-full cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => {
+                  console.log('Mobile local indicator clicked - opening sign in');
+                  if (onSignIn) onSignIn();
+                }}
+                title="Local storage - Click to sign in"
+              ></div>
             )}
           </div>
         </div>
@@ -204,7 +212,14 @@ const CollectionPage = ({
                 <span className="text-xs text-gray-400">Cloud</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
+              <div
+                className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
+                onClick={() => {
+                  console.log('Desktop local indicator clicked - opening sign in');
+                  if (onSignIn) onSignIn();
+                }}
+                title="Local storage - Click to sign in"
+              >
                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 <span className="text-xs text-gray-400">Local</span>
               </div>
