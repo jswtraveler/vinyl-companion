@@ -1,15 +1,16 @@
 /**
  * Last.fm API Client
- * Handles authenticated requests to Last.fm web services for music data
+ * Uses Supabase Edge Function proxy to keep API key secure
  */
 
-export class LastFmClient {
-  constructor(apiKey) {
-    if (!apiKey) {
-      throw new Error('Last.fm API key is required');
-    }
+import { supabase } from './supabase.js';
 
+export class LastFmClient {
+  constructor(apiKey = null) {
+    // API key is optional now (using Edge Function)
+    // Keep for backwards compatibility
     this.apiKey = apiKey;
+    this.useProxy = !apiKey; // Use proxy if no API key provided
     this.baseUrl = 'https://ws.audioscrobbler.com/2.0/';
     this.cache = new Map();
     this.requestQueue = [];
@@ -20,6 +21,10 @@ export class LastFmClient {
 
     // Load existing cache from localStorage
     this.loadCacheFromStorage();
+
+    if (this.useProxy) {
+      console.log('🎵 Last.fm client using Edge Function proxy');
+    }
   }
 
   /**
@@ -107,6 +112,12 @@ export class LastFmClient {
    * @returns {Promise<Object>} API response
    */
   async executeRequest(method, params) {
+    // Use Edge Function proxy if no API key provided
+    if (this.useProxy) {
+      return this.executeProxyRequest(method, params);
+    }
+
+    // Direct API call (legacy support)
     const url = new URL(this.baseUrl);
     url.searchParams.set('method', method);
     url.searchParams.set('api_key', this.apiKey);
@@ -139,6 +150,34 @@ export class LastFmClient {
     }
 
     return data;
+  }
+
+  /**
+   * Execute request through Edge Function proxy
+   * @param {string} method - API method
+   * @param {Object} params - Request parameters
+   * @returns {Promise<Object>} API response
+   */
+  async executeProxyRequest(method, params) {
+    try {
+      const { data, error } = await supabase.functions.invoke('lastfm-proxy', {
+        body: { method, params }
+      });
+
+      if (error) {
+        console.error('Last.fm proxy error:', error);
+        throw new Error(`Last.fm proxy error: ${error.message}`);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error');
+      }
+
+      return data.data;
+    } catch (error) {
+      console.error('Failed to call Last.fm proxy:', error);
+      throw error;
+    }
   }
 
   /**
