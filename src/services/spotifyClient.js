@@ -1,85 +1,60 @@
 /**
  * Spotify API Client
- * Uses Client Credentials Flow for public data access (artist info, images, etc.)
+ * Uses Supabase Edge Function proxy to keep credentials secure
  */
 
+import { supabase } from './supabase.js';
+
 export class SpotifyClient {
-  constructor(clientId, clientSecret) {
-    if (!clientId || !clientSecret) {
-      throw new Error('Spotify Client ID and Client Secret are required');
-    }
-
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
-    this.baseUrl = 'https://api.spotify.com/v1';
-    this.tokenUrl = 'https://accounts.spotify.com/api/token';
-
-    this.accessToken = null;
-    this.tokenExpiry = null;
+  constructor() {
     this.cache = new Map();
     this.requestQueue = [];
     this.isProcessingQueue = false;
     this.lastRequestTime = 0;
-    this.minRequestInterval = 50; // Spotify allows ~20 requests per second, be conservative
+    this.minRequestInterval = 50; // Rate limiting
   }
 
   /**
-   * Get access token using Client Credentials Flow
-   * @returns {Promise<string>} Access token
+   * Make a request through the Spotify Edge Function proxy
+   * @param {string} action - Action to perform
+   * @param {Object} params - Parameters for the action
+   * @returns {Promise<Object>} API response
    */
-  async getAccessToken() {
-    // Return cached token if still valid
-    if (this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry) {
-      return this.accessToken;
-    }
-
-    console.log('🎵 Requesting new Spotify access token...');
-
+  async makeProxyRequest(action, params = {}) {
     try {
-      const credentials = btoa(`${this.clientId}:${this.clientSecret}`);
-
-      const response = await fetch(this.tokenUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Basic ${credentials}`,
-          'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        body: 'grant_type=client_credentials'
+      const { data, error } = await supabase.functions.invoke('spotify-proxy', {
+        body: { action, ...params }
       });
 
-      if (!response.ok) {
-        throw new Error(`Spotify auth failed: ${response.status} ${response.statusText}`);
+      if (error) {
+        console.error('Spotify proxy error:', error);
+        throw new Error(`Spotify proxy error: ${error.message}`);
       }
 
-      const data = await response.json();
-      this.accessToken = data.access_token;
-      // Set expiry with 5 minute buffer
-      this.tokenExpiry = Date.now() + ((data.expires_in - 300) * 1000);
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error');
+      }
 
-      console.log('✅ Spotify access token obtained, expires in', data.expires_in, 'seconds');
-      return this.accessToken;
-
+      return data.data;
     } catch (error) {
-      console.error('❌ Failed to get Spotify access token:', error);
+      console.error('Failed to call Spotify proxy:', error);
       throw error;
     }
   }
 
   /**
-   * Make a rate-limited request to Spotify API
-   * @param {string} endpoint - API endpoint (e.g., '/search')
-   * @param {Object} params - Query parameters
-   * @param {number} cacheTTL - Cache time-to-live in milliseconds (default: 24 hours)
+   * Make a rate-limited request
+   * @param {string} cacheKey - Cache key
+   * @param {Function} requestFn - Function that makes the request
+   * @param {number} cacheTTL - Cache time-to-live in milliseconds
    * @returns {Promise<Object>} API response
    */
-  async makeRequest(endpoint, params = {}, cacheTTL = 24 * 60 * 60 * 1000) {
-    const cacheKey = this.generateCacheKey(endpoint, params);
-
+  async makeRequest(cacheKey, requestFn, cacheTTL = 24 * 60 * 60 * 1000) {
     // Check cache first
     if (this.cache.has(cacheKey)) {
       const cached = this.cache.get(cacheKey);
       if (Date.now() - cached.timestamp < cacheTTL) {
-        console.log(`🎵 Spotify cache hit: ${endpoint}`);
+        console.log(`🎵 Spotify cache hit: ${cacheKey}`);
         return cached.data;
       } else {
         this.cache.delete(cacheKey);
@@ -89,9 +64,8 @@ export class SpotifyClient {
     // Add to request queue
     return new Promise((resolve, reject) => {
       this.requestQueue.push({
-        endpoint,
-        params,
         cacheKey,
+        requestFn,
         resolve,
         reject
       });
@@ -120,7 +94,7 @@ export class SpotifyClient {
           await this.delay(this.minRequestInterval - timeSinceLastRequest);
         }
 
-        const data = await this.executeRequest(request.endpoint, request.params);
+        const data = await request.requestFn();
 
         // Cache the response
         this.cache.set(request.cacheKey, {
@@ -132,78 +106,12 @@ export class SpotifyClient {
         request.resolve(data);
 
       } catch (error) {
-        console.error(`Spotify API error for ${request.endpoint}:`, error);
+        console.error(`Spotify API error:`, error);
         request.reject(error);
       }
     }
 
     this.isProcessingQueue = false;
-  }
-
-  /**
-   * Execute the actual HTTP request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} params - Query parameters
-   * @returns {Promise<Object>} API response
-   */
-  async executeRequest(endpoint, params) {
-    const token = await this.getAccessToken();
-
-    const url = new URL(`${this.baseUrl}${endpoint}`);
-    Object.entries(params).forEach(([key, value]) => {
-      if (value !== null && value !== undefined) {
-        url.searchParams.set(key, value.toString());
-      }
-    });
-
-    console.log(`🎵 Spotify API request: ${endpoint}`);
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        'Authorization': `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      // Token might have expired, try refreshing once
-      if (response.status === 401) {
-        console.log('🔄 Spotify token expired, refreshing...');
-        this.accessToken = null;
-        this.tokenExpiry = null;
-        const newToken = await this.getAccessToken();
-
-        // Retry request with new token
-        const retryResponse = await fetch(url.toString(), {
-          headers: {
-            'Authorization': `Bearer ${newToken}`
-          }
-        });
-
-        if (!retryResponse.ok) {
-          throw new Error(`Spotify API error: ${retryResponse.status} ${retryResponse.statusText}`);
-        }
-
-        return retryResponse.json();
-      }
-
-      throw new Error(`Spotify API error: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json();
-  }
-
-  /**
-   * Generate cache key for request
-   * @param {string} endpoint - API endpoint
-   * @param {Object} params - Parameters
-   * @returns {string} Cache key
-   */
-  generateCacheKey(endpoint, params) {
-    const sortedParams = Object.keys(params)
-      .sort()
-      .map(key => `${key}=${params[key]}`)
-      .join('&');
-    return `spotify_${endpoint}_${sortedParams}`;
   }
 
   /**
@@ -215,8 +123,6 @@ export class SpotifyClient {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // API Methods
-
   /**
    * Search for an artist by name
    * @param {string} artistName - Artist name to search for
@@ -226,22 +132,13 @@ export class SpotifyClient {
   async searchArtist(artistName, limit = 1) {
     if (!artistName) throw new Error('Artist name is required');
 
-    return this.makeRequest('/search', {
-      q: artistName.trim(),
-      type: 'artist',
-      limit: Math.min(limit, 50)
-    });
-  }
+    const cacheKey = `spotify_search_${artistName.toLowerCase().trim()}`;
 
-  /**
-   * Get artist information by Spotify ID
-   * @param {string} artistId - Spotify artist ID
-   * @returns {Promise<Object>} Artist information
-   */
-  async getArtist(artistId) {
-    if (!artistId) throw new Error('Artist ID is required');
-
-    return this.makeRequest(`/artists/${artistId}`);
+    return this.makeRequest(
+      cacheKey,
+      () => this.makeProxyRequest('search', { artistName }),
+      24 * 60 * 60 * 1000 // 24 hour cache
+    );
   }
 
   /**
@@ -251,22 +148,17 @@ export class SpotifyClient {
    */
   async getArtistImage(artistName) {
     try {
-      const searchResults = await this.searchArtist(artistName, 1);
+      const result = await this.searchArtist(artistName, 1);
 
-      if (searchResults?.artists?.items && searchResults.artists.items.length > 0) {
-        const artist = searchResults.artists.items[0];
-
-        // Spotify returns images sorted by size (largest first)
-        if (artist.images && artist.images.length > 0) {
-          console.log(`✅ Found Spotify image for ${artistName}`);
-          return {
-            url: artist.images[0].url, // Largest image
-            width: artist.images[0].width,
-            height: artist.images[0].height,
-            spotifyId: artist.id,
-            spotifyUrl: artist.external_urls.spotify
-          };
-        }
+      if (result) {
+        console.log(`✅ Found Spotify image for ${artistName}`);
+        return {
+          url: result.image,
+          width: result.imageWidth,
+          height: result.imageHeight,
+          spotifyId: result.id,
+          spotifyUrl: result.spotifyUrl
+        };
       }
 
       console.log(`⚠️ No Spotify image found for ${artistName}`);
@@ -316,8 +208,7 @@ export class SpotifyClient {
   getCacheStats() {
     return {
       totalEntries: this.cache.size,
-      queueLength: this.requestQueue.length,
-      hasValidToken: !!(this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry)
+      queueLength: this.requestQueue.length
     };
   }
 }
