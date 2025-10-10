@@ -22,16 +22,29 @@ export class SpotifyClient {
    */
   async makeProxyRequest(action, params = {}) {
     try {
+      console.log('🎵 Calling Spotify proxy with:', { action, ...params });
+
       const { data, error } = await supabase.functions.invoke('spotify-proxy', {
         body: { action, ...params }
       });
 
+      console.log('🎵 Spotify proxy response:', { data, error });
+
       if (error) {
-        console.error('Spotify proxy error:', error);
+        console.error('Spotify proxy error object:', error);
+        console.error('Error message:', error.message);
+        console.error('Error context:', error.context);
         throw new Error(`Spotify proxy error: ${error.message}`);
       }
 
+      if (!data) {
+        console.error('No data returned from Spotify proxy');
+        throw new Error('No data returned from Spotify proxy');
+      }
+
       if (!data.success) {
+        console.error('Spotify proxy returned error:', data.error);
+        console.error('Error details:', data.details);
         throw new Error(data.error || 'Unknown error');
       }
 
