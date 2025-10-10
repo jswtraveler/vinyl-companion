@@ -66,6 +66,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const lastGeneratedFingerprintRef = useRef(null); // Track last collection fingerprint
   const [showMetadataRefreshModal, setShowMetadataRefreshModal] = useState(false);
   const [showSpotifyBackfillModal, setShowSpotifyBackfillModal] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const actionsMenuRef = useRef(null);
 
   // Initialize recommendation services
   useEffect(() => {
@@ -698,10 +700,135 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     );
   }
 
+  // Close actions menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target)) {
+        setShowActionsMenu(false);
+      }
+    };
+
+    if (showActionsMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showActionsMenu]);
+
   return (
     <div className="mb-6 bg-gray-900 rounded-lg border border-gray-700">
       <div className="p-6">
-        <div className="flex items-center justify-between mb-4">
+        {/* Mobile: Stacked layout with dropdown */}
+        <div className="md:hidden mb-4">
+          {/* Row 1: Primary controls + suggestions count + expand */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const newAlgorithm = !useGraphAlgorithm;
+                  setUseGraphAlgorithm(newAlgorithm);
+                  console.log(`🔄 Switching to ${newAlgorithm ? 'PPR' : 'Basic'} algorithm`);
+                }}
+                disabled={loading}
+                className={`px-3 py-1 text-xs rounded border ${
+                  useGraphAlgorithm
+                    ? 'bg-purple-700 border-purple-600 text-white'
+                    : 'bg-gray-700 border-gray-600 text-gray-300'
+                } hover:bg-opacity-80 disabled:opacity-50`}
+                title={`Switch to ${useGraphAlgorithm ? 'Basic' : 'PPR'} algorithm`}
+              >
+                {useGraphAlgorithm ? 'PPR' : 'Basic'}
+              </button>
+              <button
+                onClick={() => {
+                  const newDiversity = !diversityEnabled;
+                  setDiversityEnabled(newDiversity);
+                  console.log(`🎯 ${newDiversity ? 'Enabling' : 'Disabling'} diversity filtering`);
+                }}
+                disabled={loading}
+                className={`px-3 py-1 text-xs rounded border ${
+                  diversityEnabled
+                    ? 'bg-green-700 border-green-600 text-white'
+                    : 'bg-gray-700 border-gray-600 text-gray-300'
+                } hover:bg-opacity-80 disabled:opacity-50`}
+                title={`${diversityEnabled ? 'Disable' : 'Enable'} diversity filtering`}
+              >
+                {diversityEnabled ? 'Diverse' : 'All'}
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {recommendations && (
+                <span className="text-sm text-gray-400">
+                  {recommendations.total} sugg
+                </span>
+              )}
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="p-1 text-gray-400 hover:text-white"
+              >
+                <svg
+                  className={`w-5 h-5 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Row 2: Actions dropdown menu */}
+          <div className="relative" ref={actionsMenuRef}>
+            <button
+              onClick={() => setShowActionsMenu(!showActionsMenu)}
+              disabled={loading}
+              className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded border border-gray-600 disabled:opacity-50 flex items-center gap-1"
+            >
+              Actions
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {showActionsMenu && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10 min-w-[160px]">
+                <button
+                  onClick={() => {
+                    handleRefresh();
+                    setShowActionsMenu(false);
+                  }}
+                  disabled={loading}
+                  className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-700 disabled:opacity-50 rounded-t-lg"
+                >
+                  🔄 Refresh
+                </button>
+                <button
+                  onClick={() => {
+                    setShowMetadataRefreshModal(true);
+                    setShowActionsMenu(false);
+                  }}
+                  disabled={loading || !recommendations || recommendations.artists.length === 0}
+                  className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+                >
+                  🏷️ Fix Genres
+                </button>
+                <button
+                  onClick={() => {
+                    setShowSpotifyBackfillModal(true);
+                    setShowActionsMenu(false);
+                  }}
+                  disabled={loading}
+                  className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-700 disabled:opacity-50 rounded-b-lg"
+                >
+                  🖼️ Get Images
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Desktop: Original single row layout */}
+        <div className="hidden md:flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
@@ -724,8 +851,6 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
                 const newDiversity = !diversityEnabled;
                 setDiversityEnabled(newDiversity);
                 console.log(`🎯 ${newDiversity ? 'Enabling' : 'Disabling'} diversity filtering`);
-
-                // No need to regenerate - the useEffect will handle it
               }}
               disabled={loading}
               className={`px-3 py-1 text-xs rounded border ${
