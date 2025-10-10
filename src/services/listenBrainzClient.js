@@ -1,13 +1,16 @@
 /**
  * ListenBrainz API Client
  * Open source music discovery service with native MusicBrainz ID integration
- * No API keys required, no rate limits for reasonable usage
+ * Uses Supabase Edge Function proxy to keep token secure
  */
+
+import { supabase } from './supabase.js';
 
 export class ListenBrainzClient {
   constructor(options = {}) {
     this.baseURL = 'https://api.listenbrainz.org';
-    this.userToken = options.userToken || import.meta.env.VITE_LISTENBRAINZ_TOKEN;
+    this.userToken = options.userToken || null;
+    this.useProxy = !this.userToken; // Use proxy if no token provided
     this.options = {
       timeout: 10000,
       maxRetries: 3,
@@ -23,6 +26,10 @@ export class ListenBrainzClient {
 
     // Load cached data from localStorage
     this.loadCacheFromStorage();
+
+    if (this.useProxy) {
+      console.log('🎵 ListenBrainz client using Edge Function proxy');
+    }
   }
 
   /**
@@ -163,6 +170,12 @@ export class ListenBrainzClient {
       }
     }
 
+    // Use Edge Function proxy if no token provided
+    if (this.useProxy) {
+      return this.executeProxyRequest(endpoint, params, cacheKey);
+    }
+
+    // Direct API call (legacy support)
     const url = new URL(endpoint, this.baseURL);
 
     // Add query parameters
@@ -223,6 +236,40 @@ export class ListenBrainzClient {
     }
 
     throw new Error(`ListenBrainz API failed after ${this.options.maxRetries} attempts: ${lastError.message}`);
+  }
+
+  /**
+   * Execute request through Edge Function proxy
+   * @param {string} endpoint - API endpoint
+   * @param {Object} params - Request parameters
+   * @param {string} cacheKey - Cache key for result
+   * @returns {Promise<Object>} API response
+   */
+  async executeProxyRequest(endpoint, params, cacheKey = null) {
+    try {
+      const { data, error } = await supabase.functions.invoke('listenbrainz-proxy', {
+        body: { endpoint, params }
+      });
+
+      if (error) {
+        console.error('ListenBrainz proxy error:', error);
+        throw new Error(`ListenBrainz proxy error: ${error.message}`);
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Unknown error');
+      }
+
+      // Cache successful responses
+      if (cacheKey && this.options.enableCaching) {
+        this.setCache(cacheKey, data.data);
+      }
+
+      return data.data;
+    } catch (error) {
+      console.error('Failed to call ListenBrainz proxy:', error);
+      throw error;
+    }
   }
 
   /**
