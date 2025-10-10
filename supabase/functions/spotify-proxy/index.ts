@@ -34,10 +34,13 @@ let tokenExpiry: number = 0
 async function getSpotifyAccessToken(): Promise<string> {
   // Return cached token if still valid
   if (cachedToken && Date.now() < tokenExpiry) {
+    console.log('Using cached Spotify token')
     return cachedToken
   }
 
   console.log('Fetching new Spotify access token...')
+  console.log('Client ID configured:', !!SPOTIFY_CLIENT_ID)
+  console.log('Client Secret configured:', !!SPOTIFY_CLIENT_SECRET)
 
   const credentials = btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`)
 
@@ -52,8 +55,9 @@ async function getSpotifyAccessToken(): Promise<string> {
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error('Spotify auth error:', errorText)
-    throw new Error(`Spotify auth failed: ${response.status}`)
+    console.error('Spotify auth error status:', response.status)
+    console.error('Spotify auth error response:', errorText)
+    throw new Error(`Spotify auth failed: ${response.status} - ${errorText}`)
   }
 
   const data = await response.json() as SpotifyTokenResponse
@@ -61,7 +65,7 @@ async function getSpotifyAccessToken(): Promise<string> {
   // Set expiry with 5 minute buffer
   tokenExpiry = Date.now() + ((data.expires_in - 300) * 1000)
 
-  console.log('Spotify token obtained, expires in', data.expires_in, 'seconds')
+  console.log('Spotify token obtained successfully, expires in', data.expires_in, 'seconds')
   return cachedToken
 }
 
@@ -109,7 +113,21 @@ serve(async (req) => {
   }
 
   try {
+    // Check if credentials are set
+    if (!SPOTIFY_CLIENT_ID || !SPOTIFY_CLIENT_SECRET) {
+      console.error('Spotify credentials not configured')
+      return new Response(
+        JSON.stringify({ success: false, error: 'Spotify credentials not configured' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500,
+        }
+      )
+    }
+
     const { action, artistName } = await req.json()
+
+    console.log(`Received request - action: ${action}, artistName: ${artistName}`)
 
     if (action === 'search' && artistName) {
       console.log(`Searching Spotify for artist: ${artistName}`)
@@ -125,6 +143,7 @@ serve(async (req) => {
     }
 
     // Invalid request
+    console.log('Invalid request - missing action or artistName')
     return new Response(
       JSON.stringify({ success: false, error: 'Invalid action or missing artistName' }),
       {
@@ -135,8 +154,13 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Spotify proxy error:', error)
+    console.error('Error stack:', error.stack)
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({
+        success: false,
+        error: error.message,
+        details: error.stack
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500,
