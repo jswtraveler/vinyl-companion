@@ -6,6 +6,7 @@
 
 import LastFmClient from './lastfmClient.js';
 import ListenBrainzClient from './listenBrainzClient.js';
+import SpotifyClient from './spotifyClient.js';
 import RecommendationDataFetcher from './recommendationDataFetcher.js';
 import CollectionProfiler from './collectionProfiler.js';
 import RecommendationScoring from './recommendationScoring.js';
@@ -19,6 +20,8 @@ export class RecommendationService {
     this.config = {
       lastfmApiKey: import.meta.env.VITE_LASTFM_API_KEY,
       listenBrainzToken: import.meta.env.VITE_LISTENBRAINZ_TOKEN,
+      spotifyClientId: import.meta.env.VITE_SPOTIFY_CLIENT_ID,
+      spotifyClientSecret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET,
       userId: options.userId || null, // Required for persistent caching
       useListenBrainz: false, // Feature flag for ListenBrainz
       listenBrainzFallbackToLastfm: true, // Graceful degradation
@@ -33,6 +36,7 @@ export class RecommendationService {
     // Services
     this.lastfmClient = null;
     this.listenBrainzClient = null;
+    this.spotifyClient = null;
     this.dataFetcher = null;
     this.scoringEngine = new RecommendationScoring();
     this.cacheService = null;
@@ -62,6 +66,21 @@ export class RecommendationService {
         console.log('🎵 Using in-memory caching only');
       }
 
+      // Initialize Spotify client for artist images
+      if (this.config.spotifyClientId && this.config.spotifyClientSecret) {
+        try {
+          this.spotifyClient = new SpotifyClient(
+            this.config.spotifyClientId,
+            this.config.spotifyClientSecret
+          );
+          console.log('🎨 Spotify client initialized for artist images');
+        } catch (error) {
+          console.warn('⚠️ Failed to initialize Spotify client:', error.message);
+        }
+      } else {
+        console.log('🎨 Spotify credentials not found - artist images will use Last.fm fallback');
+      }
+
       if (this.config.useListenBrainz) {
         // Initialize ListenBrainz client with user token
         this.listenBrainzClient = new ListenBrainzClient({
@@ -76,7 +95,8 @@ export class RecommendationService {
         }
 
         this.dataFetcher = new RecommendationDataFetcher(this.listenBrainzClient, this.lastfmClient, {
-          cacheService: this.cacheService
+          cacheService: this.cacheService,
+          spotifyClient: this.spotifyClient
         });
         console.log('🎵 Recommendation service initialized with ListenBrainz');
       } else {
@@ -88,7 +108,8 @@ export class RecommendationService {
 
         this.lastfmClient = new LastFmClient(this.config.lastfmApiKey);
         this.dataFetcher = new RecommendationDataFetcher(this.lastfmClient, null, {
-          cacheService: this.cacheService
+          cacheService: this.cacheService,
+          spotifyClient: this.spotifyClient
         });
         console.log('🎵 Recommendation service initialized with Last.fm');
       }

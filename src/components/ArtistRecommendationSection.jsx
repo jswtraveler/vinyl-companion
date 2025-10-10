@@ -23,12 +23,17 @@ function mergeMetadataIntoArtists(artists, artistMetadataMap) {
 
       return {
         ...artist,
+        // Use Spotify image if available, fall back to existing image
+        image: metadata.spotifyImage || artist.image || null,
+        spotifyId: metadata.spotifyId || null,
+        spotifyUrl: metadata.spotifyUrl || null,
         metadata: {
           tags: metadata.tags || [],
           genres: genres,
           playcount: metadata.playcount || 0,
           listeners: metadata.listeners || 0,
-          bio: metadata.bio || null
+          bio: metadata.bio || null,
+          spotifyImage: metadata.spotifyImage || null
         }
       };
     }
