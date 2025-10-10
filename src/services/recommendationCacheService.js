@@ -135,7 +135,13 @@ export class RecommendationCacheService {
 
       this.log(`✅ Cache hit: Metadata for ${artistName} (${dataSource})`);
       return {
-        metadata: cacheRecord.metadata || {},
+        metadata: {
+          ...cacheRecord.metadata,
+          // Include Spotify data if available
+          spotifyImage: cacheRecord.spotify_image_url || null,
+          spotifyId: cacheRecord.spotify_id || null,
+          spotifyUrl: cacheRecord.spotify_url || null
+        },
         cached: true,
         cachedAt: cacheRecord.cached_at
       };
@@ -155,11 +161,18 @@ export class RecommendationCacheService {
    */
   async setArtistMetadataCache(artistName, artistMBID, metadata, dataSource = 'lastfm') {
     try {
+      // Extract Spotify data from metadata if present
+      const { spotifyImage, spotifyId, spotifyUrl, ...otherMetadata } = metadata;
+
       const cacheData = {
         artist_name: artistName,
         artist_mbid: artistMBID || null,
-        metadata: metadata, // Store all metadata as JSONB
-        data_source: dataSource
+        metadata: otherMetadata, // Store non-Spotify metadata as JSONB
+        data_source: dataSource,
+        // Store Spotify data in dedicated columns
+        spotify_image_url: spotifyImage || null,
+        spotify_id: spotifyId || null,
+        spotify_url: spotifyUrl || null
       };
 
       const { data, error } = await this.supabase
@@ -179,7 +192,7 @@ export class RecommendationCacheService {
         return false;
       }
 
-      this.log(`💾 Cached: Metadata for ${artistName} (${dataSource})`);
+      this.log(`💾 Cached: Metadata for ${artistName} (${dataSource})${spotifyImage ? ' with Spotify image' : ''}`);
       return true;
 
     } catch (error) {
