@@ -182,10 +182,15 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
             // TWO-PASS: Fetch metadata for top 50 PPR recommendations (more data for diversity filtering)
             const topCandidates = graphResult.recommendations.slice(0, 50);
-            const artistsToFetch = topCandidates.map(a => ({
-              name: a.artist,
-              mbid: a.mbid || null
-            }));
+            // Deduplicate artists by name to avoid fetching same artist multiple times
+            const artistMap = new Map();
+            topCandidates.forEach(a => {
+              const key = a.artist.toLowerCase();
+              if (!artistMap.has(key)) {
+                artistMap.set(key, { name: a.artist, mbid: a.mbid || null });
+              }
+            });
+            const artistsToFetch = Array.from(artistMap.values());
 
             // Fetch metadata using the data fetcher
             const dataFetcher = recommendationService.dataFetcher;
@@ -296,7 +301,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       setLoading(false);
       isGeneratingRef.current = false;
     }
-  }, [recommendationService, graphService, albums, useGraphAlgorithm, diversityEnabled]);
+  }, [recommendationService, graphService, albums, useGraphAlgorithm]);
 
   // Effect to trigger recommendations when dependencies change
   useEffect(() => {
@@ -471,10 +476,15 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
           console.log('🎯 Pass 2: Fetching metadata for top 50 candidates...');
 
           const topCandidates = artistRecs.artists.slice(0, 50);
-          const artistsToFetch = topCandidates.map(a => ({
-            name: a.artist,
-            mbid: a.mbid || null
-          }));
+          // Deduplicate artists by name to avoid fetching same artist multiple times
+          const artistMap = new Map();
+          topCandidates.forEach(a => {
+            const key = a.artist.toLowerCase();
+            if (!artistMap.has(key)) {
+              artistMap.set(key, { name: a.artist, mbid: a.mbid || null });
+            }
+          });
+          const artistsToFetch = Array.from(artistMap.values());
 
           // Fetch metadata for these specific artists
           const artistMetadata = await dataFetcher.fetchMetadataForArtists(artistsToFetch, {
