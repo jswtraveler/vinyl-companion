@@ -19,6 +19,9 @@ export class RecommendationDataFetcher {
     this.lastfm = this.isPrimaryListenBrainz ? fallbackClient : primaryClient;
     this.listenbrainz = this.isPrimaryListenBrainz ? primaryClient : null;
 
+    // Spotify client for artist images
+    this.spotify = options.spotifyClient || null;
+
     // Persistent caching service
     this.cacheService = options.cacheService || null;
 
@@ -665,6 +668,30 @@ export class RecommendationDataFetcher {
 
     const duration = Date.now() - startTime;
     console.log(`🎯 Metadata fetch complete: ${Object.keys(results).length} artists in ${duration}ms`);
+
+    // Fetch Spotify images for artists if Spotify client is available
+    if (this.spotify) {
+      console.log('🎨 Fetching Spotify images for artists...');
+      const spotifyStartTime = Date.now();
+
+      for (const artistName of Object.keys(results)) {
+        try {
+          const imageData = await this.spotify.getArtistImage(artistName);
+          if (imageData) {
+            results[artistName].spotifyImage = imageData.url;
+            results[artistName].spotifyId = imageData.spotifyId;
+            results[artistName].spotifyUrl = imageData.spotifyUrl;
+          }
+        } catch (error) {
+          console.error(`Failed to fetch Spotify image for ${artistName}:`, error);
+          // Continue with other artists even if one fails
+        }
+      }
+
+      const spotifyDuration = Date.now() - spotifyStartTime;
+      const artistsWithImages = Object.values(results).filter(r => r.spotifyImage).length;
+      console.log(`🎨 Spotify images complete: ${artistsWithImages}/${Object.keys(results).length} artists in ${spotifyDuration}ms`);
+    }
 
     return results;
   }
