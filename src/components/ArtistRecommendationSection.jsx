@@ -3,6 +3,7 @@ import { RecommendationService } from '../services/recommendationService.js';
 import { GraphRecommendationService } from '../services/graphRecommendationService.js';
 import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilter.js';
 import ArtistMetadataRefreshModal from './ArtistMetadataRefreshModal.jsx';
+import SpotifyImageBackfillModal from './SpotifyImageBackfillModal.jsx';
 
 /**
  * Merge fetched metadata into artist recommendation objects
@@ -64,6 +65,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [diversityEnabled, setDiversityEnabled] = useState(true); // Enable diversity filtering by default
   const lastGeneratedFingerprintRef = useRef(null); // Track last collection fingerprint
   const [showMetadataRefreshModal, setShowMetadataRefreshModal] = useState(false);
+  const [showSpotifyBackfillModal, setShowSpotifyBackfillModal] = useState(false);
 
   // Initialize recommendation services
   useEffect(() => {
@@ -757,6 +759,14 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             >
               Fix Genres
             </button>
+            <button
+              onClick={() => setShowSpotifyBackfillModal(true)}
+              disabled={loading}
+              className="px-3 py-1 text-xs bg-green-700 hover:bg-green-600 text-white rounded border border-green-600 disabled:opacity-50"
+              title="Fetch Spotify images for all cached artists"
+            >
+              Get Images
+            </button>
             {recommendations && (
               <span className="text-sm text-gray-400 ml-2">
                 {recommendations.total} suggestions
@@ -862,6 +872,13 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
         artists={recommendations?.metadata?.allSimilarArtists || recommendations?.artists || []}
         cacheService={recommendationService?.cacheService}
         onRefreshComplete={handleMetadataRefreshComplete}
+      />
+
+      {/* Spotify Image Backfill Modal */}
+      <SpotifyImageBackfillModal
+        isOpen={showSpotifyBackfillModal}
+        onClose={() => setShowSpotifyBackfillModal(false)}
+        cacheService={recommendationService?.cacheService}
       />
     </div>
   );
