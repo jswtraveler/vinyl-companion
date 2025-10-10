@@ -1,7 +1,9 @@
 /**
  * Google Gemini AI Client for Album Mood Analysis
- * Provides AI-powered mood tagging and analysis for vinyl collections
+ * Uses Supabase Edge Function proxy to keep API key secure
  */
+
+import { supabase } from './supabase.js';
 
 class GeminiError extends Error {
   constructor(message, status, type) {
@@ -14,17 +16,21 @@ class GeminiError extends Error {
 
 export class GeminiClient {
   constructor(apiKey = null) {
-    this.apiKey = apiKey || (typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env.VITE_GEMINI_API_KEY : null);
-    this.baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+    this.apiKey = apiKey || null;
+    this.useProxy = !this.apiKey; // Use proxy if no API key provided
     this.requestCount = 0;
     this.lastRequestTime = null;
+
+    if (this.useProxy) {
+      console.log('🤖 Gemini client using Edge Function proxy');
+    }
   }
 
   /**
    * Check if API key is configured
    */
   isConfigured() {
-    return !!this.apiKey;
+    return !!this.apiKey || this.useProxy;
   }
 
   /**
@@ -66,6 +72,12 @@ export class GeminiClient {
 
     await this.rateLimit();
 
+    // Use Edge Function proxy if no API key provided
+    if (this.useProxy) {
+      return this.executeProxyRequest(prompt);
+    }
+
+    // Direct API call (legacy support)
     const requestBody = {
       contents: [{
         parts: [{
@@ -99,9 +111,10 @@ export class GeminiClient {
     };
 
     console.log('Gemini API: Generating content...');
-    
+
     try {
-      const response = await fetch(this.baseUrl, {
+      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+      const response = await fetch(baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -122,13 +135,13 @@ export class GeminiClient {
       }
 
       const data = await response.json();
-      
+
       if (data.error) {
         throw new GeminiError(data.error.message, 400, 'GENERATION_ERROR');
       }
 
       console.log('Gemini API: Content generated successfully');
-      
+
       // Extract text from response
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) {
@@ -144,13 +157,56 @@ export class GeminiClient {
 
     } catch (error) {
       console.error('Gemini API error:', error);
-      
+
       if (error instanceof GeminiError) {
         throw error;
       }
-      
+
       throw new GeminiError(
         `Gemini API network error: ${error.message}`,
+        0,
+        'NETWORK_ERROR'
+      );
+    }
+  }
+
+  /**
+   * Execute request through Edge Function proxy
+   * @param {string} prompt - Prompt for content generation
+   * @returns {Promise<Object>} API response
+   */
+  async executeProxyRequest(prompt) {
+    try {
+      const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+        body: { action: 'generateContent', prompt }
+      });
+
+      if (error) {
+        console.error('Gemini proxy error:', error);
+        throw new GeminiError(`Gemini proxy error: ${error.message}`, 500, 'PROXY_ERROR');
+      }
+
+      if (!data.success) {
+        throw new GeminiError(data.error || 'Unknown error', 500, 'PROXY_ERROR');
+      }
+
+      this.requestCount++;
+
+      return {
+        success: true,
+        content: data.data.content,
+        timestamp: data.data.timestamp,
+        usage: data.data.usage
+      };
+    } catch (error) {
+      console.error('Failed to call Gemini proxy:', error);
+
+      if (error instanceof GeminiError) {
+        throw error;
+      }
+
+      throw new GeminiError(
+        `Gemini proxy network error: ${error.message}`,
         0,
         'NETWORK_ERROR'
       );
