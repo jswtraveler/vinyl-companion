@@ -104,7 +104,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
   }, [albums]);
 
   // Generate artist recommendations when albums change
-  const generateArtistRecommendations = useCallback(async () => {
+  const generateArtistRecommendations = useCallback(async (forceRefresh = false) => {
     // Prevent duplicate calls
     if (isGeneratingRef.current) {
       console.log('🚫 Skipping duplicate recommendation generation call');
@@ -116,7 +116,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
     // Check if collection fingerprint changed (avoid regenerating on tab switch)
     const cacheService = recommendationService.cacheService;
-    if (cacheService) {
+    if (cacheService && !forceRefresh) {
       const currentFingerprint = cacheService.generateCollectionFingerprint(albums);
       const algorithmSuffix = useGraphAlgorithm ? '_graph' : '_basic';
       const fullFingerprint = `${currentFingerprint}${algorithmSuffix}`;
@@ -183,23 +183,12 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
             // TWO-PASS: Fetch metadata for top 50 PPR recommendations (more data for diversity filtering)
             const topCandidates = graphResult.recommendations.slice(0, 50);
             // Deduplicate artists by name to avoid fetching same artist multiple times
-            const artistMap = new Map();
-            topCandidates.forEach(a => {
-              const key = a.artist.toLowerCase();
-              if (!artistMap.has(key)) {
-                artistMap.set(key, { name: a.artist, mbid: a.mbid || null });
-              }
-            });
-            const artistsToFetch = Array.from(artistMap.values());
+            const artistNamesForPPRMetadata = [...new Set(topCandidates.map(a => a.artist))];
 
-            // Fetch metadata using the data fetcher
-            const dataFetcher = recommendationService.dataFetcher;
-            const artistMetadata = await dataFetcher.fetchMetadataForArtists(artistsToFetch, {
-              maxConcurrent: 50,
-              onProgress: (processed, total) => {
-                console.log(`🎯 PPR metadata progress: ${processed}/${total}`);
-              }
-            });
+            // OPTIMIZED: Batch fetch metadata for all artists at once
+            console.time('🚀 Batch fetch PPR metadata');
+            const artistMetadata = await recommendationService.cacheService.getBatchArtistMetadataCache(artistNamesForPPRMetadata);
+            console.timeEnd('🚀 Batch fetch PPR metadata');
 
             console.log('📊 PPR metadata complete:', Object.keys(artistMetadata).length, 'artists');
 
@@ -309,8 +298,11 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       return;
     }
 
-    generateArtistRecommendations();
-  }, [generateArtistRecommendations, hasEnoughAlbums]);
+    // Only generate if we don't already have recommendations for this collection
+    if (!recommendations || recommendations.total === 0) {
+      generateArtistRecommendations();
+    }
+  }, [recommendationService, graphService, hasEnoughAlbums, albums?.length, useGraphAlgorithm]);
 
   // Separate effect to handle algorithm switching (load from cache or regenerate)
   useEffect(() => {
@@ -431,18 +423,20 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       console.log('📊 User profile built with', profile.artists?.length || 0, 'artists');
       console.log('📊 Debug: Profile artists:', profile.artists?.slice(0, 3));
 
-      // Fetch similarity data specifically for artist recommendations
-      const dataFetcher = recommendationService.dataFetcher;
-      console.log('📊 Fetching artist similarity data...');
-
-      // Profile.artists is already in correct format: [{artist: "name", count: number}, ...]
+      // OPTIMIZED: Use batch query for all artists at once
+      console.log('📊 Batch fetching similarity data for', profile.artists?.length || 0, 'artists');
       console.log('📊 Artists to fetch (sample):', profile.artists?.slice(0, 3));
 
-      // Pass the full artist objects (not just names) to fetchSimilarArtistsData
-      await dataFetcher.fetchSimilarArtistsData(profile.artists || []);
-      console.log('📊 Similarity data fetched:', Object.keys(dataFetcher.results.similarArtists || {}));
+      console.time('🚀 Batch fetch similarity data');
+      const artistNames = (profile.artists || []).map(a => a.artist);
+      const similarArtistsMap = await recommendationService.cacheService.getBatchSimilarArtistsCache(artistNames, 'lastfm');
+      console.timeEnd('🚀 Batch fetch similarity data');
+      console.log('📊 Batch similarity data fetched:', Object.keys(similarArtistsMap).length, 'artists');
 
-      const externalData = dataFetcher.results;
+      // Convert to expected format
+      const externalData = {
+        similarArtists: similarArtistsMap
+      };
 
       if (externalData && Object.keys(externalData.similarArtists || {}).length > 0) {
         // Extract ALL similar artists from externalData for metadata refresh
@@ -477,22 +471,12 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
 
           const topCandidates = artistRecs.artists.slice(0, 50);
           // Deduplicate artists by name to avoid fetching same artist multiple times
-          const artistMap = new Map();
-          topCandidates.forEach(a => {
-            const key = a.artist.toLowerCase();
-            if (!artistMap.has(key)) {
-              artistMap.set(key, { name: a.artist, mbid: a.mbid || null });
-            }
-          });
-          const artistsToFetch = Array.from(artistMap.values());
+          const artistNamesForMetadata = [...new Set(topCandidates.map(a => a.artist))];
 
-          // Fetch metadata for these specific artists
-          const artistMetadata = await dataFetcher.fetchMetadataForArtists(artistsToFetch, {
-            maxConcurrent: 50,
-            onProgress: (processed, total) => {
-              console.log(`🎯 Metadata progress: ${processed}/${total}`);
-            }
-          });
+          // OPTIMIZED: Batch fetch metadata for all artists at once
+          console.time('🚀 Batch fetch metadata');
+          const artistMetadata = await recommendationService.cacheService.getBatchArtistMetadataCache(artistNamesForMetadata);
+          console.timeEnd('🚀 Batch fetch metadata');
 
           console.log('📊 Pass 2 complete: metadata for', Object.keys(artistMetadata).length, 'artists');
 
@@ -676,7 +660,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
       // Reset the fingerprint to force regeneration
       lastGeneratedFingerprintRef.current = null;
 
-      generateArtistRecommendations();
+      await generateArtistRecommendations(true);
     }
   }, [recommendationService, generateArtistRecommendations, user]);
 
@@ -692,7 +676,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase }) => {
     lastGeneratedFingerprintRef.current = null;
 
     // Regenerate recommendations with fresh metadata
-    await generateArtistRecommendations();
+    await generateArtistRecommendations(true);
 
     console.log('✅ Recommendations regenerated with fresh metadata');
   }, [recommendationService, generateArtistRecommendations]);

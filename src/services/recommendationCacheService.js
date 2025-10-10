@@ -62,6 +62,60 @@ export class RecommendationCacheService {
   }
 
   /**
+   * BATCH: Get cached similar artists for multiple artists in one query
+   * @param {string[]} artistNames - Array of artist names
+   * @param {string} dataSource - Data source ('lastfm' or 'listenbrainz')
+   * @returns {Promise<Object>} Map of artistName -> similarArtists data
+   */
+  async getBatchSimilarArtistsCache(artistNames, dataSource = 'lastfm') {
+    try {
+      if (!artistNames || artistNames.length === 0) {
+        return {};
+      }
+
+      // Single query for all artists using .in()
+      const { data, error } = await this.supabase
+        .from('artist_similarity_cache')
+        .select('*')
+        .in('source_artist', artistNames)
+        .eq('data_source', dataSource)
+        .order('similarity_score', { ascending: false });
+
+      if (error) {
+        console.warn('Error fetching batch similarity cache:', error);
+        return {};
+      }
+
+      if (!data || data.length === 0) {
+        return {};
+      }
+
+      // Group by source artist
+      const grouped = {};
+      data.forEach(row => {
+        if (!grouped[row.source_artist]) {
+          grouped[row.source_artist] = {
+            sourceArtist: row.source_artist,
+            similarArtists: []
+          };
+        }
+        grouped[row.source_artist].similarArtists.push({
+          name: row.target_artist,
+          mbid: row.target_mbid,
+          match: row.similarity_score
+        });
+      });
+
+      this.log(`✅ Batch cache hit: Similar artists for ${Object.keys(grouped).length}/${artistNames.length} artists (${dataSource})`);
+      return grouped;
+
+    } catch (error) {
+      console.error('Failed to get batch similarity cache:', error);
+      return {};
+    }
+  }
+
+  /**
    * Cache similar artists data
    * @param {string} artistName - Artist name
    * @param {string} artistMBID - MusicBrainz ID (optional)
@@ -149,6 +203,56 @@ export class RecommendationCacheService {
     } catch (error) {
       console.error('Failed to get metadata cache:', error);
       return null;
+    }
+  }
+
+  /**
+   * BATCH: Get cached artist metadata for multiple artists in one query
+   * @param {string[]} artistNames - Array of artist names
+   * @returns {Promise<Object>} Map of artistName -> metadata
+   */
+  async getBatchArtistMetadataCache(artistNames) {
+    try {
+      if (!artistNames || artistNames.length === 0) {
+        return {};
+      }
+
+      // Single query for all artists
+      const { data, error } = await this.supabase
+        .from('artist_metadata_cache')
+        .select('*')
+        .in('artist_name', artistNames);
+
+      if (error) {
+        console.warn('Error fetching batch metadata cache:', error);
+        return {};
+      }
+
+      if (!data || data.length === 0) {
+        return {};
+      }
+
+      // Convert to map
+      const metadataMap = {};
+      data.forEach(record => {
+        metadataMap[record.artist_name] = {
+          ...record.metadata,
+          spotifyImage: record.spotify_image_url || null,
+          spotifyId: record.spotify_id || null,
+          spotifyUrl: record.spotify_url || null,
+          genres: record.metadata?.genres || [],
+          tags: record.metadata?.tags || [],
+          playcount: record.playcount || 0,
+          listeners: record.listeners || 0
+        };
+      });
+
+      this.log(`✅ Batch cache hit: Metadata for ${Object.keys(metadataMap).length}/${artistNames.length} artists`);
+      return metadataMap;
+
+    } catch (error) {
+      console.error('Failed to get batch metadata cache:', error);
+      return {};
     }
   }
 
