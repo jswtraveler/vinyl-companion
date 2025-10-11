@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RecommendationService } from '../services/recommendationService.js';
-import { GraphRecommendationService } from '../services/graphRecommendationService.js';
+import { GraphRecommendationService } from '../services/recommendations/algorithms/GraphRecommender.js';
 import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilter.js';
 import ArtistMetadataRefreshModal from './ArtistMetadataRefreshModal.jsx';
 import SpotifyImageBackfillModal from './SpotifyImageBackfillModal.jsx';

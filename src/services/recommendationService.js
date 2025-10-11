@@ -9,7 +9,7 @@ import ListenBrainzClient from './listenBrainzClient.js';
 import SpotifyClient from './spotifyClient.js';
 import RecommendationDataFetcher from './recommendationDataFetcher.js';
 import CollectionProfiler from './collectionProfiler.js';
-import RecommendationScoring from './recommendationScoring.js';
+import RecommendationScoring from './recommendations/algorithms/Scorer.js';
 import RecommendationCacheService from './recommendationCacheService.js';
 import { supabase } from './supabase.js';
 import { AlbumNormalizer } from '../utils/albumNormalization.js';
