@@ -696,16 +696,64 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActions
     }
   }, [onActionsReady, handleRefresh, loading, recommendations]);
 
-  // Group recommendations by genre from user's collection
-  const genreGroups = useMemo(() => {
-    if (!recommendations || !recommendations.artists || !albums) {
-      return {};
+  // Generate per-genre recommendations after main recommendations complete
+  useEffect(() => {
+    if (!recommendations || !recommendationService || !albums || Object.keys(genreRecommendations).length > 0) {
+      return;
     }
 
-    // Get all recommendations (not just displayed ones)
-    const allArtists = recommendations.metadata?.originalArtists || recommendations.artists;
-    return groupArtistsByGenre(allArtists, albums);
-  }, [recommendations, albums]);
+    const generateGenreRecommendations = async () => {
+      console.log('🎨 Generating per-genre recommendations...');
+
+      // Get distinct genres with minimal overlap
+      const distinctGenres = getDistinctGenres(albums, 0.5, 10, 3);
+      console.log(`✅ Selected ${distinctGenres.length} distinct genres for recommendations`);
+
+      if (distinctGenres.length === 0) {
+        console.log('⚠️ No distinct genres found');
+        return;
+      }
+
+      const genreRecs = {};
+
+      // Generate recommendations for each distinct genre
+      for (const { genre, count, artists } of distinctGenres) {
+        console.log(`📊 Generating recommendations for "${genre}" (${count} albums, ${artists.size} artists)...`);
+
+        // Filter albums to only this genre
+        const genreAlbums = albums.filter(album =>
+          album.genre && Array.isArray(album.genre) &&
+          album.genre.some(g => g.toLowerCase() === genre.toLowerCase())
+        );
+
+        if (genreAlbums.length < 3) {
+          console.log(`⚠️ Skipping "${genre}" - only ${genreAlbums.length} albums`);
+          continue;
+        }
+
+        try {
+          // Generate recommendations using only albums from this genre
+          const genreArtistRecs = await generateBasicRecommendations(genreAlbums);
+
+          if (genreArtistRecs && genreArtistRecs.artists && genreArtistRecs.artists.length > 0) {
+            // Take top 15 recommendations for this genre
+            genreRecs[genre] = {
+              artists: genreArtistRecs.artists.slice(0, 15),
+              count: count // Album count in user's collection
+            };
+            console.log(`✅ Generated ${genreRecs[genre].artists.length} recommendations for "${genre}"`);
+          }
+        } catch (error) {
+          console.error(`❌ Failed to generate recommendations for "${genre}":`, error);
+        }
+      }
+
+      setGenreRecommendations(genreRecs);
+      console.log(`✅ Per-genre recommendations complete: ${Object.keys(genreRecs).length} genres`);
+    };
+
+    generateGenreRecommendations();
+  }, [recommendations, recommendationService, albums, genreRecommendations]);
 
   // Don't render if not enough albums
   if (!hasEnoughAlbums) {
@@ -752,7 +800,7 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActions
           />
 
           {/* Genre-Based Carousels */}
-          {Object.entries(genreGroups).map(([genre, data]) => (
+          {Object.entries(genreRecommendations).map(([genre, data]) => (
             <ArtistCarousel
               key={genre}
               title={genre}
