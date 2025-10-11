@@ -5,7 +5,7 @@ import { applyDiversityFilter, getDiversityStats } from '../utils/diversityFilte
 import ArtistMetadataRefreshModal from './ArtistMetadataRefreshModal.jsx';
 import SpotifyImageBackfillModal from './SpotifyImageBackfillModal.jsx';
 import ArtistCarousel from './ArtistCarousel.jsx';
-import { groupArtistsByGenre } from '../utils/genreUtils.js';
+import { getDistinctGenres } from '../utils/genreUtils.js';
 
 /**
  * Merge fetched metadata into artist recommendation objects
@@ -56,7 +56,8 @@ function mergeMetadataIntoArtists(artists, artistMetadataMap) {
 }
 
 const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActionsReady }) => {
-  const [recommendations, setRecommendations] = useState(null);
+  const [recommendations, setRecommendations] = useState(null); // Based on entire collection
+  const [genreRecommendations, setGenreRecommendations] = useState({}); // { genre: { artists, count }, ... }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [recommendationService, setRecommendationService] = useState(null);

@@ -87,3 +87,85 @@ export function groupArtistsByGenre(artists, albums) {
 
   return grouped;
 }
+
+/**
+ * Get artists for a specific genre from album collection
+ * @param {Array} albums - Album collection
+ * @param {string} genre - Genre to filter by
+ * @returns {Set} Set of artist names in this genre
+ */
+export function getArtistsForGenre(albums, genre) {
+  const artists = new Set();
+
+  albums.forEach(album => {
+    if (album.genre && Array.isArray(album.genre)) {
+      if (album.genre.some(g => g.toLowerCase() === genre.toLowerCase())) {
+        artists.add(album.artist.toLowerCase());
+      }
+    }
+  });
+
+  return artists;
+}
+
+/**
+ * Calculate overlap percentage between two genre's artist sets
+ * @param {Set} artists1 - Artist set for genre 1
+ * @param {Set} artists2 - Artist set for genre 2
+ * @returns {number} Overlap percentage (0-1)
+ */
+export function calculateGenreOverlap(artists1, artists2) {
+  if (artists1.size === 0 || artists2.size === 0) return 0;
+
+  const intersection = new Set([...artists1].filter(x => artists2.has(x)));
+  const union = new Set([...artists1, ...artists2]);
+
+  return intersection.size / union.size; // Jaccard similarity
+}
+
+/**
+ * Filter genres to only include distinct ones with minimal artist overlap
+ * @param {Array} albums - Album collection
+ * @param {number} maxOverlap - Maximum allowed overlap (0-1), default 0.5
+ * @param {number} maxGenres - Maximum number of genres to return, default 10
+ * @param {number} minAlbums - Minimum albums required for a genre, default 3
+ * @returns {Array} Filtered array of {genre, count, artists} objects
+ */
+export function getDistinctGenres(albums, maxOverlap = 0.5, maxGenres = 10, minAlbums = 3) {
+  const genresByPrevalence = getGenresByPrevalence(albums);
+
+  // Filter out genres with too few albums
+  const viableGenres = genresByPrevalence.filter(g => g.count >= minAlbums);
+
+  // Get artist sets for each genre
+  const genreData = viableGenres.map(({ genre, count }) => ({
+    genre,
+    count,
+    artists: getArtistsForGenre(albums, genre)
+  }));
+
+  // Select distinct genres with minimal overlap
+  const selected = [];
+
+  for (const candidate of genreData) {
+    if (selected.length >= maxGenres) break;
+
+    // Check overlap with already selected genres
+    let hasHighOverlap = false;
+    for (const selectedGenre of selected) {
+      const overlap = calculateGenreOverlap(candidate.artists, selectedGenre.artists);
+      if (overlap > maxOverlap) {
+        hasHighOverlap = true;
+        console.log(`🎯 Skipping "${candidate.genre}" - ${Math.round(overlap * 100)}% overlap with "${selectedGenre.genre}"`);
+        break;
+      }
+    }
+
+    if (!hasHighOverlap) {
+      selected.push(candidate);
+      console.log(`✅ Selected "${candidate.genre}" (${candidate.count} albums, ${candidate.artists.size} artists)`);
+    }
+  }
+
+  return selected;
+}
