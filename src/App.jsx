@@ -14,10 +14,9 @@ import AIAnalysisModal from './components/AIAnalysisModal'
 import AlbumSearchModal from './components/AlbumSearchModal'
 import { AlbumIdentifier } from './services/albumIdentifier'
 import { ImageProcessor } from './utils/imageProcessing'
-import { initDatabase, getAllAlbums, addAlbum, updateAlbum, deleteAlbum, saveAlbumImage, exportData, importData } from './services/database'
 import { createNewAlbum } from './models/Album'
-import { supabase } from './services/supabase'
-import SupabaseDatabase from './services/supabaseDatabase'
+import { supabase } from './services/database/supabaseClient'
+import Database from './services/database'
 import { MOOD_CATEGORIES } from './utils/moodUtils'
 
 // New page components for tab navigation
@@ -175,23 +174,19 @@ function App() {
     try {
       setLoading(true)
       setError(null)
-      
-      let storedAlbums = []
-      
-      if (useCloud && user) {
-        console.log('Loading albums from Supabase...')
-        storedAlbums = await SupabaseDatabase.getAllAlbums()
-      } else {
-        console.log('Loading albums from local IndexedDB...')
-        await initDatabase()
-        storedAlbums = await getAllAlbums()
-      }
-      
+
+      // Get provider info for logging
+      const providerInfo = await Database.getProviderInfo()
+      console.log(`Loading albums from ${providerInfo.name} (${providerInfo.isCloud ? 'cloud' : 'local'})...`)
+
+      // Unified interface automatically selects the right provider
+      const storedAlbums = await Database.getAllAlbums()
+
       setAlbums(storedAlbums)
-      console.log(`Loaded ${storedAlbums.length} albums from ${useCloud ? 'cloud' : 'local'} database`)
+      console.log(`Loaded ${storedAlbums.length} albums from ${providerInfo.name}`)
     } catch (err) {
       console.error('Failed to load albums:', err)
-      setError(`Failed to load your vinyl collection. ${useCloud ? 'Cloud database error.' : 'Local database error.'} Please refresh the page.`)
+      setError(`Failed to load your vinyl collection. Please refresh the page.`)
     } finally {
       setLoading(false)
     }
@@ -341,12 +336,8 @@ function App() {
             }
           };
 
-          // Update in database
-          if (useCloudDatabase && user) {
-            await SupabaseDatabase.updateAlbum(updatedAlbum.id, updatedAlbum);
-          } else {
-            await updateAlbum(updatedAlbum);
-          }
+          // Update in database using unified interface
+          await Database.updateAlbum(updatedAlbum.id, updatedAlbum);
           
           updatedAlbums[albumIndex] = updatedAlbum;
         }
@@ -658,22 +649,12 @@ function App() {
       const isExistingAlbum = editingAlbum && albums.some(album => album.id === editingAlbum.id);
       console.log(isExistingAlbum ? 'Updating existing album:' : 'Saving new album:', albumData);
       
+      // Use unified database interface (automatically selects provider)
       let savedAlbum;
-      
-      if (useCloudDatabase && user) {
-        // Use Supabase database
-        if (isExistingAlbum) {
-          savedAlbum = await SupabaseDatabase.updateAlbum(editingAlbum.id, albumData);
-        } else {
-          savedAlbum = await SupabaseDatabase.addAlbum(albumData);
-        }
+      if (isExistingAlbum) {
+        savedAlbum = await Database.updateAlbum(editingAlbum.id, albumData);
       } else {
-        // Use local IndexedDB
-        if (isExistingAlbum) {
-          savedAlbum = await updateAlbum(albumData);
-        } else {
-          savedAlbum = await addAlbum(albumData);
-        }
+        savedAlbum = await Database.addAlbum(albumData);
       }
       
       // Update local state
@@ -720,13 +701,8 @@ function App() {
     }
 
     try {
-      if (useCloudDatabase && user) {
-        // Use Supabase database
-        await SupabaseDatabase.deleteAlbum(album.id);
-      } else {
-        // Use local IndexedDB
-        await deleteAlbum(album.id);
-      }
+      // Use unified database interface (automatically selects provider)
+      await Database.deleteAlbum(album.id);
       
       // Update local state
       setAlbums(prevAlbums => prevAlbums.filter(a => a.id !== album.id));
@@ -854,7 +830,7 @@ function App() {
             showStats={showStats}
             onToggleStats={toggleStats}
             onUpdateAlbum={async (albumId, updates) => {
-              await SupabaseDatabase.updateAlbum(albumId, updates);
+              await Database.updateAlbum(albumId, updates);
               await loadAlbums(); // Reload albums to reflect changes
             }}
             user={user}

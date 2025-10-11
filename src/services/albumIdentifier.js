@@ -1,6 +1,6 @@
 import { serpApiClient } from './serpApiClient.js';
 import { MusicBrainzClient, DiscogsClient } from './apiClients.js';
-import { getCacheItem, setCacheItem } from './database.js';
+import Database from './database/index.js';
 import { ImageProcessor } from '../utils/imageProcessing.js';
 import { OCRService } from '../utils/ocrService.js';
 
@@ -9,7 +9,7 @@ export class AlbumIdentifier {
     const cacheKey = `serpapi-image-${this.generateImageHash(imageData)}`;
     
     // Check cache first
-    const cached = await getCacheItem(cacheKey);
+    const cached = await Database.getCacheItem(cacheKey);
     if (cached) {
       console.log('AlbumIdentifier: Using cached result');
       return cached;
@@ -84,7 +84,7 @@ export class AlbumIdentifier {
                 }
               };
               
-              await setCacheItem(cacheKey, finalResult, 24 * 60 * 60 * 1000);
+              await Database.setCacheItem(cacheKey, finalResult, 24 * 60 * 60 * 1000);
               return finalResult;
             }
           }
@@ -186,8 +186,8 @@ export class AlbumIdentifier {
       };
       
       // Cache results for 24 hours
-      await setCacheItem(cacheKey, finalResult, 24 * 60 * 60 * 1000);
-      
+      await Database.setCacheItem(cacheKey, finalResult, 24 * 60 * 60 * 1000);
+
       console.log(`AlbumIdentifier: Found ${results.length} candidates`);
       return finalResult;
       
@@ -208,9 +208,9 @@ export class AlbumIdentifier {
 
   static async identifyFromText(title, artist) {
     const cacheKey = `text-${title}-${artist}`;
-    
+
     // Check cache first
-    const cached = await getCacheItem(cacheKey);
+    const cached = await Database.getCacheItem(cacheKey);
     if (cached) {
       return cached;
     }
@@ -229,10 +229,10 @@ export class AlbumIdentifier {
 
       // Rank results
       const rankedResults = this.rankResults(results);
-      
+
       // Cache results
-      await setCacheItem(cacheKey, rankedResults);
-      
+      await Database.setCacheItem(cacheKey, rankedResults);
+
       return rankedResults;
     } catch (error) {
       console.error('Text-based identification error:', error);
@@ -242,9 +242,9 @@ export class AlbumIdentifier {
 
   static async identifyFromOCR(imageData) {
     const cacheKey = `ocr-image-${this.generateImageHash(imageData)}`;
-    
+
     // Check cache first
-    const cached = await getCacheItem(cacheKey);
+    const cached = await Database.getCacheItem(cacheKey);
     if (cached) {
       console.log('AlbumIdentifier: Using cached OCR result');
       return cached;
@@ -326,8 +326,8 @@ export class AlbumIdentifier {
       };
       
       // Cache results for 24 hours
-      await setCacheItem(cacheKey, finalResult, 24 * 60 * 60 * 1000);
-      
+      await Database.setCacheItem(cacheKey, finalResult, 24 * 60 * 60 * 1000);
+
       console.log(`AlbumIdentifier: OCR identification completed with ${results.length} candidates`);
       return finalResult;
       
