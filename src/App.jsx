@@ -16,7 +16,7 @@ import { AlbumIdentifier } from './services/albumIdentifier'
 import { ImageProcessor } from './utils/imageProcessing'
 import { createNewAlbum } from './models/Album'
 import { supabase } from './services/database/supabaseClient'
-import Database from './services/database'
+import Database from './services/database/index.js'
 import { MOOD_CATEGORIES } from './utils/moodUtils'
 
 // New page components for tab navigation
