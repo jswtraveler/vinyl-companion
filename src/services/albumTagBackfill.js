@@ -3,7 +3,7 @@
  * Fetches Last.fm tags for existing albums in the collection
  */
 
-import { LastFmClient } from './lastfmClient.js';
+import { LastFmClient } from './api/music/LastFmClient.js';
 import { isValidGenre } from '../data/musicbrainz-genres.js';
 
 const LASTFM_API_KEY = import.meta.env.VITE_LASTFM_API_KEY;

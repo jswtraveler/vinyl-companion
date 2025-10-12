@@ -3,7 +3,7 @@
  * Fetches Spotify artist images for all artists in the metadata cache
  */
 
-import SpotifyClient from './spotifyClient.js';
+import SpotifyClient from './api/music/SpotifyClient.js';
 
 /**
  * Backfill Spotify images for all artists in the metadata cache

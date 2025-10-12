@@ -374,7 +374,7 @@ function App() {
       try {
         // Step 1: Initialize SerpAPI client with mobile proxy support
         setIdentificationStage('initializing');
-        const { SerpApiClient } = await import('./services/serpApiClient.js');
+        const { SerpApiClient } = await import('./services/api/search/SerpApiClient.js');
         const serpClient = new SerpApiClient(apiKey);
         
         const debugInfo = serpClient.getDebugInfo();

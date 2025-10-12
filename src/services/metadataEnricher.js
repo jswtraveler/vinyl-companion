@@ -1,5 +1,5 @@
 import { MusicBrainzClient, DiscogsClient, CoverArtClient } from './apiClients.js';
-import { LastFmClient } from './lastfmClient.js';
+import { LastFmClient } from './api/music/LastFmClient.js';
 import { isValidGenre } from '../data/musicbrainz-genres.js';
 
 // Initialize Last.fm client

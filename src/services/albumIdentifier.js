@@ -1,4 +1,4 @@
-import { serpApiClient } from './serpApiClient.js';
+import { serpApiClient } from './api/search/SerpApiClient.js';
 import { MusicBrainzClient, DiscogsClient } from './apiClients.js';
 import Database from './database/index.js';
 import { ImageProcessor } from '../utils/imageProcessing.js';

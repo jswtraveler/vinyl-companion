@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { geminiClient } from '../services/geminiClient';
+import { geminiClient } from '../services/api/ai/GeminiClient';
 
 const AIAnalysisModal = ({ albums, availableMoods, onClose, onApplyResults }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);

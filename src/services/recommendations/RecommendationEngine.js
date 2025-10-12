@@ -4,9 +4,9 @@
  * Combines user profile analysis, external data fetching, and caching
  */
 
-import LastFmClient from '../lastfmClient.js';
-import ListenBrainzClient from '../listenBrainzClient.js';
-import SpotifyClient from '../spotifyClient.js';
+import LastFmClient from '../api/music/LastFmClient.js';
+import ListenBrainzClient from '../api/music/ListenBrainzClient.js';
+import SpotifyClient from '../api/music/SpotifyClient.js';
 import CollectionProfiler from '../collectionProfiler.js';
 import { supabase } from '../database/supabaseClient.js';
 import { AlbumNormalizer } from '../../utils/albumNormalization.js';
