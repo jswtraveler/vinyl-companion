@@ -4,7 +4,7 @@
  * Uses Supabase Edge Function proxy to keep token secure
  */
 
-import { supabase } from './supabase.js';
+import { supabase } from '../../database/supabaseClient.js';
 
 export class ListenBrainzClient {
   constructor(options = {}) {

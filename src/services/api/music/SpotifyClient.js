@@ -3,7 +3,7 @@
  * Uses Supabase Edge Function proxy to keep credentials secure
  */
 
-import { supabase } from './supabase.js';
+import { supabase } from '../../database/supabaseClient.js';
 
 export class SpotifyClient {
   constructor() {

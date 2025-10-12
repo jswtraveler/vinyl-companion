@@ -3,7 +3,7 @@
  * Uses Supabase Edge Function proxy to keep API key secure
  */
 
-import { supabase } from './supabase.js';
+import { supabase } from '../../database/supabaseClient.js';
 
 export class LastFmClient {
   constructor(apiKey = null) {
