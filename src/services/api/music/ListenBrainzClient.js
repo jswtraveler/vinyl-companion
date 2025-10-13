@@ -82,6 +82,77 @@ export class ListenBrainzClient {
   }
 
   /**
+   * Get top albums (release groups) for an artist by MBID
+   * Returns albums sorted by total listen count with real listening data
+   *
+   * @param {string} artistMBID - MusicBrainz artist ID
+   * @param {number} limit - Maximum number of albums to return (default: 10)
+   * @param {boolean} albumsOnly - Filter to albums only (exclude singles, EPs) (default: true)
+   * @returns {Promise<Array>} Array of top albums with listen counts
+   *
+   * @example
+   * const albums = await client.getTopAlbumsForArtist('radiohead-mbid', 5);
+   * // Returns: [{ name: 'OK Computer', date: '1997-05-21', listenCount: 1234567, mbid: '...' }, ...]
+   */
+  async getTopAlbumsForArtist(artistMBID, limit = 10, albumsOnly = true) {
+    if (!artistMBID) {
+      throw new Error('Artist MBID is required');
+    }
+
+    const endpoint = `/1/popularity/top-release-groups-for-artist/${artistMBID}`;
+    const cacheKey = `top_albums_${artistMBID}_${limit}_${albumsOnly}`;
+
+    try {
+      // Fetch raw data from ListenBrainz
+      const response = await this.makeRequest(endpoint, {}, cacheKey);
+
+      if (!response || !Array.isArray(response)) {
+        console.warn(`No album data available for artist ${artistMBID}`);
+        return [];
+      }
+
+      // Filter to albums only if requested
+      let albums = response;
+      if (albumsOnly) {
+        albums = response.filter(item => {
+          const type = item.release_group?.type?.toLowerCase();
+          return type === 'album';
+        });
+      }
+
+      // Sort by listen count (descending)
+      albums.sort((a, b) => {
+        const aCount = a.total_listen_count || 0;
+        const bCount = b.total_listen_count || 0;
+        return bCount - aCount;
+      });
+
+      // Limit results and format
+      const topAlbums = albums.slice(0, limit).map(item => ({
+        name: item.release_group?.name || 'Unknown Album',
+        releaseDate: item.release_group?.date || null,
+        listenCount: item.total_listen_count || 0,
+        mbid: item.release_group_mbid || null,
+        type: item.release_group?.type || 'Album',
+        // Additional metadata for UI
+        metadata: {
+          source: 'listenbrainz',
+          artistMBID: artistMBID,
+          cacheTimestamp: Date.now()
+        }
+      }));
+
+      console.log(`✅ Found ${topAlbums.length} top albums for artist ${artistMBID}`);
+      return topAlbums;
+
+    } catch (error) {
+      console.error(`Failed to fetch top albums for artist ${artistMBID}:`, error);
+      // Return empty array instead of throwing to allow graceful degradation
+      return [];
+    }
+  }
+
+  /**
    * Search for artists by name (fallback when MBID not available)
    * @param {string} artistName - Artist name to search
    * @returns {Promise<Object>} Search results with MBIDs
@@ -385,6 +456,57 @@ export class ListenBrainzClient {
         algorithm: 'collaborative_filtering'
       }
     }));
+  }
+
+  /**
+   * Format top albums data for UI display
+   * Adds human-readable listen counts and release year extraction
+   *
+   * @param {Array} topAlbums - Array of top albums from getTopAlbumsForArtist
+   * @returns {Array} UI-formatted album data
+   *
+   * @example
+   * const albums = await client.getTopAlbumsForArtist('mbid');
+   * const formatted = client.formatTopAlbumsForUI(albums);
+   * // Returns: [{ name: 'OK Computer', year: 1997, listenCountFormatted: '1.2M listens', ... }]
+   */
+  formatTopAlbumsForUI(topAlbums) {
+    if (!Array.isArray(topAlbums) || topAlbums.length === 0) {
+      return [];
+    }
+
+    return topAlbums.map((album, index) => ({
+      ...album,
+      // Extract year from date (YYYY-MM-DD -> YYYY)
+      year: album.releaseDate ? parseInt(album.releaseDate.split('-')[0]) : null,
+      // Format listen count for display
+      listenCountFormatted: this.formatListenCount(album.listenCount),
+      // Add rank position
+      rank: index + 1,
+      // UI display properties
+      displayName: album.name,
+      displaySubtitle: album.releaseDate
+        ? `${album.releaseDate.split('-')[0]} • ${this.formatListenCount(album.listenCount)}`
+        : this.formatListenCount(album.listenCount)
+    }));
+  }
+
+  /**
+   * Format listen count for human-readable display
+   * @private
+   * @param {number} count - Raw listen count
+   * @returns {string} Formatted count (e.g., '1.2M listens', '345K listens')
+   */
+  formatListenCount(count) {
+    if (!count || count === 0) return '0 listens';
+
+    if (count >= 1000000) {
+      return `${(count / 1000000).toFixed(1)}M listens`;
+    } else if (count >= 1000) {
+      return `${(count / 1000).toFixed(1)}K listens`;
+    } else {
+      return `${count} listens`;
+    }
   }
 
   /**
