@@ -553,12 +553,15 @@ CREATE INDEX IF NOT EXISTS idx_collection_changes_type ON user_collection_change
 
 -- Function: Update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$;
 
 -- Trigger: Albums updated_at
 DROP TRIGGER IF EXISTS update_albums_updated_at ON albums;
@@ -583,7 +586,10 @@ CREATE TRIGGER update_user_weights_updated_at
 
 -- Function: Auto-update album fingerprints
 CREATE OR REPLACE FUNCTION auto_update_album_fingerprints()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
   NEW.fingerprint = LOWER(REGEXP_REPLACE(NEW.artist, '[^\w\s]', '', 'g')) || '::' || LOWER(REGEXP_REPLACE(NEW.title, '[^\w\s]', '', 'g'));
   NEW.normalized_artist = LOWER(REGEXP_REPLACE(NEW.artist, '[^\w\s]', '', 'g'));
@@ -591,7 +597,7 @@ BEGIN
   NEW.tags = COALESCE(NEW.genre, ARRAY[]::TEXT[]) || COALESCE(NEW.moods, ARRAY[]::TEXT[]);
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Trigger: Auto-update fingerprints on album insert/update
 DROP TRIGGER IF EXISTS update_album_fingerprints_trigger ON albums;
@@ -602,7 +608,10 @@ CREATE TRIGGER update_album_fingerprints_trigger
 
 -- Function: Invalidate user recommendation cache when collection changes
 CREATE OR REPLACE FUNCTION invalidate_user_recommendation_cache()
-RETURNS TRIGGER AS $$
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 BEGIN
     -- Mark existing cache as stale
     UPDATE user_artist_recs_cache
@@ -624,7 +633,7 @@ BEGIN
 
     RETURN COALESCE(NEW, OLD);
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Trigger: Invalidate cache on album changes (commented out - enable if needed)
 -- DROP TRIGGER IF EXISTS invalidate_recs_on_album_change ON albums;
@@ -635,7 +644,10 @@ $$ LANGUAGE plpgsql;
 
 -- Function: Clean up expired cache entries
 CREATE OR REPLACE FUNCTION cleanup_expired_cache()
-RETURNS INTEGER AS $$
+RETURNS INTEGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 DECLARE
   deleted_count INTEGER;
 BEGIN
@@ -648,11 +660,14 @@ BEGIN
 
   RETURN deleted_count;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Function: Clean up all expired caches
 CREATE OR REPLACE FUNCTION cleanup_expired_caches()
-RETURNS INTEGER AS $$
+RETURNS INTEGER
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 DECLARE
     deleted_count INTEGER := 0;
     temp_count INTEGER;
@@ -669,7 +684,7 @@ BEGIN
 
     RETURN deleted_count;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Function: Personalized PageRank for artist recommendations
 CREATE OR REPLACE FUNCTION personalized_pagerank_recommendations(
@@ -687,7 +702,10 @@ RETURNS TABLE (
     normalized_score DECIMAL,
     node_degree INTEGER,
     connected_to TEXT[]
-) AS $$
+)
+LANGUAGE plpgsql
+SET search_path = public
+AS $$
 DECLARE
     v_iteration INTEGER := 0;
     v_max_change DECIMAL := 1.0;
@@ -838,7 +856,7 @@ BEGIN
     ORDER BY normalized_score DESC
     LIMIT p_max_results;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 -- Function: Get similarity scores for UI
 CREATE OR REPLACE FUNCTION get_similarity_scores(
@@ -848,7 +866,11 @@ CREATE OR REPLACE FUNCTION get_similarity_scores(
 RETURNS TABLE (
     source_artist TEXT,
     similarity_score DECIMAL
-) AS $$
+)
+LANGUAGE plpgsql
+STABLE
+SET search_path = public
+AS $$
 BEGIN
     RETURN QUERY
     SELECT
@@ -860,7 +882,7 @@ BEGIN
           SELECT LOWER(unnest(p_sources))
       );
 END;
-$$ LANGUAGE plpgsql STABLE;
+$$;
 
 -- Grant function permissions
 GRANT EXECUTE ON FUNCTION personalized_pagerank_recommendations TO authenticated;
