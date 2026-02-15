@@ -1,12 +1,12 @@
 /**
  * Test script for persistent recommendation caching
- * Run with: node test-caching.js
+ * Run with: node tests/integration/test-caching.js
  *
  * This script tests the database schema and caching service functionality
  * without requiring the full app to be running.
  */
 
-import { RecommendationCacheService } from './src/services/recommendationCacheService.js';
+import { RecommendationCacheService } from '../../src/services/recommendationCacheService.js';
 
 import dotenv from 'dotenv';
 

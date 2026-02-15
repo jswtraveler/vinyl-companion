@@ -10,7 +10,10 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "test:unit": "vitest tests/unit",
+    "test:integration": "node tests/integration/test-supabase.js && node tests/integration/test-rls.js && node tests/integration/test-caching.js",
+    "test:api": "node tests/api/test-google-api.js && node tests/api/test-serpapi.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.56.1",
