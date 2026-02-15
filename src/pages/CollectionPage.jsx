@@ -31,6 +31,7 @@ const CollectionPage = ({
 }) => {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
+  const [thumbFilter, setThumbFilter] = useState(null); // null = all, 'up', 'down'
   const [showTagBackfill, setShowTagBackfill] = useState(false);
   const sortDropdownRef = useRef(null);
 
@@ -45,16 +46,26 @@ const CollectionPage = ({
     return Array.from(genreSet).sort();
   }, [albums]);
 
-  // Filter albums by selected genres
+  // Thumb counts for filter buttons
+  const thumbCounts = useMemo(() => ({
+    up: albums.filter(a => a.thumb === 'up').length,
+    down: albums.filter(a => a.thumb === 'down').length
+  }), [albums]);
+
+  // Filter albums by selected genres and thumb filter
   const displayedAlbums = useMemo(() => {
-    if (selectedGenres.length === 0) {
-      return filteredAndSortedAlbums;
+    let result = filteredAndSortedAlbums;
+    if (selectedGenres.length > 0) {
+      result = result.filter(album => {
+        if (!album.genre || !Array.isArray(album.genre)) return false;
+        return album.genre.some(g => selectedGenres.includes(g));
+      });
     }
-    return filteredAndSortedAlbums.filter(album => {
-      if (!album.genre || !Array.isArray(album.genre)) return false;
-      return album.genre.some(g => selectedGenres.includes(g));
-    });
-  }, [filteredAndSortedAlbums, selectedGenres]);
+    if (thumbFilter) {
+      result = result.filter(album => album.thumb === thumbFilter);
+    }
+    return result;
+  }, [filteredAndSortedAlbums, selectedGenres, thumbFilter]);
 
   const toggleGenre = (genre) => {
     setSelectedGenres(prev =>
@@ -262,6 +273,53 @@ const CollectionPage = ({
         </div>
       )}
 
+      {/* Thumb Filter */}
+      {(thumbCounts.up > 0 || thumbCounts.down > 0) && (
+        <div className="mb-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-400">Thumbs:</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setThumbFilter(null)}
+                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                  thumbFilter === null
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                All
+              </button>
+              <button
+                onClick={() => setThumbFilter(thumbFilter === 'up' ? null : 'up')}
+                className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  thumbFilter === 'up'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zm-9 11H3a2 2 0 01-2-2v-7a2 2 0 012-2h2" />
+                </svg>
+                Thumbs Up ({thumbCounts.up})
+              </button>
+              <button
+                onClick={() => setThumbFilter(thumbFilter === 'down' ? null : 'down')}
+                className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
+                  thumbFilter === 'down'
+                    ? 'bg-red-600 text-white'
+                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                }`}
+              >
+                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zm9-13h2a2 2 0 012 2v7a2 2 0 01-2 2h-2" />
+                </svg>
+                Thumbs Down ({thumbCounts.down})
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Stats */}
       {stats && selectedGenres.length === 0 && (
         <div className="mb-4 flex gap-2 text-sm text-gray-400">
@@ -394,6 +452,8 @@ const CollectionPage = ({
               ? 'No albums found matching your search.'
               : selectedGenres.length > 0
               ? `No albums found in ${selectedGenres.join(', ')}.`
+              : thumbFilter
+              ? `No albums with thumbs ${thumbFilter}.`
               : 'Your collection is empty. Add some albums to get started!'}
           </p>
         </div>
@@ -405,6 +465,7 @@ const CollectionPage = ({
               album={album}
               onClick={() => onAlbumClick(album)}
               onDelete={onDeleteAlbum}
+              onUpdateAlbum={onUpdateAlbum}
             />
           ))}
         </div>

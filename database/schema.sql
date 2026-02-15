@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS albums (
   -- User notes and tracking
   notes TEXT,
   rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+  thumb TEXT CHECK (thumb IN ('up', 'down')),
   listening_count INTEGER DEFAULT 0,
   last_played DATE,
 

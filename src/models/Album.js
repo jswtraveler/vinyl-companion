@@ -269,6 +269,7 @@ export const createNewAlbum = (overrides = {}) => {
     purchasePrice: null,
     purchaseLocation: '',
     notes: '',
+    thumb: null,
     coverImage: null,
     tracks: [],
     dateAdded: now,
