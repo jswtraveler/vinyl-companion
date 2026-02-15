@@ -404,6 +404,7 @@ function App() {
             authLoading={authLoading}
             useCloudDatabase={useCloudDatabase}
             onSignIn={handleSignIn}
+            onOpenAIAnalysis={() => setShowAIAnalysis(true)}
           />
         </div>
 
