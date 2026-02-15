@@ -120,8 +120,11 @@ export function useAlbumCollection(useCloudDatabase = false, authLoading = false
   };
 
   const handleUpdateAlbum = async (albumId, updates) => {
+    // Optimistically update local state to avoid scroll reset
+    setAlbums(prevAlbums =>
+      prevAlbums.map(a => a.id === albumId ? { ...a, ...updates } : a)
+    );
     await Database.updateAlbum(albumId, updates);
-    await loadAlbums(); // Reload albums to reflect changes
   };
 
   return {
