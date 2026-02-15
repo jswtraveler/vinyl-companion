@@ -1,25 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import AlbumForm from './components/AlbumForm'
-import AlbumCard from './components/AlbumCard'
-import SearchBar from './components/SearchBar'
 import CameraCapture from './components/CameraCapture'
-import SimpleCameraCapture from './components/SimpleCameraCapture'
-import IdentificationLoader from './components/IdentificationLoader'
 import IdentificationResults from './components/IdentificationResults'
 import AuthModal from './components/AuthModal'
-import SuggestionsSection from './components/SuggestionsSection'
-import RecommendationSection from './components/RecommendationSection'
-import ArtistRecommendationSection from './components/ArtistRecommendationSection'
 import AIAnalysisModal from './components/AIAnalysisModal'
 import AlbumSearchModal from './components/AlbumSearchModal'
-import { AlbumIdentifier } from './services/albumIdentifier'
-import { ImageProcessor } from './utils/imageProcessing'
 import { createNewAlbum } from './models/Album'
-import { supabase } from './services/database/supabaseClient'
 import Database from './services/database/index.js'
 import { MOOD_CATEGORIES } from './utils/moodUtils'
 
-// New page components for tab navigation
+// Custom hooks
+import { useAuthentication, useAlbumCollection, useAlbumIdentification } from './hooks'
+
+// Page components for tab navigation
 import CollectionPage from './pages/CollectionPage'
 import DiscoverPage from './pages/DiscoverPage'
 import AddAlbumPage from './pages/AddAlbumPage'
@@ -27,10 +20,24 @@ import BottomTabBar from './components/navigation/BottomTabBar'
 import QuickAddModal from './components/QuickAddModal'
 
 function App() {
+  // Use custom hooks for cleaner component
+  const { user, authLoading, useCloudDatabase, handleSignOut } = useAuthentication()
+  const { albums, loading, error, setError, loadAlbums, handleSaveAlbum: saveAlbumToDb, handleDeleteAlbum: deleteAlbumFromDb, handleUpdateAlbum } = useAlbumCollection(useCloudDatabase, authLoading)
+  const {
+    isIdentifying,
+    identificationStage,
+    identificationProgress,
+    identificationResults,
+    identifyingImage,
+    showIdentificationResults,
+    handleIdentifyAlbum,
+    handleCameraIdentify,
+    handleCloseIdentificationResults,
+    handleSelectIdentifiedAlbum: selectIdentifiedAlbum
+  } = useAlbumIdentification()
+
+  // UI state
   const [showAddForm, setShowAddForm] = useState(false)
-  const [albums, setAlbums] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
   const [editingAlbum, setEditingAlbum] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState('artist')
@@ -42,119 +49,11 @@ function App() {
   const [showAlbumSearch, setShowAlbumSearch] = useState(false)
   const [albumSearchQuery, setAlbumSearchQuery] = useState('')
   const [showAIAnalysis, setShowAIAnalysis] = useState(false)
-  
-  // Authentication state
-  const [user, setUser] = useState(null)
-  const [authLoading, setAuthLoading] = useState(true)
   const [showAuth, setShowAuth] = useState(false)
-  const [useCloudDatabase, setUseCloudDatabase] = useState(false)
-  
-  // Album identification state
-  const [isIdentifying, setIsIdentifying] = useState(false)
-  const [identificationStage, setIdentificationStage] = useState('searching')
-  const [identificationProgress, setIdentificationProgress] = useState(0)
-  const [identificationResults, setIdentificationResults] = useState(null)
-  const [identifyingImage, setIdentifyingImage] = useState(null)
-  const [showIdentificationResults, setShowIdentificationResults] = useState(false)
 
   // Tab navigation state
   const [currentTab, setCurrentTab] = useState('collection')
   const [showQuickAdd, setShowQuickAdd] = useState(false)
-
-  // Authentication effect - check for existing session
-  useEffect(() => {
-    const initAuth = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) {
-          console.error('Auth session error:', error)
-        } else if (session?.user) {
-          console.log('User already logged in:', session.user.email)
-          setUser(session.user)
-          setUseCloudDatabase(true)
-        } else {
-          console.log('No active session - using local database')
-          setUseCloudDatabase(false)
-        }
-      } catch (error) {
-        console.error('Auth initialization error:', error)
-      } finally {
-        setAuthLoading(false)
-      }
-    }
-
-    initAuth()
-
-    // Listen for auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email)
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        setUser(session.user)
-        setUseCloudDatabase(true)
-        setShowAuth(false)
-        // Reload albums from cloud database
-        loadAlbums(true)
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null)
-        setUseCloudDatabase(false)
-        // Reload albums from local database
-        loadAlbums(false)
-      }
-    })
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [])
-
-  // Handle mobile app lifecycle - reload albums when app becomes visible again
-  useEffect(() => {
-    let reloadTimeout = null
-
-    const debouncedReload = () => {
-      // Debounce to prevent multiple rapid reloads from different events
-      if (reloadTimeout) clearTimeout(reloadTimeout)
-      reloadTimeout = setTimeout(() => {
-        console.log('App became visible - reloading albums...')
-        loadAlbums(useCloudDatabase)
-      }, 100)
-    }
-
-    const handleVisibilityChange = () => {
-      if (!document.hidden && !authLoading) {
-        debouncedReload()
-      }
-    }
-
-    const handleFocus = () => {
-      if (!authLoading) {
-        debouncedReload()
-      }
-    }
-
-    // Listen for mobile app lifecycle events
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleFocus)
-
-    // iOS Safari specific - handles when user switches back to browser
-    window.addEventListener('pageshow', handleFocus)
-
-    return () => {
-      if (reloadTimeout) clearTimeout(reloadTimeout)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleFocus)
-      window.removeEventListener('pageshow', handleFocus)
-    }
-  }, [authLoading, useCloudDatabase])
-
-  // Initialize database and load albums
-  useEffect(() => {
-    if (!authLoading) {
-      loadAlbums(useCloudDatabase)
-    }
-  }, [authLoading, useCloudDatabase])
 
   // Close sort dropdown when clicking outside
   useEffect(() => {
@@ -170,28 +69,6 @@ function App() {
     }
   }, [showSortDropdown]);
 
-  const loadAlbums = async (useCloud = false) => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      // Get provider info for logging
-      const providerInfo = await Database.getProviderInfo()
-      console.log(`Loading albums from ${providerInfo.name} (${providerInfo.isCloud ? 'cloud' : 'local'})...`)
-
-      // Unified interface automatically selects the right provider
-      const storedAlbums = await Database.getAllAlbums()
-
-      setAlbums(storedAlbums)
-      console.log(`Loaded ${storedAlbums.length} albums from ${providerInfo.name}`)
-    } catch (err) {
-      console.error('Failed to load albums:', err)
-      setError(`Failed to load your vinyl collection. Please refresh the page.`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   // Search and sort functionality
   const filteredAndSortedAlbums = useMemo(() => {
     let filtered = albums
@@ -199,7 +76,7 @@ function App() {
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      filtered = albums.filter(album => 
+      filtered = albums.filter(album =>
         album.title.toLowerCase().includes(query) ||
         album.artist.toLowerCase().includes(query) ||
         (album.genre && album.genre.some(g => g.toLowerCase().includes(query))) ||
@@ -291,40 +168,83 @@ function App() {
     }
   }, [albums])
 
-  // Handlers
-  const handleFindByName = () => {
-    setAlbumSearchQuery('');
-    setShowAlbumSearch(true);
-  };
-
-  const handleAddManually = () => {
-    setShowAddForm(true);
-  };
-
-  const handleCameraClick = () => {
-    setShowCamera(true);
-  };
-
+  // Camera handlers
   const handleCameraClose = () => {
     setShowCamera(false);
   };
 
-  const handleAIAnalysis = () => {
-    setShowAIAnalysis(true);
+  const handleCameraCapture = async (imageData) => {
+    console.log('Image captured:', imageData);
   };
 
+  const handleCameraSave = async (imageData) => {
+    try {
+      console.log('User chose to manually add album with captured photo');
+
+      // Close camera
+      setShowCamera(false);
+
+      // Create a partial album object for the form with the captured image
+      const albumWithImage = {
+        coverImage: imageData,
+        identificationMethod: 'camera',
+        genre: [],
+        notes: 'Album cover captured with camera',
+        purchasePrice: null,
+        purchaseLocation: ''
+      };
+
+      // Open the add form with the captured image pre-loaded
+      setEditingAlbum(albumWithImage);
+      setShowAddForm(true);
+
+      console.log('Opening add form with captured image');
+    } catch (err) {
+      console.error('Failed to prepare camera capture for manual entry:', err);
+      setError(`Failed to prepare photo for manual entry: ${err.message}`);
+    }
+  };
+
+  const handleCameraIdentifyWrapper = async (imageData) => {
+    try {
+      // Close camera
+      setShowCamera(false);
+
+      // Use the identification hook
+      const result = await handleCameraIdentify(imageData);
+
+      if (!result.success) {
+        // Fallback to manual entry with the captured image
+        const albumWithImage = {
+          coverImage: imageData,
+          identificationMethod: 'camera',
+          genre: [],
+          notes: result.error || 'Album cover captured with camera - identification failed',
+          purchasePrice: null,
+          purchaseLocation: ''
+        };
+        setEditingAlbum(albumWithImage);
+        setShowAddForm(true);
+      }
+    } catch (err) {
+      console.error('Failed to identify camera capture:', err);
+      setError(`Failed to identify album: ${err.message}`);
+    }
+  };
+
+  // AI Analysis handler
   const handleApplyAIResults = async (analysisResults) => {
     try {
       // Apply AI-suggested mood tags to albums
       const updatedAlbums = [...albums];
-      
+
       for (const result of analysisResults) {
         const albumIndex = updatedAlbums.findIndex(album => album.id === result.albumId);
         if (albumIndex !== -1) {
-          // Add AI suggestions to existing moods (don't replace)  
+          // Add AI suggestions to existing moods (don't replace)
           const existingMoods = updatedAlbums[albumIndex].moods || [];
           const newMoods = [...new Set([...existingMoods, ...result.suggestedMoods])];
-          
+
           const updatedAlbum = {
             ...updatedAlbums[albumIndex],
             moods: newMoods,
@@ -338,343 +258,31 @@ function App() {
 
           // Update in database using unified interface
           await Database.updateAlbum(updatedAlbum.id, updatedAlbum);
-          
-          updatedAlbums[albumIndex] = updatedAlbum;
         }
       }
-      
-      setAlbums(updatedAlbums);
+
+      // Reload albums to reflect changes
+      await loadAlbums();
       console.log(`Applied AI analysis to ${analysisResults.length} albums`);
-      
+
     } catch (err) {
       console.error('Failed to apply AI analysis:', err);
       setError('Failed to save AI analysis results. Please try again.');
     }
   };
 
-  const handleIdentifyAlbum = async (imageData) => {
-    try {
-      console.log('Starting album identification with mobile proxy support...');
-      setShowCamera(false);
-      
-      // Test environment variable first
-      const apiKey = import.meta.env.VITE_SERPAPI_KEY;
-      if (!apiKey) {
-        console.error('SerpAPI key not found');
-        openManualFormWithError('SerpAPI key not configured', imageData);
-        return;
-      }
-      
-      // Show identification progress UI
-      setIsIdentifying(true);
-      setIdentificationStage('initializing');
-      setIdentificationProgress(10);
-      setIdentifyingImage(imageData);
-      
-      try {
-        // Step 1: Initialize SerpAPI client with mobile proxy support
-        setIdentificationStage('initializing');
-        const { SerpApiClient } = await import('./services/api/search/SerpApiClient.js');
-        const serpClient = new SerpApiClient(apiKey);
-        
-        const debugInfo = serpClient.getDebugInfo();
-        console.log('SerpAPI Client Debug Info:', debugInfo);
-        
-        setIdentificationProgress(20);
-        
-        // Step 2: Process image for optimal API results
-        setIdentificationStage('processing');
-        const { ImageProcessor } = await import('./utils/imageProcessing.js');
-        
-        let processedImage;
-        try {
-          processedImage = await ImageProcessor.optimizeForAPI(imageData);
-          console.log('Image processed successfully');
-        } catch (processingError) {
-          console.warn('Image processing failed, using original:', processingError);
-          processedImage = imageData; // Fallback to original
-        }
-        
-        setIdentificationProgress(40);
-        
-        // Step 3: Perform album identification with timeout
-        setIdentificationStage('searching');
-        const identificationTimeout = 30000; // 30 seconds timeout
-        
-        const identificationPromise = serpClient.identifyAlbum(processedImage);
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Identification timeout - taking too long')), identificationTimeout)
-        );
-        
-        const result = await Promise.race([identificationPromise, timeoutPromise]);
-        
-        setIdentificationProgress(80);
-        
-        if (result.success && result.candidates && result.candidates.length > 0) {
-          // Success! Show results
-          console.log('Album identification successful:', result);
-          setIdentificationStage('complete');
-          setIdentificationProgress(100);
-          setIdentificationResults(result);
-          
-          // Wait a moment to show completion, then open form
-          setTimeout(() => {
-            const topResult = result.candidates[0];
-            const albumData = {
-              title: topResult.title || 'Unknown Title',
-              artist: topResult.artist || 'Unknown Artist',
-              year: topResult.year || null,
-              coverImage: imageData,
-              notes: `Identified via SerpAPI (${result.requestMethod}) - Confidence: ${Math.round((topResult.confidence || 0.5) * 100)}%`,
-              identificationMethod: 'serpapi-' + result.requestMethod,
-              genre: [],
-              purchasePrice: null,
-              purchaseLocation: ''
-            };
-            
-            setIsIdentifying(false);
-            setEditingAlbum(albumData);
-            setShowAddForm(true);
-          }, 1000);
-          
-          return;
-          
-        } else {
-          // No results found
-          console.warn('No album matches found:', result);
-          setIdentificationStage('no-results');
-          setIdentificationProgress(100);
-          
-          setTimeout(() => {
-            openManualFormWithMessage('No matches found for this album cover', imageData);
-          }, 2000);
-          return;
-        }
-        
-      } catch (error) {
-        console.error('Album identification error:', error);
-        
-        // Determine error type and provide appropriate feedback
-        let errorMessage = 'Identification failed';
-        if (error.message.includes('timeout')) {
-          errorMessage = 'Request timed out - please try again';
-        } else if (error.message.includes('CORS') || error.message.includes('Network')) {
-          errorMessage = 'Network error - using manual entry';
-        } else if (error.type === 'PROXY_ERROR') {
-          errorMessage = 'Service temporarily unavailable';
-        }
-        
-        setIdentificationStage('error');
-        setTimeout(() => {
-          openManualFormWithError(errorMessage, imageData, error);
-        }, 1000);
-      }
-      
-    } catch (error) {
-      console.error('Critical identification error:', error);
-      openManualFormWithError('Identification system error', imageData, error);
-    }
-  };
-
-  // Helper method to open manual form with error context
-  const openManualFormWithError = (message, imageData, error = null) => {
-    console.log('Opening manual form due to error:', message);
-    setIsIdentifying(false);
-    
-    const albumWithImage = {
-      coverImage: imageData,
-      identificationMethod: 'camera-manual',
-      genre: [],
-      notes: `Automatic identification failed: ${message}`,
-      purchasePrice: null,
-      purchaseLocation: ''
-    };
-    setEditingAlbum(albumWithImage);
-    setShowAddForm(true);
-  };
-
-  // Helper method to open manual form with informational message
-  const openManualFormWithMessage = (message, imageData) => {
-    console.log('Opening manual form:', message);
-    setIsIdentifying(false);
-    
-    const albumWithImage = {
-      coverImage: imageData,
-      identificationMethod: 'camera-manual',
-      genre: [],
-      notes: message,
-      purchasePrice: null,
-      purchaseLocation: ''
-    };
-    setEditingAlbum(albumWithImage);
-    setShowAddForm(true);
-  };
-
-  const handleCameraCapture = async (imageData) => {
-    console.log('Image captured:', imageData);
-  };
-
-  const handleCameraSave = async (imageData) => {
-    try {
-      console.log('User chose to manually add album with captured photo');
-      
-      // Close camera
-      setShowCamera(false);
-      
-      // Create a partial album object for the form with the captured image
-      const albumWithImage = {
-        // Don't set title/artist - let user fill these in manually
-        coverImage: imageData,
-        identificationMethod: 'camera',
-        // Set defaults for other fields
-        genre: [],
-        notes: 'Album cover captured with camera',
-        purchasePrice: null,
-        purchaseLocation: ''
-      };
-      
-      // Open the add form with the captured image pre-loaded
-      setEditingAlbum(albumWithImage);
-      setShowAddForm(true);
-      
-      console.log('Opening add form with captured image');
-    } catch (err) {
-      console.error('Failed to prepare camera capture for manual entry:', err);
-      setError(`Failed to prepare photo for manual entry: ${err.message}`);
-    }
-  };
-
-  const handleCameraIdentify = async (imageData) => {
-    try {
-      console.log('User chose to identify album with captured photo');
-      
-      // Close camera
-      setShowCamera(false);
-      
-      // Start identification process using existing file upload logic
-      setIsIdentifying(true);
-      setIdentificationResults(null);
-      setIdentifyingImage(imageData); // Store the captured image
-      
-      // Process the image for identification
-      console.log('Processing captured image...');
-      const processedImage = await ImageProcessor.processForIdentification(imageData);
-      
-      if (!processedImage) {
-        throw new Error('Failed to process captured image');
-      }
-      
-      // Start identification using comprehensive album identifier
-      console.log('Starting album identification...');
-      const { AlbumIdentifier } = await import('./services/albumIdentifier.js');
-      
-      try {
-        const result = await AlbumIdentifier.identifyFromImage(processedImage);
-        
-        if (result && result.candidates && result.candidates.length > 0) {
-          console.log('Identification successful:', result);
-          setIdentificationResults(result);
-          setShowIdentificationResults(true);
-        } else {
-          console.log('No albums found in identification');
-          // Fallback to manual entry with the captured image
-          const albumWithImage = {
-            coverImage: imageData,
-            identificationMethod: 'camera',
-            genre: [],
-            notes: 'Album cover captured with camera - identification found no results',
-            purchasePrice: null,
-            purchaseLocation: ''
-          };
-          setEditingAlbum(albumWithImage);
-          setShowAddForm(true);
-        }
-      } catch (identError) {
-        console.error('Identification failed:', identError);
-        // Fallback to manual entry with the captured image
-        const albumWithImage = {
-          coverImage: imageData,
-          identificationMethod: 'camera',
-          genre: [],
-          notes: 'Album cover captured with camera - identification failed',
-          purchasePrice: null,
-          purchaseLocation: ''
-        };
-        setEditingAlbum(albumWithImage);
-        setShowAddForm(true);
-      }
-    } catch (err) {
-      console.error('Failed to identify camera capture:', err);
-      setError(`Failed to identify album: ${err.message}`);
-    } finally {
-      setIsIdentifying(false);
-    }
-  };
-
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-  };
-
-  const handleSortChange = (field) => {
-    if (sortBy === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(field);
-      setSortOrder('asc');
-    }
-    setShowSortDropdown(false);
-  };
-
-  const toggleSortDirection = () => {
-    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-  };
-
-  const getSortLabel = (key) => {
-    const labels = {
-      'dateAdded': 'Date Added',
-      'title': 'Album',
-      'artist': 'Artist',
-      'year': 'Date Released'
-    };
-    return labels[key] || key;
-  };
-
-  const toggleStats = () => {
-    setShowStats(!showStats);
-  };
-
+  // Album CRUD handlers
   const handleSaveAlbum = async (albumData) => {
     try {
-      // Check if this is editing an existing album in our database
-      const isExistingAlbum = editingAlbum && albums.some(album => album.id === editingAlbum.id);
-      console.log(isExistingAlbum ? 'Updating existing album:' : 'Saving new album:', albumData);
-      
-      // Use unified database interface (automatically selects provider)
-      let savedAlbum;
-      if (isExistingAlbum) {
-        savedAlbum = await Database.updateAlbum(editingAlbum.id, albumData);
-      } else {
-        savedAlbum = await Database.addAlbum(albumData);
-      }
-      
-      // Update local state
-      if (isExistingAlbum) {
-        setAlbums(prevAlbums => 
-          prevAlbums.map(album => 
-            album.id === savedAlbum.id ? savedAlbum : album
-          )
-        );
-      } else {
-        setAlbums(prevAlbums => [savedAlbum, ...prevAlbums]);
-      }
-      
-      // Success - no popup needed, just close the form
+      await saveAlbumToDb(albumData, editingAlbum);
+
+      // Success - close the form
       setShowAddForm(false);
       setEditingAlbum(null);
-      setError(null); // Clear any previous errors
+      setError(null);
     } catch (err) {
       console.error('Failed to save album:', err);
-      
+
       if (err.message.includes('not authenticated')) {
         alert('Please sign in to save albums to the cloud database.');
         setShowAuth(true);
@@ -685,28 +293,14 @@ function App() {
     }
   };
 
-  const handleCancelForm = () => {
-    setShowAddForm(false);
-    setEditingAlbum(null);
-  };
-
-  const handleEditAlbum = (album) => {
-    setEditingAlbum(album);
-    setShowAddForm(true);
-  };
-
   const handleDeleteAlbum = async (album) => {
     if (!confirm(`Are you sure you want to delete "${album.title}" by ${album.artist}?`)) {
       return;
     }
 
     try {
-      // Use unified database interface (automatically selects provider)
-      await Database.deleteAlbum(album.id);
-      
-      // Update local state
-      setAlbums(prevAlbums => prevAlbums.filter(a => a.id !== album.id));
-      
+      await deleteAlbumFromDb(album);
+
       const dbType = useCloudDatabase ? 'cloud' : 'local';
       alert(`Album "${album.title}" deleted successfully from ${dbType} database!`);
       setError(null);
@@ -716,66 +310,29 @@ function App() {
     }
   };
 
-  // Authentication handlers
-  const handleSignIn = () => {
-    setShowAuth(true);
+  const handleEditAlbum = (album) => {
+    setEditingAlbum(album);
+    setShowAddForm(true);
   };
 
-  const handleSignOut = async () => {
+  const handleCancelForm = () => {
+    setShowAddForm(false);
+    setEditingAlbum(null);
+  };
+
+  const handleSelectIdentifiedAlbumWrapper = async (selectedAlbum) => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
-      
-      alert('Signed out successfully!');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      alert('Failed to sign out: ' + error.message);
-    }
-  };
+      const albumWithMetadata = selectIdentifiedAlbum(selectedAlbum);
 
-  const handleAuthSuccess = (user) => {
-    console.log('Authentication successful:', user.email);
-    setUser(user);
-    setShowAuth(false);
-  };
-
-  const handleSelectIdentifiedAlbum = async (selectedAlbum) => {
-    try {
-      console.log('User selected identified album:', selectedAlbum);
-      
-      // Close identification results
-      setShowIdentificationResults(false);
-      
-      // Prepare album data with the captured image and selected metadata
-      const albumWithMetadata = {
-        ...selectedAlbum,
-        coverImage: identifyingImage, // Use the captured image
-        identificationMethod: 'camera-serpapi',
-        notes: selectedAlbum.notes || 'Album identified from camera capture',
-        // Preserve user-editable fields as empty for user input
-        purchasePrice: null,
-        purchaseLocation: '',
-        // Let user edit condition if they want
-        condition: selectedAlbum.condition || 'Near Mint'
-      };
-      
       // Open the add form with pre-filled data
       setEditingAlbum(albumWithMetadata);
       setShowAddForm(true);
-      
+
       console.log('Opening add form with identified album data');
     } catch (err) {
       console.error('Failed to handle selected album:', err);
       setError(`Failed to process selected album: ${err.message}`);
     }
-  };
-
-  const handleCloseIdentificationResults = () => {
-    console.log('Closing identification results');
-    setShowIdentificationResults(false);
-    setIdentificationResults(null);
-    setIdentifyingImage(null);
-    setIsIdentifying(false);
   };
 
   // Tab navigation helpers
@@ -805,6 +362,19 @@ function App() {
     setEditingAlbum(null);
   };
 
+  const toggleStats = () => {
+    setShowStats(!showStats);
+  };
+
+  const handleSignIn = () => {
+    setShowAuth(true);
+  };
+
+  const handleAuthSuccess = (user) => {
+    console.log('Authentication successful:', user.email);
+    setShowAuth(false);
+  };
+
   // Render the appropriate page based on current tab
   // Keep all tabs mounted but hide inactive ones to preserve component state
   const renderPage = () => {
@@ -829,10 +399,7 @@ function App() {
             stats={stats}
             showStats={showStats}
             onToggleStats={toggleStats}
-            onUpdateAlbum={async (albumId, updates) => {
-              await Database.updateAlbum(albumId, updates);
-              await loadAlbums(); // Reload albums to reflect changes
-            }}
+            onUpdateAlbum={handleUpdateAlbum}
             user={user}
             authLoading={authLoading}
             useCloudDatabase={useCloudDatabase}
@@ -962,7 +529,7 @@ function App() {
             onCapture={handleCameraCapture}
             onClose={handleCameraClose}
             onSaveToAlbum={handleCameraSave}
-            onIdentifyAlbum={handleCameraIdentify}
+            onIdentifyAlbum={handleCameraIdentifyWrapper}
           />
         )}
 
@@ -970,10 +537,10 @@ function App() {
         {showIdentificationResults && identificationResults && (
           <IdentificationResults
             results={identificationResults}
-            onSelectResult={handleSelectIdentifiedAlbum}
+            onSelectResult={handleSelectIdentifiedAlbumWrapper}
             onRetry={() => {
               // Retry identification with the same image
-              handleCameraIdentify(identifyingImage);
+              handleCameraIdentifyWrapper(identifyingImage);
             }}
             onCancel={handleCloseIdentificationResults}
             originalImage={identifyingImage}
