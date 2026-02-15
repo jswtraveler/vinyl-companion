@@ -429,6 +429,12 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActions
       console.log('📊 Batch fetching similarity data for', profile.artists?.length || 0, 'artists');
       console.log('📊 Artists to fetch (sample):', profile.artists?.slice(0, 3));
 
+      // Check if cacheService is available
+      if (!recommendationService.cacheService) {
+        console.error('❌ CacheService is not available - cannot fetch similarity data');
+        return null;
+      }
+
       console.time('🚀 Batch fetch similarity data');
       const artistNames = (profile.artists || []).map(a => a.artist);
       const similarArtistsMap = await recommendationService.cacheService.getBatchSimilarArtistsCache(artistNames, 'lastfm');
@@ -476,6 +482,15 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActions
           const artistNamesForMetadata = [...new Set(topCandidates.map(a => a.artist))];
 
           // OPTIMIZED: Batch fetch metadata for all artists at once
+          if (!recommendationService.cacheService) {
+            console.warn('⚠️ CacheService not available - skipping metadata fetch');
+            artistRecs.metadata = {
+              ...artistRecs.metadata,
+              allSimilarArtists: allSimilarArtists
+            };
+            return artistRecs;
+          }
+
           console.time('🚀 Batch fetch metadata');
           const artistMetadata = await recommendationService.cacheService.getBatchArtistMetadataCache(artistNamesForMetadata);
           console.timeEnd('🚀 Batch fetch metadata');

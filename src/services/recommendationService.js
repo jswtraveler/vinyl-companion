@@ -8,4 +8,10 @@
  * @deprecated Use './recommendations/index.js' instead
  */
 
-export { RecommendationEngine as RecommendationService, default } from './recommendations/index.js';
+import RecommendationEngine from './recommendations/RecommendationEngine.js';
+
+// Named export for: import { RecommendationService } from './recommendationService.js'
+export { RecommendationEngine as RecommendationService };
+
+// Default export for: import RecommendationService from './recommendationService.js'
+export default RecommendationEngine;
