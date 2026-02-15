@@ -32,7 +32,7 @@ const AlbumSearchModal = ({ onClose, onSelectAlbum, initialSearchQuery = '' }) =
 
     try {
       // Use Discogs client directly for album-only search
-      const { DiscogsClient } = await import('../services/apiClients.js');
+      const { DiscogsClient } = await import('../services/api/music/index.js');
       const results = await DiscogsClient.searchReleases(searchQuery.trim());
 
       // Transform results to include source info

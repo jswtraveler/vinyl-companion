@@ -1,5 +1,5 @@
 import { serpApiClient } from './api/search/SerpApiClient.js';
-import { MusicBrainzClient, DiscogsClient } from './apiClients.js';
+import { MusicBrainzClient, DiscogsClient } from './api/music/index.js';
 import Database from './database/index.js';
 import { ImageProcessor } from '../utils/imageProcessing.js';
 import { OCRService } from '../utils/ocrService.js';
@@ -447,7 +447,7 @@ export class AlbumIdentifier {
     try {
       // Try to get cover from Cover Art Archive if we have MusicBrainz ID
       if (result.source === 'musicbrainz' && result.id) {
-        const { CoverArtClient } = await import('./apiClients.js');
+        const { CoverArtClient } = await import('./api/music/index.js');
         const coverUrl = await CoverArtClient.getCoverArt(result.id);
         if (coverUrl) return coverUrl;
       }

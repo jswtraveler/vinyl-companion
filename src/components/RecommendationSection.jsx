@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { RecommendationService } from '../services/recommendationService.js';
+import { RecommendationService } from '../services/recommendations/index.js';
 
 const RecommendationSection = ({ albums, user, useCloudDatabase }) => {
   const [recommendations, setRecommendations] = useState(null);

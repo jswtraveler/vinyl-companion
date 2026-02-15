@@ -1,4 +1,4 @@
-import { MusicBrainzClient, DiscogsClient, CoverArtClient } from './apiClients.js';
+import { MusicBrainzClient, DiscogsClient, CoverArtClient } from './api/music/index.js';
 import { LastFmClient } from './api/music/LastFmClient.js';
 import { isValidGenre } from '../data/musicbrainz-genres.js';
 
