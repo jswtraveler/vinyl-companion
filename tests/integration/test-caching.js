@@ -6,7 +6,7 @@
  * without requiring the full app to be running.
  */
 
-import { RecommendationCacheService } from '../../src/services/recommendationCacheService.js';
+import { RecommendationCacheService } from '../../src/services/recommendations/data/CacheManager.js';
 
 import dotenv from 'dotenv';
 
