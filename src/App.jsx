@@ -18,6 +18,7 @@ import DiscoverPage from './pages/DiscoverPage'
 import AddAlbumPage from './pages/AddAlbumPage'
 import BottomTabBar from './components/navigation/BottomTabBar'
 import QuickAddModal from './components/QuickAddModal'
+import KeepItGoingPanel from './components/KeepItGoingPanel'
 
 function App() {
   // Use custom hooks for cleaner component
@@ -514,6 +515,13 @@ function App() {
               maxHeight: '90vh',
               overflowY: 'auto'
             }}>
+              {editingAlbum && (
+                <KeepItGoingPanel
+                  targetAlbum={editingAlbum}
+                  allAlbums={albums}
+                  onSelectAlbum={(album) => setEditingAlbum(album)}
+                />
+              )}
               <AlbumForm
                 album={editingAlbum}
                 mode={editingAlbum ? 'edit' : 'add'}
