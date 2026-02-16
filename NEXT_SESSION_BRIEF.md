@@ -214,3 +214,23 @@ Uses only local album data (no API calls needed):
 - Performance should be instant for ~100 albums (no async needed)
 - **Thumbs integration:** Thumbs-up albums get a score boost in "Keep it going" results, thumbs-down albums get demoted (pushed to bottom or hidden). Encourages a feedback loop where thumbing albums improves future recommendations.
 - If genre/mood data is sparse on some albums, fall back to artist-name matching as a last resort
+
+---
+
+## 11. Fix: Auto-Center Expanded Artist Card in Discover Carousel
+
+### Problem
+
+When clicking "Show Top Albums" on an artist card in the Discover tab, the card expands from `w-48` to `w-80` but stays at its current scroll position. This means the expanded content can be partially off-screen or awkwardly positioned, requiring manual scrolling.
+
+### Solution
+
+After an artist card expands, scroll it horizontally into the center of the carousel viewport using `scrollIntoView` with smooth behavior.
+
+### Implementation
+
+**File:** `src/components/ArtistCarousel.jsx`
+
+1. Add a `ref` on each `ArtistCard`'s root `<div>`
+2. After toggling `expanded` to `true`, use a short `setTimeout` (to let the width transition complete) then call `cardRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })`
+3. This centers the expanded card horizontally within the overflow-x carousel container without affecting vertical scroll

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { ListenBrainzClient } from '../services/api/music/ListenBrainzClient.js';
 
 /**
@@ -87,6 +87,17 @@ const ArtistCard = ({ artist, listenBrainzClient }) => {
   const [topAlbums, setTopAlbums] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const cardRef = useRef(null);
+
+  // Auto-center the card when expanded
+  useEffect(() => {
+    if (expanded && cardRef.current) {
+      // Short delay to let the width transition start
+      setTimeout(() => {
+        cardRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }, 50);
+    }
+  }, [expanded]);
 
   const handleToggleExpand = async () => {
     if (!expanded) {
@@ -112,7 +123,7 @@ const ArtistCard = ({ artist, listenBrainzClient }) => {
   };
 
   return (
-    <div className={`flex-shrink-0 bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-all ${
+    <div ref={cardRef} className={`flex-shrink-0 bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-all ${
       expanded ? 'w-80' : 'w-48'
     }`}>
       {/* Artist Image */}
