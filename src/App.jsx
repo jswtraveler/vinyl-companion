@@ -18,7 +18,7 @@ import DiscoverPage from './pages/DiscoverPage'
 import AddAlbumPage from './pages/AddAlbumPage'
 import BottomTabBar from './components/navigation/BottomTabBar'
 import QuickAddModal from './components/QuickAddModal'
-import KeepItGoingPanel from './components/KeepItGoingPanel'
+import AlbumDetailModal from './components/AlbumDetailModal'
 
 function App() {
   // Use custom hooks for cleaner component
@@ -51,6 +51,9 @@ function App() {
   const [albumSearchQuery, setAlbumSearchQuery] = useState('')
   const [showAIAnalysis, setShowAIAnalysis] = useState(false)
   const [showAuth, setShowAuth] = useState(false)
+
+  // Detail modal state
+  const [viewingAlbum, setViewingAlbum] = useState(null)
 
   // Tab navigation state
   const [currentTab, setCurrentTab] = useState('collection')
@@ -311,6 +314,16 @@ function App() {
     }
   };
 
+  const handleViewAlbum = (album) => {
+    setViewingAlbum(album);
+  };
+
+  const handleEditFromDetail = (album) => {
+    setViewingAlbum(null);
+    setEditingAlbum(album);
+    setShowAddForm(true);
+  };
+
   const handleEditAlbum = (album) => {
     setEditingAlbum(album);
     setShowAddForm(true);
@@ -394,7 +407,8 @@ function App() {
               setSortOrder(newSortOrder);
             }}
             filteredAndSortedAlbums={filteredAndSortedAlbums}
-            onAlbumClick={handleEditAlbum}
+            onAlbumClick={handleViewAlbum}
+            onEditAlbum={handleEditAlbum}
             onDeleteAlbum={handleDeleteAlbum}
             onQuickAdd={() => setShowQuickAdd(true)}
             stats={stats}
@@ -515,13 +529,6 @@ function App() {
               maxHeight: '90vh',
               overflowY: 'auto'
             }}>
-              {editingAlbum && (
-                <KeepItGoingPanel
-                  targetAlbum={editingAlbum}
-                  allAlbums={albums}
-                  onSelectAlbum={(album) => setEditingAlbum(album)}
-                />
-              )}
               <AlbumForm
                 album={editingAlbum}
                 mode={editingAlbum ? 'edit' : 'add'}
@@ -530,6 +537,17 @@ function App() {
               />
             </div>
           </div>
+        )}
+
+        {/* Album Detail Modal */}
+        {viewingAlbum && (
+          <AlbumDetailModal
+            album={viewingAlbum}
+            allAlbums={albums}
+            onClose={() => setViewingAlbum(null)}
+            onEdit={handleEditFromDetail}
+            onSelectSimilar={(album) => setViewingAlbum(album)}
+          />
         )}
 
         {/* Camera Capture */}
