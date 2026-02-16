@@ -249,7 +249,7 @@ export class GeminiClient {
 
     // Filter albums based on analysis options
     const { toAnalyze, alreadyTagged } = this.filterAlbumsForAnalysis(albums, options);
-    
+
     if (toAnalyze.length === 0) {
       return {
         success: true,
@@ -267,18 +267,37 @@ export class GeminiClient {
       };
     }
 
-    const moodList = availableMoods.length > 0 
+    const moodList = availableMoods.length > 0
       ? availableMoods.map(m => m.label).join(', ')
       : 'Nostalgic, Energetic, Chill, Upbeat, Melancholic, Road Trip, Late Night, Sunday Morning, Dreamy, Raw, Comfort, Party';
 
-    // Create a structured prompt for mood analysis
-    const albumsToAnalyze = toAnalyze.slice(0, 50); // Limit to 50 albums per request
-    const albumList = albumsToAnalyze
-      .map((album, index) => 
-        `${index + 1}. "${album.title}" by ${album.artist}${album.genre ? ` (${album.genre.join(', ')})` : ''}${album.year ? ` [${album.year}]` : ''}`
-      ).join('\n');
+    // Process in batches of 10 to avoid rate limits (free tier: 15 req/min)
+    const BATCH_SIZE = 10;
+    const BATCH_DELAY_MS = 4500; // ~13 requests/min, safely under 15/min limit
+    const allAnalysis = [];
+    const batches = [];
 
-    const prompt = `As a music expert, analyze these vinyl albums and suggest appropriate mood tags for each one.
+    for (let i = 0; i < toAnalyze.length; i += BATCH_SIZE) {
+      batches.push(toAnalyze.slice(i, i + BATCH_SIZE));
+    }
+
+    console.log(`Gemini API: Processing ${toAnalyze.length} albums in ${batches.length} batch(es) of ${BATCH_SIZE}`);
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+
+      // Rate limit: wait between batches (skip delay before first batch)
+      if (batchIndex > 0) {
+        console.log(`Gemini API: Waiting ${BATCH_DELAY_MS}ms before batch ${batchIndex + 1}/${batches.length}...`);
+        await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+      }
+
+      const albumList = batch
+        .map((album, index) =>
+          `${index + 1}. "${album.title}" by ${album.artist}${album.genre ? ` (${album.genre.join(', ')})` : ''}${album.year ? ` [${album.year}]` : ''}`
+        ).join('\n');
+
+      const prompt = `As a music expert, analyze these vinyl albums and suggest appropriate mood tags for each one.
 
 Albums to analyze:
 ${albumList}
@@ -293,56 +312,53 @@ Please respond in this exact JSON format:
     {
       "index": 1,
       "title": "Album Title",
-      "artist": "Artist Name", 
+      "artist": "Artist Name",
       "suggestedMoods": ["Mood1", "Mood2", "Mood3"],
       "reasoning": "Brief explanation of why these moods fit"
     }
   ]
 }
 
-Ensure the response is valid JSON and includes all ${Math.min(albumsToAnalyze.length, 50)} albums.`;
+Ensure the response is valid JSON and includes all ${batch.length} albums.`;
 
-    try {
-      const result = await this.generateContent(prompt);
-      const analysis = this.parseAnalysisResponse(result.content, albumsToAnalyze);
-      
-      // Combine analysis results with skipped albums info
-      const skippedAlbums = alreadyTagged.map(album => ({
-        albumId: album.id,
-        title: album.title,
-        artist: album.artist,
-        existingMoods: album.moods || [],
-        skippedReason: 'Already has mood tags'
-      }));
-      
-      return {
-        success: true,
-        analysis,
-        skippedAlbums,
-        totalAnalyzed: albumsToAnalyze.length,
-        totalSkipped: alreadyTagged.length,
-        totalAlbums: albums.length,
-        timestamp: result.timestamp,
-        usage: result.usage
-      };
-
-    } catch (error) {
-      console.error('Collection analysis failed:', error);
-      
-      return {
-        success: false,
-        error: {
-          message: error.message,
-          type: error.type || 'ANALYSIS_ERROR'
-        },
-        analysis: [],
-        skippedAlbums: [],
-        totalAnalyzed: 0,
-        totalSkipped: 0,
-        totalAlbums: albums.length,
-        timestamp: new Date().toISOString()
-      };
+      try {
+        console.log(`Gemini API: Analyzing batch ${batchIndex + 1}/${batches.length} (${batch.length} albums)...`);
+        const result = await this.generateContent(prompt);
+        const batchAnalysis = this.parseAnalysisResponse(result.content, batch);
+        allAnalysis.push(...batchAnalysis);
+      } catch (error) {
+        console.error(`Batch ${batchIndex + 1} failed:`, error);
+        // Add failed entries with empty results so we don't lose track
+        batch.forEach(album => {
+          allAnalysis.push({
+            albumId: album.id,
+            title: album.title,
+            artist: album.artist,
+            suggestedMoods: [],
+            reasoning: `Analysis failed: ${error.message}`,
+            confidence: 0
+          });
+        });
+      }
     }
+
+    const skippedAlbums = alreadyTagged.map(album => ({
+      albumId: album.id,
+      title: album.title,
+      artist: album.artist,
+      existingMoods: album.moods || [],
+      skippedReason: 'Already has mood tags'
+    }));
+
+    return {
+      success: true,
+      analysis: allAnalysis,
+      skippedAlbums,
+      totalAnalyzed: toAnalyze.length,
+      totalSkipped: alreadyTagged.length,
+      totalAlbums: albums.length,
+      timestamp: new Date().toISOString()
+    };
   }
 
   /**
