@@ -18,6 +18,7 @@ const CollectionPage = ({
   onSortChange,
   filteredAndSortedAlbums,
   onAlbumClick,
+  onEditAlbum,
   onDeleteAlbum,
   onQuickAdd,
   stats,
@@ -478,7 +479,8 @@ const CollectionPage = ({
             <AlbumCard
               key={album.id}
               album={album}
-              onEdit={() => onAlbumClick(album)}
+              onClick={() => onAlbumClick(album)}
+              onEdit={onEditAlbum ? () => onEditAlbum(album) : undefined}
               onDelete={onDeleteAlbum}
               onUpdateAlbum={onUpdateAlbum}
             />

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 
 const AlbumCard = ({
   album,
+  onClick,
   onEdit,
   onDelete,
   onUpdateAlbum,
@@ -43,7 +44,10 @@ const AlbumCard = ({
   };
 
   return (
-    <article className="bg-gray-800 shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group relative">
+    <article
+      className="bg-gray-800 shadow-md hover:shadow-lg transition-all duration-200 overflow-hidden group relative cursor-pointer"
+      onClick={() => onClick?.(album)}
+    >
       {/* Cover Image */}
       <div className="aspect-square bg-gray-700 relative">
         {album.coverImage ? (
