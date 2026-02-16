@@ -1,172 +1,95 @@
 # Next Session Brief - Vinyl Companion
 
-**Last Updated:** February 15, 2026
+**Last Updated:** February 16, 2026
 
 ## Project Status
 
-The major codebase refactoring (7/7 tasks) is complete. The app uses React 19, Vite 7, Tailwind CSS v4, Supabase, and IndexedDB with a unified database provider pattern. Recent feature work added ListenBrainz top albums integration, artist recommendation cards, album thumbs up/down, and AI mood analysis.
+The app uses React 19, Vite 7, Tailwind CSS v4, Supabase, and IndexedDB with a unified database provider pattern. Major refactoring complete. Recent work: thumbs up/down, AI mood analysis, carousel UX fix, markdown cleanup.
 
-All changes committed and pushed.
-
----
-
-## ~~1. Dead Code & Stale File Cleanup~~ - DONE
-
-All dead code removed (~3,500 lines deleted across 3 commits, Feb 15, 2026).
+All changes committed and pushed. Supabase migrations applied.
 
 ---
 
-## 2. Large Component Refactoring
+## Completed
 
-### ArtistRecommendationSection.jsx (854 lines)
-
-The largest component in the codebase. Handles recommendations, modals, genre filtering, diversity filtering, Spotify backfill, and metadata refresh all in one file.
-
-**Suggested approach:**
-- Extract a `useRecommendations` hook for recommendation state and fetching logic
-- Extract modal components (metadata refresh, Spotify backfill) into separate files
-- Extract genre/diversity filter logic into a utility or hook
-
-### AlbumForm.jsx (640 lines)
-
-Complex form with many fields. Could benefit from:
-- Extracting form field groups into sub-components
-- Moving validation logic into a separate utility
+- **Dead code cleanup** — ~3,500 lines removed (Feb 15)
+- **Album Thumbs Up/Down** — toggle on AlbumCard, filter on CollectionPage, optimistic updates (Feb 16)
+- **AI Mood Analysis wired up** — button in stats panel, Gemini API with batch processing (Feb 16)
+- **Auto-center expanded artist card** in Discover carousel (Feb 16)
+- **Markdown cleanup** — 16 stale docs moved to `old_markdown/` (gitignored), 3 remain in root (Feb 16)
+- **Supabase migrations applied** — `add_thumb_column.sql` and `fix_function_search_paths.sql` (Feb 16)
+- **Supabase keep-alive** — GitHub Actions workflow pings every 5 days
+- **Import paths** — all updated to canonical paths
 
 ---
 
-## 3. Testing
+## Next Up
 
-### No Unit Tests Exist for Core Logic
+### 1. "Keep It Going" (Similar Owned Albums)
 
-The `tests/unit/` directory has placeholder subdirectories but essentially no coverage of the refactored modules.
+When viewing a selected album, show similar albums from the user's own collection. Pure client-side, no API calls.
 
-**Priority test targets:**
-- `recommendations/algorithms/Scorer.js` - scoring correctness
-- `recommendations/algorithms/GraphRecommender.js` - PageRank convergence
-- `recommendations/data/CacheManager.js` - cache hit/miss/TTL
-- `src/hooks/useAlbumCollection.js` - CRUD operations
-- `src/services/database/` providers - provider switching, field mapping
+**Matching strategy:**
+- Genre overlap (Jaccard similarity)
+- Mood overlap (AI-generated or genre-based fallback)
+- Era proximity (same decade bonus)
+- Thumbs integration (boost thumbs-up, demote thumbs-down)
 
-**Infrastructure:** Vitest is already installed and configured. `npm test` runs.
-
----
-
-## ~~4. Infrastructure~~ - DONE
-
-Supabase keep-alive GitHub Actions workflow added.
+**Implementation:**
+1. Scoring utility: `src/utils/collectionSimilarity.js`
+2. UI component: `KeepItGoingPanel.jsx`
+3. Wire into album detail view
+4. No database changes needed
 
 ---
 
-## 5. Security & Configuration
+### 2. Large Component Refactoring
 
-### Supabase Security Warnings (from Supabase Console Linter)
+**ArtistRecommendationSection.jsx (854 lines):**
+- Extract `useRecommendations` hook
+- Extract modal components (metadata refresh, Spotify backfill)
+- Extract genre/diversity filter logic
 
-~~**Function Search Path Mutable (8 functions)**~~ - **DONE.** Migration at `database/migrations/fix_function_search_paths.sql`. **Run in Supabase SQL Editor** to apply.
-
-**Auth OTP Long Expiry** - Reduce in Supabase Dashboard > Auth > Settings.
-
-**Leaked Password Protection Disabled** - Enable HaveIBeenPwned check in Supabase Dashboard > Auth > Settings > Password Security.
-
-**Postgres Version Outdated** - Upgrade via Supabase Dashboard > Settings > General.
-
-### API Key Exposure History
-
-Previously flagged keys in `vite_supabase.txt`, `netlify.toml`, `.claude/settings.local.json` — now gitignored. **Verify** keys were rotated.
-
-### Environment Variables
-
-- `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` — in local `.env` and Netlify env vars
-- `VITE_GEMINI_API_KEY` — for AI mood analysis. Add to local `.env` and Netlify env vars, then redeploy
-- `VITE_LISTENBRAINZ_TOKEN` — for ListenBrainz integration (optional)
+**AlbumForm.jsx (640 lines):**
+- Extract form field groups into sub-components
+- Move validation logic into separate utility
 
 ---
 
-## 6. Code Quality & Consistency
+### 3. Testing
 
-### Markdown Cleanup
+No unit tests exist for core logic. Vitest is installed and configured.
 
-19 markdown files in the project root. Several are outdated or one-time-use docs:
-- `progress.md` (22KB) - historical progress log
-- `todo_mvp_guide.md` (12KB) - original MVP planning
-- `update_ui.md` (13KB) - old UI update notes
-- `suggestions_genre_fixes.md` (9.6KB) - completed genre fix notes
-- `RECOMMENDATION_REFACTOR_PLAN.md` (8.8KB) - completed refactor plan
-
-**Action:** Consider moving these to an `old_markdown/` directory (already gitignored) or archiving them.
+**Priority targets:**
+- `recommendations/algorithms/Scorer.js`
+- `recommendations/algorithms/GraphRecommender.js`
+- `recommendations/data/CacheManager.js`
+- `src/hooks/useAlbumCollection.js`
+- `src/services/database/` providers
 
 ---
 
-## 7. Build & Performance
+### 4. Security & Configuration (Supabase Dashboard)
 
-### Bundle Analysis
-
-No bundle analysis tooling configured. Consider:
-- Adding `rollup-plugin-visualizer` to understand production bundle
-- Checking if OpenCV.js and Tesseract.js are loaded on demand vs bundled
-
-### Service Worker / PWA
-
-Verify: Is the service worker working? Are offline capabilities tested? Is cache versioning handled for updates?
+- **Auth OTP Long Expiry** — reduce in Auth > Settings
+- **Leaked Password Protection** — enable HaveIBeenPwned in Auth > Settings > Password Security
+- **Postgres Version** — upgrade via Settings > General
+- **API Key Rotation** — verify previously exposed keys were rotated
 
 ---
 
-## ~~8. Unstaged Changes to Review~~ - DONE
+### 5. Build & Performance
+
+- **Bundle analysis** — add `rollup-plugin-visualizer`, check lazy loading of heavy libs
+- **PWA verification** — service worker, offline capabilities, cache versioning
 
 ---
 
-## ~~9. Album Thumbs Up/Down~~ - DONE
+## Environment Variables
 
-Implemented Feb 15, 2026:
-- `thumb` column added to schema + Supabase migration (`database/migrations/add_thumb_column.sql` — **run in Supabase SQL Editor**)
-- Toggle icons on AlbumCard (green up / red down, filled when active)
-- Thumb filter row on CollectionPage with counts
-- Optimistic local state update (no scroll reset on toggle)
-
----
-
-## 10. New Feature: "Keep It Going" (Similar Owned Albums)
-
-### Overview
-
-When viewing a selected album, show a "Keep it going" button that displays similar albums from the user's own collection. For when you're listening to something and want more of the same vibe from records you already own.
-
-### Matching Strategy: Genre + Mood
-
-Uses only local album data (no API calls needed):
-- **Genre overlap:** Jaccard similarity or overlap count
-- **Mood overlap:** Same approach using AI-generated or genre-based fallback moods
-- **Era proximity:** Bonus for albums from a similar year/decade
-- **Thumbs integration:** Thumbs-up albums get a score boost, thumbs-down get demoted
-
-### Implementation
-
-1. **Scoring utility:** `src/utils/collectionSimilarity.js` — `findSimilarOwned(targetAlbum, allAlbums, options)`
-2. **UI component:** `KeepItGoingPanel.jsx` — slide-up panel or modal showing top ~5-10 similar owned albums
-3. **Integration:** Wire button into album detail view
-4. **No database changes needed** — pure client-side filtering
-
----
-
-## ~~11. Auto-Center Expanded Artist Card in Discover Carousel~~ - DONE
-
-Fixed Feb 15, 2026. Cards now `scrollIntoView({ inline: 'center' })` on expand.
-
----
-
-## 12. AI Mood Analysis
-
-### Status: Wired Up — Needs Env Var
-
-The AI mood analysis system (Google Gemini) is fully functional:
-- **Button:** Stats panel > "AI Mood Analysis" in Collection tab
-- **Requires:** `VITE_GEMINI_API_KEY` in local `.env` and Netlify env vars
-- **Get key:** https://aistudio.google.com/apikeys (free)
-- Analyzes albums missing mood tags, suggests 2-3 moods each with reasoning
-- User reviews and applies results
-
-### Supabase Migrations Pending
-
-Run these in Supabase SQL Editor for cloud users:
-1. `database/migrations/add_thumb_column.sql` — thumb up/down column
-2. `database/migrations/fix_function_search_paths.sql` — security fix
+| Variable | Purpose | Where |
+|---|---|---|
+| `VITE_SUPABASE_URL` | Supabase project URL | `.env` + Netlify |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key | `.env` + Netlify |
+| `VITE_GEMINI_API_KEY` | AI mood analysis (Google Gemini) | `.env` + Netlify |
+| `VITE_LISTENBRAINZ_TOKEN` | ListenBrainz integration (optional) | `.env` + Netlify |
