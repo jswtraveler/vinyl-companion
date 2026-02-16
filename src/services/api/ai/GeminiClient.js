@@ -482,8 +482,8 @@ Ensure the response is valid JSON and includes all ${Math.min(albumsToAnalyze.le
   }
 }
 
-// Export singleton instance
-export const geminiClient = new GeminiClient();
+// Export singleton instance - read API key from env if available
+export const geminiClient = new GeminiClient(import.meta.env.VITE_GEMINI_API_KEY);
 export default geminiClient;
 
 // Export error class for external use
