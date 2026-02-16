@@ -478,7 +478,7 @@ const CollectionPage = ({
             <AlbumCard
               key={album.id}
               album={album}
-              onClick={() => onAlbumClick(album)}
+              onEdit={() => onAlbumClick(album)}
               onDelete={onDeleteAlbum}
               onUpdateAlbum={onUpdateAlbum}
             />
