@@ -10,16 +10,20 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase
+      - name: Write to Supabase keepalive table
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" \
-            "${{ secrets.SUPABASE_URL }}/rest/v1/albums?select=count&limit=1" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/keepalive?id=eq.1" \
+            -X PATCH \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{"last_ping": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"}')
 
-          if [ "$response" -eq 200 ] || [ "$response" -eq 206 ]; then
-            echo "Supabase is alive (HTTP $response)"
+          if [ "$response" -eq 204 ]; then
+            echo "Supabase keep-alive write successful (HTTP $response)"
           else
-            echo "::warning::Supabase ping returned HTTP $response"
+            echo "::error::Supabase keep-alive write failed (HTTP $response)"
             exit 1
           fi
