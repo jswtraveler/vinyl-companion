@@ -1,4 +1,7 @@
 // Discogs API client for vinyl-specific data
+import { isValidGenre } from '../../../data/musicbrainz-genres.js';
+import { capitalizeGenre } from '../../../utils/genreUtils.js';
+
 const RATE_LIMIT = 1000; // 1 second to be safe
 let lastRequestTime = 0;
 
@@ -84,32 +87,33 @@ export class DiscogsClient {
         return formatMap[discogsFormat] || 'LP';
       };
 
-      // Map Discogs genres to our schema genres
-      const mapDiscogsGenres = (discogsGenres) => {
-        if (!Array.isArray(discogsGenres)) return [];
-
-        const validGenres = [
-          'Rock', 'Pop', 'Jazz', 'Blues', 'Classical', 'Folk', 'Country', 'R&B/Soul',
-          'Hip Hop', 'Electronic', 'Punk', 'Metal', 'Alternative', 'Indie', 'World', 'Soundtrack'
-        ];
-
-        const genreMap = {
-          'Hip-Hop': 'Hip Hop',
-          'R&B': 'R&B/Soul',
-          'Soul': 'R&B/Soul',
-          'Electronic': 'Electronic',
-          'Prog Rock': 'Rock',
-          'Progressive Rock': 'Rock',
-          'Classic Rock': 'Rock',
-          'Psychedelic Rock': 'Rock',
-          'Hard Rock': 'Rock',
-          'Pop Rock': 'Rock'
+      // Map Discogs genres/styles to MusicBrainz whitelist
+      const mapDiscogsGenres = (discogsGenres, discogsStyles) => {
+        // Discogs-specific strings that need normalization before MusicBrainz lookup
+        const discogsMap = {
+          'funk / soul': ['funk', 'soul'],
+          'hip-hop': ['hip hop'],
+          'non-music': [],
+          'stage & screen': [],
+          'children\'s': ['children\'s music'],
         };
 
-        return discogsGenres
-          .map(genre => genreMap[genre] || (validGenres.includes(genre) ? genre : null))
+        const candidates = [];
+
+        for (const raw of [...(discogsGenres || []), ...(discogsStyles || [])]) {
+          const lower = raw.toLowerCase().trim();
+          if (discogsMap[lower] !== undefined) {
+            candidates.push(...discogsMap[lower]);
+          } else {
+            candidates.push(lower);
+          }
+        }
+
+        return [...new Set(candidates)]
+          .filter(g => isValidGenre(g))
+          .map(g => capitalizeGenre(g))
           .filter(Boolean)
-          .slice(0, 3); // Limit to 3 genres max
+          .slice(0, 5);
       };
 
       return {
@@ -121,8 +125,7 @@ export class DiscogsClient {
         catalogNumber: release.catno,
         format: mapDiscogsFormat(release.format?.[0] || release.format),
         country: release.country,
-        genre: mapDiscogsGenres(release.genre),
-        style: release.style,
+        genre: mapDiscogsGenres(release.genre, release.style),
         coverImage: release.cover_image,
         source: 'discogs',
         confidence: 0.9
