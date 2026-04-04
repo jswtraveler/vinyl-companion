@@ -54,6 +54,7 @@ function App() {
 
   // Detail modal state
   const [viewingAlbum, setViewingAlbum] = useState(null)
+  const [viewingAlbumList, setViewingAlbumList] = useState(null)
 
   // Tab navigation state
   const [currentTab, setCurrentTab] = useState('collection')
@@ -314,8 +315,9 @@ function App() {
     }
   };
 
-  const handleViewAlbum = (album) => {
+  const handleViewAlbum = (album, contextList) => {
     setViewingAlbum(album);
+    if (contextList) setViewingAlbumList(contextList);
   };
 
   const handleEditFromDetail = (album) => {
@@ -543,8 +545,8 @@ function App() {
         {viewingAlbum && (
           <AlbumDetailModal
             album={viewingAlbum}
-            allAlbums={albums}
-            onClose={() => setViewingAlbum(null)}
+            allAlbums={viewingAlbumList || albums}
+            onClose={() => { setViewingAlbum(null); setViewingAlbumList(null); }}
             onEdit={handleEditFromDetail}
             onSelectSimilar={(album) => setViewingAlbum(album)}
           />
