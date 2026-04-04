@@ -1,19 +1,77 @@
+import { useEffect, useRef, useCallback } from 'react';
 import KeepItGoingPanel from './KeepItGoingPanel';
 
 export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, onSelectSimilar }) {
-  if (!album) return null;
+  const touchStartX = useRef(null);
+  const modalRef = useRef(null);
+
+  // Find current index in allAlbums for navigation
+  const currentIndex = allAlbums ? allAlbums.findIndex(a => a.id === album?.id) : -1;
+  const hasPrev = currentIndex > 0;
+  const hasNext = currentIndex !== -1 && currentIndex < allAlbums.length - 1;
+
+  const goToPrev = useCallback(() => {
+    if (hasPrev) onSelectSimilar(allAlbums[currentIndex - 1]);
+  }, [hasPrev, currentIndex, allAlbums, onSelectSimilar]);
+
+  const goToNext = useCallback(() => {
+    if (hasNext) onSelectSimilar(allAlbums[currentIndex + 1]);
+  }, [hasNext, currentIndex, allAlbums, onSelectSimilar]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'ArrowLeft') goToPrev();
+      else if (e.key === 'ArrowRight') goToNext();
+      else if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [goToPrev, goToNext, onClose]);
+
+  // Touch swipe
+  const handleTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartX.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (dx > 50) goToPrev();
+    else if (dx < -50) goToNext();
+  };
 
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) onClose();
   };
+
+  if (!album) return null;
+
+  // Group tracks by side if any track has a side value
+  const tracks = album.tracks || [];
+  const hasSides = tracks.some(t => t.side);
+  const tracksBySide = hasSides
+    ? tracks.reduce((acc, t) => {
+        const side = t.side || '?';
+        if (!acc[side]) acc[side] = [];
+        acc[side].push(t);
+        return acc;
+      }, {})
+    : null;
 
   return (
     <div
       className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
       onClick={handleBackdropClick}
     >
-      <div className="bg-gray-800 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        {/* Cover Image */}
+      <div
+        ref={modalRef}
+        className="bg-gray-800 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto relative"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Cover Image + nav arrows */}
         <div className="aspect-square bg-gray-700 relative rounded-t-lg overflow-hidden">
           {album.coverImage ? (
             <img
@@ -28,6 +86,37 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
                   d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
                 />
               </svg>
+            </div>
+          )}
+
+          {/* Prev / Next overlay buttons */}
+          {hasPrev && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goToPrev(); }}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white rounded-full p-2 transition-colors"
+              aria-label="Previous album"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+          {hasNext && (
+            <button
+              onClick={(e) => { e.stopPropagation(); goToNext(); }}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white rounded-full p-2 transition-colors"
+              aria-label="Next album"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Position indicator */}
+          {allAlbums && allAlbums.length > 1 && currentIndex !== -1 && (
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+              {currentIndex + 1} / {allAlbums.length}
             </div>
           )}
         </div>
@@ -58,7 +147,7 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
               {album.moods.map((mood) => (
                 <span
                   key={mood}
-                  className="px-2 py-0.5 text-xs rounded-full bg-purple-600 bg-opacity-20 text-purple-300 border border-purple-500 border-opacity-30"
+                  className="px-2 py-0.5 text-xs rounded-full bg-blue-600 bg-opacity-20 text-blue-300 border border-blue-500 border-opacity-30"
                 >
                   {mood}
                 </span>
@@ -83,6 +172,53 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
                   </svg>
                   Disliked
                 </span>
+              )}
+            </div>
+          )}
+
+          {/* Track Listing */}
+          {tracks.length > 0 && (
+            <div className="mt-5">
+              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Tracks</h3>
+              {hasSides ? (
+                Object.entries(tracksBySide)
+                  .sort(([a], [b]) => a.localeCompare(b))
+                  .map(([side, sideTracks]) => (
+                    <div key={side} className="mb-3">
+                      <p className="text-xs text-gray-500 font-medium mb-1">Side {side}</p>
+                      <div className="space-y-1">
+                        {sideTracks
+                          .sort((a, b) => (a.track_number || 0) - (b.track_number || 0))
+                          .map((track) => (
+                            <div key={track.id} className="flex items-center gap-3 text-sm">
+                              <span className="text-gray-500 w-5 text-right flex-shrink-0">
+                                {track.track_number}
+                              </span>
+                              <span className="text-gray-200 flex-1 truncate">{track.title}</span>
+                              {track.duration && (
+                                <span className="text-gray-500 flex-shrink-0">{track.duration}</span>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                <div className="space-y-1">
+                  {tracks
+                    .sort((a, b) => (a.track_number || 0) - (b.track_number || 0))
+                    .map((track) => (
+                      <div key={track.id} className="flex items-center gap-3 text-sm">
+                        <span className="text-gray-500 w-5 text-right flex-shrink-0">
+                          {track.track_number}
+                        </span>
+                        <span className="text-gray-200 flex-1 truncate">{track.title}</span>
+                        {track.duration && (
+                          <span className="text-gray-500 flex-shrink-0">{track.duration}</span>
+                        )}
+                      </div>
+                    ))}
+                </div>
               )}
             </div>
           )}
