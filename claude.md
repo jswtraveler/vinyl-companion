@@ -1,5 +1,8 @@
 # Personal Vinyl Collection App - Claude Code Agent Guide
 
+## Git Commit Style
+- Never add `Co-Authored-By` trailers to git commit messages.
+
 ## Project Overview
 
 Building a Progressive Web App (PWA) for tracking a personal vinyl record collection (~100 records) with automatic album identification using free APIs and services. The app prioritizes quick data entry through image recognition and audio fingerprinting while maintaining zero ongoing costs.
