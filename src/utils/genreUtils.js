@@ -4,6 +4,37 @@
  */
 
 /**
+ * Capitalize genre names properly
+ * @param {string} genre - Genre name
+ * @returns {string} Properly capitalized genre
+ */
+export function capitalizeGenre(genre) {
+  if (!genre) return '';
+
+  const specialCases = {
+    'r&b': 'R&B',
+    'rnb': 'R&B',
+    'hiphop': 'Hip Hop',
+    'hip-hop': 'Hip Hop',
+    'hip hop': 'Hip Hop',
+    'dnb': 'Drum & Bass',
+    'drum and bass': 'Drum & Bass',
+    'uk garage': 'UK Garage',
+    'edm': 'EDM'
+  };
+
+  const lower = genre.toLowerCase().trim();
+  if (specialCases[lower]) {
+    return specialCases[lower];
+  }
+
+  return genre
+    .split(/[\s-]+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
+/**
  * Extract unique genres from albums
  * @param {Array} albums - Album collection
  * @returns {Array} Sorted array of unique genres

@@ -1,6 +1,7 @@
 import { MusicBrainzClient, DiscogsClient, CoverArtClient } from './api/music/index.js';
 import { LastFmClient } from './api/music/LastFmClient.js';
 import { isValidGenre } from '../data/musicbrainz-genres.js';
+import { capitalizeGenre } from '../utils/genreUtils.js';
 
 // Initialize Last.fm client
 const LASTFM_API_KEY = import.meta.env.VITE_LASTFM_API_KEY;
@@ -259,7 +260,7 @@ export class MetadataEnricher {
             return true;
           })
           .slice(0, 5) // Take top 5 after filtering
-          .map(tagName => this.capitalizeGenre(tagName))
+          .map(tagName => capitalizeGenre(tagName))
           .filter(Boolean);
 
         console.log(`🎵 Found ${genreTags.length} valid MusicBrainz genres:`, genreTags);
@@ -271,39 +272,6 @@ export class MetadataEnricher {
       console.error(`Error fetching Last.fm tags for ${artist} - ${album}:`, error);
       return [];
     }
-  }
-
-  /**
-   * Capitalize genre names properly
-   * @param {string} genre - Genre name
-   * @returns {string} Properly capitalized genre
-   */
-  static capitalizeGenre(genre) {
-    if (!genre) return '';
-
-    // Special cases
-    const specialCases = {
-      'r&b': 'R&B',
-      'rnb': 'R&B',
-      'hiphop': 'Hip Hop',
-      'hip-hop': 'Hip Hop',
-      'hip hop': 'Hip Hop',
-      'dnb': 'Drum & Bass',
-      'drum and bass': 'Drum & Bass',
-      'uk garage': 'UK Garage',
-      'edm': 'EDM'
-    };
-
-    const lower = genre.toLowerCase().trim();
-    if (specialCases[lower]) {
-      return specialCases[lower];
-    }
-
-    // Title case for normal genres
-    return genre
-      .split(/[\s-]+/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
   }
 
   /**

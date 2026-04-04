@@ -5,6 +5,7 @@
 
 import { LastFmClient } from './api/music/LastFmClient.js';
 import { isValidGenre } from '../data/musicbrainz-genres.js';
+import { capitalizeGenre } from '../utils/genreUtils.js';
 
 const LASTFM_API_KEY = import.meta.env.VITE_LASTFM_API_KEY;
 
@@ -116,39 +117,6 @@ export async function backfillAlbumTags(albums, onProgress, updateAlbum, force =
   }
 
   return results;
-}
-
-/**
- * Capitalize genre names properly
- * @param {string} genre - Genre name
- * @returns {string} Properly capitalized genre
- */
-function capitalizeGenre(genre) {
-  if (!genre) return '';
-
-  // Special cases
-  const specialCases = {
-    'r&b': 'R&B',
-    'rnb': 'R&B',
-    'hiphop': 'Hip Hop',
-    'hip-hop': 'Hip Hop',
-    'hip hop': 'Hip Hop',
-    'dnb': 'Drum & Bass',
-    'drum and bass': 'Drum & Bass',
-    'uk garage': 'UK Garage',
-    'edm': 'EDM'
-  };
-
-  const lower = genre.toLowerCase().trim();
-  if (specialCases[lower]) {
-    return specialCases[lower];
-  }
-
-  // Title case for normal genres
-  return genre
-    .split(/[\s-]+/)
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ');
 }
 
 /**
