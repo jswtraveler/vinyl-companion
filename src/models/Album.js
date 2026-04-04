@@ -129,8 +129,8 @@ export const AlbumSchema = {
     type: 'array',
     required: false,
     items: {
-      type: 'string',
-      enum: MUSIC_GENRES
+      type: 'string'
+      // Note: not validated against MUSIC_GENRES — API-assigned genres use MusicBrainz whitelist
     },
     description: 'Music genres (can be multiple)',
     example: ['Rock', 'Progressive Rock']
@@ -328,14 +328,6 @@ export const validateAlbum = (album, mode = 'add') => {
   
   if (album.condition && !CONDITION_GRADES.includes(album.condition)) {
     errors.push('Invalid condition grade');
-  }
-  
-  // Genre validation
-  if (album.genre && Array.isArray(album.genre)) {
-    const invalidGenres = album.genre.filter(g => !MUSIC_GENRES.includes(g));
-    if (invalidGenres.length > 0) {
-      errors.push(`Invalid genres: ${invalidGenres.join(', ')}`);
-    }
   }
   
   return {
