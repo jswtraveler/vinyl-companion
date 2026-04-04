@@ -504,10 +504,10 @@ const AlbumForm = ({
             className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
             <h3 className="text-lg font-semibold text-white">Genres</h3>
-            <svg 
+            <svg
               className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${expandedSections.genres ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
+              fill="none"
+              stroke="currentColor"
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -515,19 +515,47 @@ const AlbumForm = ({
           </button>
           {expandedSections.genres && (
             <div className="px-6 pb-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {MUSIC_GENRES.map(genre => (
-              <label key={genre} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={(formData.genre || []).includes(genre)}
-                  onChange={() => handleGenreChange(genre)}
-                  className="text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-300">{genre}</span>
-              </label>
-            ))}
-          </div>
+              {/* API-assigned genres not in the checkbox list */}
+              {(() => {
+                const apiGenres = (formData.genre || []).filter(g => !MUSIC_GENRES.includes(g));
+                if (apiGenres.length === 0) return null;
+                return (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-400 mb-2">API-assigned genres</p>
+                    <div className="flex flex-wrap gap-2">
+                      {apiGenres.map(genre => (
+                        <span
+                          key={genre}
+                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-900 text-blue-200 text-sm rounded-full border border-blue-700"
+                        >
+                          {genre}
+                          <button
+                            type="button"
+                            onClick={() => handleGenreChange(genre)}
+                            className="text-blue-400 hover:text-blue-200 leading-none"
+                            aria-label={`Remove ${genre}`}
+                          >
+                            &times;
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {MUSIC_GENRES.map(genre => (
+                  <label key={genre} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={(formData.genre || []).includes(genre)}
+                      onChange={() => handleGenreChange(genre)}
+                      className="text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-300">{genre}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           )}
         </div>
