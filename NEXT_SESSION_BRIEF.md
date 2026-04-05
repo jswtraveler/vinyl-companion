@@ -12,6 +12,8 @@ All changes committed and pushed. Supabase migrations applied.
 
 ## Recently Completed
 
+- **ArtistRecommendationSection refactor** — 854 → 84 lines; pure functions to `basicRecommendations.js`, all logic to `useRecommendations` hook (Apr 5)
+- **Genre filter scrolling pill bar** — replaced flex-wrap with horizontal scroll + expand/collapse toggle + fade gradient (Apr 4)
 - **Genre system consolidation** — single pipeline through MusicBrainz whitelist (Apr 4)
   - `capitalizeGenre` extracted to shared `genreUtils.js`
   - `DiscogsClient` now uses `isValidGenre()` + passes `release.style` through filter; up to 5 genres
@@ -33,52 +35,6 @@ All changes committed and pushed. Supabase migrations applied.
 
 ## Next Up
 
-### 0. Genre Filter — Scrolling Pill Bar
-
-**Problem:** The genre filter currently uses `flex-wrap` so all pills render in a multi-line block, consuming significant vertical space.
-
-**Solution:** Replace the wrapping flex container with a single horizontally scrollable row (no wrapping). Selected pills stay visible via their purple highlight regardless of scroll position.
-
-**Implementation — `CollectionPage.jsx` lines 245–276:**
-
-Replace the inner div from:
-```jsx
-<div className="flex-1 flex flex-wrap gap-2">
-```
-to:
-```jsx
-<div className="flex-1 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-```
-
-Add `whitespace-nowrap` or `flex-shrink-0` to each pill button so they don't compress:
-```jsx
-className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${...}`}
-```
-
-**Scrollbar hiding** — Tailwind v4 doesn't include `scrollbar-hide` by default. Add this to `src/index.css`:
-```css
-.scrollbar-hide {
-  scrollbar-width: none;
-}
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-```
-
-**Optional UX touch:** Add a subtle right-side fade gradient to hint at scrollability when overflow exists:
-```jsx
-<div className="relative flex-1 overflow-hidden">
-  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-    {/* pills */}
-  </div>
-  <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-900 pointer-events-none" />
-</div>
-```
-
-No state changes needed — `selectedGenres`, `toggleGenre`, and `availableGenres` are untouched.
-
----
-
 ### 1. Album Detail Modal — Future Features
 
 Base modal is complete. Planned enhancements:
@@ -95,14 +51,26 @@ Base modal is complete. Planned enhancements:
 
 ### 2. Large Component Refactoring
 
-**ArtistRecommendationSection.jsx (854 lines):**
-- Extract `useRecommendations` hook
-- Extract modal components (metadata refresh, Spotify backfill)
-- Extract genre/diversity filter logic
+#### Phase 1 — `ArtistRecommendationSection.jsx` (854 → 84 lines) ✅ COMPLETE (Apr 5)
 
-**AlbumForm.jsx (~640 lines):**
-- Extract form field groups into sub-components
-- Move validation logic into separate utility
+- `applyDiversityToArtists` helper deduplicates the 3 copy-pasted diversity filter blocks
+- Pure functions (`generateBasicRecommendations`, `buildArtistRecommendations`, `mergeMetadataIntoArtists`) extracted to `src/services/recommendations/basicRecommendations.js`
+- All state, effects, and callbacks extracted to `src/hooks/useRecommendations.js`
+- Component reduced to 84 lines: hook call + JSX render
+
+#### Phase 2 — `AlbumForm.jsx` (668 lines)
+
+**Step 1 — Extract `useMetadataSearch` hook**
+The debounced search state and handlers (`metadataSuggestions`, `isLoadingSuggestions`, `showSuggestions`, `searchAttempted`, `lastSearchFields`, `debounceTimer`, `searchMetadata`, `handleSelectSuggestion`, `handleSkipSuggestions`) move to `src/hooks/useMetadataSearch.js`.
+Hook signature: `useMetadataSearch(formData, mode, onApply)` → returns `{ metadataSuggestions, isLoadingSuggestions, showSuggestions, handleSelectSuggestion, handleSkipSuggestions }`.
+
+**Step 2 — Extract `MetadataSuggestionsPanel` component**
+The blue suggestions block (lines 322–411) becomes `src/components/MetadataSuggestionsPanel.jsx`.
+Props: `{ isLoadingSuggestions, suggestions, onSelect, onSkip }`.
+
+**Notes:**
+- The four collapsible sections (Basic, Physical, Genres, Collection) are left as-is — extracting them would require passing 6+ props each with no real simplification.
+- Validation is already in `validateAlbum()` in `../models/Album` — no work needed there.
 
 ---
 
