@@ -33,6 +33,7 @@ const CollectionPage = ({
 }) => {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
+  const [genresExpanded, setGenresExpanded] = useState(false);
   const [thumbFilter, setThumbFilter] = useState(null); // null = all, 'up', 'down'
   const [showTagBackfill, setShowTagBackfill] = useState(false);
   const sortDropdownRef = useRef(null);
@@ -246,11 +247,11 @@ const CollectionPage = ({
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm text-gray-400">Filter:</span>
-            <div className="relative flex-1 overflow-hidden">
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            {genresExpanded ? (
+              <div className="flex-1 flex flex-wrap gap-2">
                 <button
                   onClick={() => setSelectedGenres([])}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
+                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
                     selectedGenres.length === 0
                       ? 'bg-purple-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -262,7 +263,7 @@ const CollectionPage = ({
                   <button
                     key={genre}
                     onClick={() => toggleGenre(genre)}
-                    className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
+                    className={`px-3 py-1 text-xs rounded-full transition-colors ${
                       selectedGenres.includes(genre)
                         ? 'bg-purple-600 text-white'
                         : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -272,8 +273,52 @@ const CollectionPage = ({
                   </button>
                 ))}
               </div>
-              <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-900 pointer-events-none" />
-            </div>
+            ) : (
+              <div className="relative flex-1 overflow-hidden">
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                  <button
+                    onClick={() => setSelectedGenres([])}
+                    className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
+                      selectedGenres.length === 0
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    All Genres
+                  </button>
+                  {availableGenres.map(genre => (
+                    <button
+                      key={genre}
+                      onClick={() => toggleGenre(genre)}
+                      className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
+                        selectedGenres.includes(genre)
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                      }`}
+                    >
+                      {genre}
+                    </button>
+                  ))}
+                </div>
+                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-900 pointer-events-none" />
+              </div>
+            )}
+            <button
+              onClick={() => setGenresExpanded(e => !e)}
+              className="text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0 p-1"
+              title={genresExpanded ? 'Collapse genres' : 'Expand genres'}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className={`w-4 h-4 transition-transform ${genresExpanded ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
