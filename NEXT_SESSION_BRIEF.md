@@ -12,6 +12,7 @@ All changes committed and pushed. Supabase migrations applied.
 
 ## Recently Completed
 
+- **AlbumForm refactor** — 668 → 295 lines; metadata search to `useMetadataSearch` hook, suggestions UI to `MetadataSuggestionsPanel` component (Apr 5)
 - **ArtistRecommendationSection refactor** — 854 → 84 lines; pure functions to `basicRecommendations.js`, all logic to `useRecommendations` hook (Apr 5)
 - **Genre filter scrolling pill bar** — replaced flex-wrap with horizontal scroll + expand/collapse toggle + fade gradient (Apr 4)
 - **Genre system consolidation** — single pipeline through MusicBrainz whitelist (Apr 4)
@@ -58,19 +59,11 @@ Base modal is complete. Planned enhancements:
 - All state, effects, and callbacks extracted to `src/hooks/useRecommendations.js`
 - Component reduced to 84 lines: hook call + JSX render
 
-#### Phase 2 — `AlbumForm.jsx` (668 lines)
+#### Phase 2 — `AlbumForm.jsx` (668 → 295 lines) ✅ COMPLETE (Apr 5)
 
-**Step 1 — Extract `useMetadataSearch` hook**
-The debounced search state and handlers (`metadataSuggestions`, `isLoadingSuggestions`, `showSuggestions`, `searchAttempted`, `lastSearchFields`, `debounceTimer`, `searchMetadata`, `handleSelectSuggestion`, `handleSkipSuggestions`) move to `src/hooks/useMetadataSearch.js`.
-Hook signature: `useMetadataSearch(formData, mode, onApply)` → returns `{ metadataSuggestions, isLoadingSuggestions, showSuggestions, handleSelectSuggestion, handleSkipSuggestions }`.
-
-**Step 2 — Extract `MetadataSuggestionsPanel` component**
-The blue suggestions block (lines 322–411) becomes `src/components/MetadataSuggestionsPanel.jsx`.
-Props: `{ isLoadingSuggestions, suggestions, onSelect, onSkip }`.
-
-**Notes:**
-- The four collapsible sections (Basic, Physical, Genres, Collection) are left as-is — extracting them would require passing 6+ props each with no real simplification.
-- Validation is already in `validateAlbum()` in `../models/Album` — no work needed there.
+- Debounced search state and handlers extracted to `src/hooks/useMetadataSearch.js` — signature: `useMetadataSearch(formData, mode, onApply)`
+- Suggestions UI extracted to `src/components/MetadataSuggestionsPanel.jsx` — props: `{ isLoadingSuggestions, suggestions, onSelect, onSkip }`
+- Collapsible sections (Basic, Physical, Genres, Collection) left as-is — no simplification from extracting them
 
 ---
 
