@@ -33,6 +33,52 @@ All changes committed and pushed. Supabase migrations applied.
 
 ## Next Up
 
+### 0. Genre Filter — Scrolling Pill Bar
+
+**Problem:** The genre filter currently uses `flex-wrap` so all pills render in a multi-line block, consuming significant vertical space.
+
+**Solution:** Replace the wrapping flex container with a single horizontally scrollable row (no wrapping). Selected pills stay visible via their purple highlight regardless of scroll position.
+
+**Implementation — `CollectionPage.jsx` lines 245–276:**
+
+Replace the inner div from:
+```jsx
+<div className="flex-1 flex flex-wrap gap-2">
+```
+to:
+```jsx
+<div className="flex-1 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+```
+
+Add `whitespace-nowrap` or `flex-shrink-0` to each pill button so they don't compress:
+```jsx
+className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${...}`}
+```
+
+**Scrollbar hiding** — Tailwind v4 doesn't include `scrollbar-hide` by default. Add this to `src/index.css`:
+```css
+.scrollbar-hide {
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+```
+
+**Optional UX touch:** Add a subtle right-side fade gradient to hint at scrollability when overflow exists:
+```jsx
+<div className="relative flex-1 overflow-hidden">
+  <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+    {/* pills */}
+  </div>
+  <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-900 pointer-events-none" />
+</div>
+```
+
+No state changes needed — `selectedGenres`, `toggleGenre`, and `availableGenres` are untouched.
+
+---
+
 ### 1. Album Detail Modal — Future Features
 
 Base modal is complete. Planned enhancements:

@@ -246,30 +246,33 @@ const CollectionPage = ({
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <span className="text-sm text-gray-400">Filter:</span>
-            <div className="flex-1 flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedGenres([])}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                  selectedGenres.length === 0
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                All Genres
-              </button>
-              {availableGenres.map(genre => (
+            <div className="relative flex-1 overflow-hidden">
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
                 <button
-                  key={genre}
-                  onClick={() => toggleGenre(genre)}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                    selectedGenres.includes(genre)
+                  onClick={() => setSelectedGenres([])}
+                  className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
+                    selectedGenres.length === 0
                       ? 'bg-purple-600 text-white'
                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                   }`}
                 >
-                  {genre}
+                  All Genres
                 </button>
-              ))}
+                {availableGenres.map(genre => (
+                  <button
+                    key={genre}
+                    onClick={() => toggleGenre(genre)}
+                    className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
+                      selectedGenres.includes(genre)
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
+              <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-900 pointer-events-none" />
             </div>
           </div>
         </div>
