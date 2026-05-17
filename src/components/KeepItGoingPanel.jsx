@@ -1,13 +1,20 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useCallback } from 'react';
 import { findSimilarOwned } from '../utils/collectionSimilarity';
 
 export default function KeepItGoingPanel({ targetAlbum, allAlbums, onSelectAlbum }) {
   const [expanded, setExpanded] = useState(false);
+  // Shared ref so every card can read the container's scrollLeft at pointerdown
+  const scrollRef = useRef(null);
+  const scrollAtPointerDown = useRef(0);
 
   const similar = useMemo(
     () => findSimilarOwned(targetAlbum, allAlbums),
     [targetAlbum, allAlbums]
   );
+
+  const handleScrollerPointerDown = useCallback(() => {
+    scrollAtPointerDown.current = scrollRef.current?.scrollLeft ?? 0;
+  }, []);
 
   if (!targetAlbum) return null;
 
@@ -59,6 +66,8 @@ export default function KeepItGoingPanel({ targetAlbum, allAlbums, onSelectAlbum
             </p>
           ) : (
             <div
+              ref={scrollRef}
+              onPointerDown={handleScrollerPointerDown}
               className="scrollbar-hide"
               style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 6 }}
             >
@@ -68,6 +77,8 @@ export default function KeepItGoingPanel({ targetAlbum, allAlbums, onSelectAlbum
                   album={album}
                   reason={reasons[0]}
                   onSelectAlbum={onSelectAlbum}
+                  scrollRef={scrollRef}
+                  scrollAtPointerDown={scrollAtPointerDown}
                 />
               ))}
             </div>
@@ -79,31 +90,22 @@ export default function KeepItGoingPanel({ targetAlbum, allAlbums, onSelectAlbum
 }
 
 /**
- * DragSafeCard — fires onSelectAlbum only when the pointer hasn't moved
- * more than 6px, so scroll-dragging the carousel doesn't accidentally
- * switch to a new album.
+ * DragSafeCard — only fires onSelectAlbum when the scroll container
+ * hasn't moved since pointerdown. This correctly handles touch-scroll
+ * where the finger barely moves but the container scrolls.
  */
-function DragSafeCard({ album, reason, onSelectAlbum }) {
-  const pointerStart = useRef(null);
-  const DRAG_THRESHOLD = 6; // px
+function DragSafeCard({ album, reason, onSelectAlbum, scrollRef, scrollAtPointerDown }) {
+  const SCROLL_THRESHOLD = 4; // px of container scrollLeft change
 
-  const handlePointerDown = (e) => {
-    pointerStart.current = { x: e.clientX, y: e.clientY };
-  };
-
-  const handlePointerUp = (e) => {
-    if (!pointerStart.current) return;
-    const dx = Math.abs(e.clientX - pointerStart.current.x);
-    const dy = Math.abs(e.clientY - pointerStart.current.y);
-    pointerStart.current = null;
-    if (dx < DRAG_THRESHOLD && dy < DRAG_THRESHOLD) {
+  const handlePointerUp = () => {
+    const scrollNow = scrollRef.current?.scrollLeft ?? 0;
+    if (Math.abs(scrollNow - scrollAtPointerDown.current) < SCROLL_THRESHOLD) {
       onSelectAlbum(album);
     }
   };
 
   return (
     <div
-      onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
       style={{
         flexShrink: 0,
