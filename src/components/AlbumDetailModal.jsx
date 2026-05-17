@@ -5,20 +5,13 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
   const touchStartX = useRef(null);
   const modalRef = useRef(null);
 
-  // Find current index in allAlbums for navigation
   const currentIndex = allAlbums ? allAlbums.findIndex(a => a.id === album?.id) : -1;
   const hasPrev = currentIndex > 0;
   const hasNext = currentIndex !== -1 && currentIndex < allAlbums.length - 1;
 
-  const goToPrev = useCallback(() => {
-    if (hasPrev) onSelectSimilar(allAlbums[currentIndex - 1]);
-  }, [hasPrev, currentIndex, allAlbums, onSelectSimilar]);
+  const goToPrev = useCallback(() => { if (hasPrev) onSelectSimilar(allAlbums[currentIndex - 1]); }, [hasPrev, currentIndex, allAlbums, onSelectSimilar]);
+  const goToNext = useCallback(() => { if (hasNext) onSelectSimilar(allAlbums[currentIndex + 1]); }, [hasNext, currentIndex, allAlbums, onSelectSimilar]);
 
-  const goToNext = useCallback(() => {
-    if (hasNext) onSelectSimilar(allAlbums[currentIndex + 1]);
-  }, [hasNext, currentIndex, allAlbums, onSelectSimilar]);
-
-  // Keyboard navigation
   useEffect(() => {
     const handleKey = (e) => {
       if (e.key === 'ArrowLeft') goToPrev();
@@ -29,11 +22,7 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
     return () => window.removeEventListener('keydown', handleKey);
   }, [goToPrev, goToNext, onClose]);
 
-  // Touch swipe
-  const handleTouchStart = (e) => {
-    touchStartX.current = e.touches[0].clientX;
-  };
-
+  const handleTouchStart = (e) => { touchStartX.current = e.touches[0].clientX; };
   const handleTouchEnd = (e) => {
     if (touchStartX.current === null) return;
     const dx = e.changedTouches[0].clientX - touchStartX.current;
@@ -42,13 +31,8 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
     else if (dx < -50) goToNext();
   };
 
-  const handleBackdropClick = (e) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
   if (!album) return null;
 
-  // Group tracks by side if any track has a side value
   const tracks = album.tracks || [];
   const hasSides = tracks.some(t => t.side);
   const tracksBySide = hasSides
@@ -62,113 +46,167 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-      onClick={handleBackdropClick}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         ref={modalRef}
-        className="bg-gray-800 rounded-lg max-w-lg w-full max-h-[90vh] overflow-y-auto relative"
+        style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border2)',
+          borderRadius: 6,
+          width: '100%',
+          maxWidth: 480,
+          maxHeight: '92vh',
+          overflowY: 'auto',
+          boxShadow: '0 24px 64px rgba(0,0,0,0.8)',
+          position: 'relative'
+        }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Cover Image + nav arrows */}
-        <div className="aspect-square bg-gray-700 relative rounded-t-lg overflow-hidden">
+        {/* Cover image */}
+        <div style={{ aspectRatio: '1', background: 'var(--color-surface2)', position: 'relative', overflow: 'hidden' }}>
           {album.coverImage ? (
             <img
               src={album.coverImage}
               alt={`${album.title} cover`}
-              className="w-full h-full object-cover"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">
-              <svg className="w-24 h-24" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+            <div style={{
+              width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: `repeating-linear-gradient(-45deg, var(--color-surface2), var(--color-surface2) 5px, var(--color-surface) 5px, var(--color-surface) 15px)`
+            }}>
+              <svg width="64" height="64" fill="none" stroke="var(--color-border2)" strokeWidth="1" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round"
                   d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
                 />
               </svg>
             </div>
           )}
 
-          {/* Prev / Next overlay buttons */}
+          {/* Close button */}
+          <button
+            onClick={onClose}
+            style={{
+              position: 'absolute', top: 10, right: 10,
+              width: 30, height: 30, borderRadius: '50%',
+              background: 'rgba(10,9,8,0.7)', backdropFilter: 'blur(4px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'rgba(255,255,255,0.8)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer'
+            }}
+            aria-label="Close"
+          >
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          {/* Prev / Next */}
           {hasPrev && (
             <button
               onClick={(e) => { e.stopPropagation(); goToPrev(); }}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white rounded-full p-2 transition-colors"
-              aria-label="Previous album"
+              style={{
+                position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)',
+                width: 34, height: 34, borderRadius: '50%',
+                background: 'rgba(10,9,8,0.65)', backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.8)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+              }}
+              aria-label="Previous"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
           )}
           {hasNext && (
             <button
               onClick={(e) => { e.stopPropagation(); goToNext(); }}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/75 text-white rounded-full p-2 transition-colors"
-              aria-label="Next album"
+              style={{
+                position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+                width: 34, height: 34, borderRadius: '50%',
+                background: 'rgba(10,9,8,0.65)', backdropFilter: 'blur(4px)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                color: 'rgba(255,255,255,0.8)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+              }}
+              aria-label="Next"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </button>
           )}
 
           {/* Position indicator */}
           {allAlbums && allAlbums.length > 1 && currentIndex !== -1 && (
-            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+            <div style={{
+              position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+              background: 'rgba(10,9,8,0.65)', backdropFilter: 'blur(4px)',
+              borderRadius: 20, padding: '2px 10px',
+              fontSize: 10, color: 'rgba(255,255,255,0.6)', letterSpacing: '0.06em'
+            }}>
               {currentIndex + 1} / {allAlbums.length}
             </div>
           )}
         </div>
 
-        {/* Info Section */}
-        <div className="p-5">
-          <h2 className="text-xl font-bold text-white">{album.title}</h2>
-          <p className="text-gray-300 mt-1">{album.artist}</p>
-          {album.year && <p className="text-gray-400 text-sm mt-1">{album.year}</p>}
+        {/* Info section */}
+        <div style={{ padding: '18px 20px 20px' }}>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 3 }}>
+            {album.title}
+          </h2>
+          <p style={{ fontSize: 14, color: 'var(--color-text-muted)', marginBottom: 4 }}>{album.artist}</p>
 
-          {/* Genre Tags */}
+          {/* Meta row */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+            {album.year && (
+              <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{album.year}</span>
+            )}
+            {album.format && album.format !== 'LP' && (
+              <span className="genre-tag">{album.format}</span>
+            )}
+            {album.label && (
+              <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{album.label}</span>
+            )}
+            {album.condition && (
+              <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>{album.condition}</span>
+            )}
+          </div>
+
+          {/* Genre tags */}
           {album.genre && album.genre.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-3">
-              {album.genre.map((g) => (
-                <span
-                  key={g}
-                  className="px-2 py-0.5 text-xs rounded-full bg-purple-600 bg-opacity-20 text-purple-300 border border-purple-500 border-opacity-30"
-                >
-                  {g}
-                </span>
-              ))}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+              {album.genre.map(g => <span key={g} className="genre-tag">{g}</span>)}
             </div>
           )}
 
-          {/* Mood Tags */}
+          {/* Mood tags */}
           {album.moods && album.moods.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {album.moods.map((mood) => (
-                <span
-                  key={mood}
-                  className="px-2 py-0.5 text-xs rounded-full bg-blue-600 bg-opacity-20 text-blue-300 border border-blue-500 border-opacity-30"
-                >
-                  {mood}
-                </span>
-              ))}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 10 }}>
+              {album.moods.map(mood => <span key={mood} className="mood-tag">{mood}</span>)}
             </div>
           )}
 
-          {/* Thumb Status */}
+          {/* Thumb status */}
           {album.thumb && (
-            <div className="mt-3">
+            <div style={{ marginBottom: 12 }}>
               {album.thumb === 'up' ? (
-                <span className="text-green-400 flex items-center gap-1 text-sm">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zm-9 11H3a2 2 0 01-2-2v-7a2 2 0 012-2h2" />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#5fad79' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" strokeWidth="0">
+                    <path d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zm-9 11H3a2 2 0 01-2-2v-7a2 2 0 012-2h2" />
                   </svg>
                   Liked
                 </span>
               ) : (
-                <span className="text-red-400 flex items-center gap-1 text-sm">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zm9-13h2a2 2 0 012 2v7a2 2 0 01-2 2h-2" />
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#c0504a' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" strokeWidth="0">
+                    <path d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zm9-13h2a2 2 0 012 2v7a2 2 0 01-2 2h-2" />
                   </svg>
                   Disliked
                 </span>
@@ -176,27 +214,33 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
             </div>
           )}
 
-          {/* Track Listing */}
+          {/* Track listing */}
           {tracks.length > 0 && (
-            <div className="mt-5">
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-2">Tracks</h3>
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 10 }}>
+                Tracks
+              </div>
               {hasSides ? (
                 Object.entries(tracksBySide)
                   .sort(([a], [b]) => a.localeCompare(b))
                   .map(([side, sideTracks]) => (
-                    <div key={side} className="mb-3">
-                      <p className="text-xs text-gray-500 font-medium mb-1">Side {side}</p>
-                      <div className="space-y-1">
+                    <div key={side} style={{ marginBottom: 12 }}>
+                      <p style={{ fontSize: 10, color: 'var(--color-amber)', letterSpacing: '0.08em', marginBottom: 6 }}>
+                        Side {side}
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                         {sideTracks
                           .sort((a, b) => (a.track_number || 0) - (b.track_number || 0))
-                          .map((track) => (
-                            <div key={track.id} className="flex items-center gap-3 text-sm">
-                              <span className="text-gray-500 w-5 text-right flex-shrink-0">
+                          .map(track => (
+                            <div key={track.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                              <span style={{ width: 18, textAlign: 'right', flexShrink: 0, color: 'var(--color-text-dim)', fontSize: 11 }}>
                                 {track.track_number}
                               </span>
-                              <span className="text-gray-200 flex-1 truncate">{track.title}</span>
+                              <span style={{ flex: 1, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {track.title}
+                              </span>
                               {track.duration && (
-                                <span className="text-gray-500 flex-shrink-0">{track.duration}</span>
+                                <span style={{ flexShrink: 0, color: 'var(--color-text-dim)', fontSize: 11 }}>{track.duration}</span>
                               )}
                             </div>
                           ))}
@@ -204,17 +248,19 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
                     </div>
                   ))
               ) : (
-                <div className="space-y-1">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                   {tracks
                     .sort((a, b) => (a.track_number || 0) - (b.track_number || 0))
-                    .map((track) => (
-                      <div key={track.id} className="flex items-center gap-3 text-sm">
-                        <span className="text-gray-500 w-5 text-right flex-shrink-0">
+                    .map(track => (
+                      <div key={track.id} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13 }}>
+                        <span style={{ width: 18, textAlign: 'right', flexShrink: 0, color: 'var(--color-text-dim)', fontSize: 11 }}>
                           {track.track_number}
                         </span>
-                        <span className="text-gray-200 flex-1 truncate">{track.title}</span>
+                        <span style={{ flex: 1, color: 'var(--color-text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {track.title}
+                        </span>
                         {track.duration && (
-                          <span className="text-gray-500 flex-shrink-0">{track.duration}</span>
+                          <span style={{ flexShrink: 0, color: 'var(--color-text-dim)', fontSize: 11 }}>{track.duration}</span>
                         )}
                       </div>
                     ))}
@@ -223,29 +269,21 @@ export default function AlbumDetailModal({ album, allAlbums, onClose, onEdit, on
             </div>
           )}
 
-          {/* Keep It Going */}
-          <div className="mt-4">
-            <KeepItGoingPanel
-              targetAlbum={album}
-              allAlbums={allAlbums}
-              onSelectAlbum={onSelectSimilar}
-            />
-          </div>
+          {/* Keep it going */}
+          <KeepItGoingPanel
+            targetAlbum={album}
+            allAlbums={allAlbums}
+            onSelectAlbum={onSelectSimilar}
+          />
 
-          {/* Action Buttons */}
-          <div className="flex gap-3 mt-4">
+          {/* Actions */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             {onEdit && (
-              <button
-                onClick={() => onEdit(album)}
-                className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors text-sm font-medium"
-              >
+              <button onClick={() => onEdit(album)} className="btn-primary" style={{ flex: 1, justifyContent: 'center' }}>
                 Edit
               </button>
             )}
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm"
-            >
+            <button onClick={onClose} className="btn-ghost" style={{ flex: 1, textAlign: 'center' }}>
               Close
             </button>
           </div>
