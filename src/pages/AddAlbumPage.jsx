@@ -1,12 +1,13 @@
 /**
  * AddAlbumPage Component
  *
- * Three methods for adding albums to collection:
+ * Four methods for adding albums to collection:
  * 1. Find by Name (Primary) - Search database
  * 2. Identify from Image - Camera/upload
  * 3. Manual Entry - Full form
+ * 4. Add Multiple - Bulk add via text list
  */
-const AddAlbumPage = ({ onFindByName, onIdentifyImage, onManualEntry }) => {
+const AddAlbumPage = ({ onFindByName, onIdentifyImage, onManualEntry, onBulkAdd }) => {
   return (
     <div className="pb-20">
       {/* Header */}
@@ -36,6 +37,31 @@ const AddAlbumPage = ({ onFindByName, onIdentifyImage, onManualEntry }) => {
               </p>
               <div className="flex items-center text-purple-400 text-sm font-medium">
                 <span>Search Now</span>
+                <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </button>
+
+        {/* Add Multiple */}
+        <button
+          onClick={onBulkAdd}
+          className="w-full bg-gray-800 border border-gray-700 rounded-xl p-6 hover:bg-gray-750 hover:border-purple-700 transition-all duration-200 text-left group"
+        >
+          <div className="flex items-start gap-4">
+            <div className="text-5xl flex-shrink-0">📋</div>
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold text-white mb-2 group-hover:text-gray-300 transition-colors">
+                Add Multiple
+              </h3>
+              <div className="h-px bg-gray-700 my-3"></div>
+              <p className="text-gray-400 text-sm mb-4">
+                Paste a list of album names and add them all at once — we'll search and match each one automatically.
+              </p>
+              <div className="flex items-center text-gray-400 text-sm font-medium">
+                <span>Bulk Add</span>
                 <svg className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
@@ -105,6 +131,7 @@ const AddAlbumPage = ({ onFindByName, onIdentifyImage, onManualEntry }) => {
             <h4 className="text-sm font-semibold text-white mb-1">Tips</h4>
             <ul className="text-sm text-gray-400 space-y-1">
               <li>• <strong className="text-gray-300">Find by Name</strong> is the quickest and most accurate method</li>
+              <li>• <strong className="text-gray-300">Add Multiple</strong> lets you build a list and match them all at once</li>
               <li>• <strong className="text-gray-300">Image Identification</strong> works best with clear, well-lit photos</li>
               <li>• <strong className="text-gray-300">Manual Entry</strong> gives you full control over all details</li>
             </ul>

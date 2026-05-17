@@ -19,6 +19,7 @@ import AddAlbumPage from './pages/AddAlbumPage'
 import BottomTabBar from './components/navigation/BottomTabBar'
 import QuickAddModal from './components/QuickAddModal'
 import AlbumDetailModal from './components/AlbumDetailModal'
+import BulkAddModal from './components/BulkAddModal'
 
 function App() {
   // Use custom hooks for cleaner component
@@ -59,6 +60,7 @@ function App() {
   // Tab navigation state
   const [currentTab, setCurrentTab] = useState('collection')
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [showBulkAdd, setShowBulkAdd] = useState(false)
 
   // Close sort dropdown when clicking outside
   useEffect(() => {
@@ -378,6 +380,14 @@ function App() {
     setEditingAlbum(null);
   };
 
+  const handleAddPageBulkAdd = () => {
+    setShowBulkAdd(true);
+  };
+
+  const handleBulkSaveAlbum = async (albumData) => {
+    await saveAlbumToDb(albumData, null);
+  };
+
   const toggleStats = () => {
     setShowStats(!showStats);
   };
@@ -438,6 +448,7 @@ function App() {
             onFindByName={handleAddPageFindByName}
             onIdentifyImage={handleAddPageIdentifyImage}
             onManualEntry={handleAddPageManualEntry}
+            onBulkAdd={handleAddPageBulkAdd}
           />
         </div>
       </>
@@ -606,6 +617,16 @@ function App() {
               setEditingAlbum(newAlbum);
               setShowAddForm(true);
             }}
+          />
+        )}
+
+        {/* Bulk Add Modal */}
+        {showBulkAdd && (
+          <BulkAddModal
+            onClose={() => setShowBulkAdd(false)}
+            onSaveAlbums={handleBulkSaveAlbum}
+            onGoToCollection={() => setCurrentTab('collection')}
+            existingAlbums={albums}
           />
         )}
 
