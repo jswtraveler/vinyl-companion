@@ -456,54 +456,52 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Minimal header - only shown on non-collection pages or as fallback */}
+    <div style={{ minHeight: '100vh', background: 'var(--color-bg)' }}>
+      {/* Minimal header - only shown on non-collection pages */}
       {currentTab !== 'collection' && (
-        <header className="bg-gray-900 border-b border-gray-800">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between">
-              {/* App name on desktop, hidden on mobile */}
-              <div className="hidden md:block">
-                <h1 className="text-lg font-semibold text-white">Vinyl Companion</h1>
-              </div>
+        <header style={{
+          background: 'var(--color-surface)',
+          borderBottom: '1px solid var(--color-border)',
+          padding: '10px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <div className="wordmark" style={{ fontSize: 18 }}>Vinyl<span>.</span></div>
 
-              {/* Database Status - compact */}
-              <div className="flex items-center gap-2 ml-auto">
-                {authLoading ? (
-                  <span className="text-xs text-gray-400">Loading...</span>
-                ) : useCloudDatabase && user ? (
-                  <div className="flex items-center gap-2 group cursor-pointer" title={user.email}>
-                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                    <span className="text-xs text-gray-400 hidden md:inline">Cloud</span>
-                  </div>
-                ) : (
-                  <div
-                    className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
-                    onClick={() => {
-                      console.log('Local indicator clicked, opening auth modal');
-                      setShowAuth(true);
-                    }}
-                    title="Click to sign in"
-                  >
-                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                    <span className="text-xs text-gray-400 hidden md:inline">Local</span>
-                  </div>
-                )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {authLoading ? (
+              <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-text-dim)' }} />
+            ) : useCloudDatabase && user ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} title={user.email}>
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#5fad79' }} />
+                <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>Cloud</span>
               </div>
-            </div>
+            ) : (
+              <div
+                style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                onClick={() => setShowAuth(true)}
+                title="Local — click to sign in"
+              >
+                <div style={{ width: 7, height: 7, borderRadius: '50%', background: '#5080d0' }} />
+                <span style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>Local</span>
+              </div>
+            )}
           </div>
         </header>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 16px' }}>
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-red-800">{error}</p>
-            </div>
+          <div style={{
+            marginBottom: 16, padding: '12px 16px', borderRadius: 4,
+            background: 'rgba(192,80,74,0.1)', border: '1px solid rgba(192,80,74,0.3)',
+            display: 'flex', alignItems: 'center', gap: 10
+          }}>
+            <svg width="16" height="16" fill="none" stroke="#c0504a" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p style={{ fontSize: 13, color: '#e0706a' }}>{error}</p>
           </div>
         )}
 
@@ -523,22 +521,22 @@ function App() {
         {showAddForm && (
           <div style={{
             position: 'fixed',
-            top: '0',
-            left: '0',
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.75)',
             zIndex: 1000,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            padding: 16
           }}>
             <div style={{
-              backgroundColor: '#1f2937',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border2)',
+              borderRadius: 6,
+              boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
               padding: '24px',
-              borderRadius: '8px',
               maxWidth: '600px',
-              width: '90%',
+              width: '100%',
               maxHeight: '90vh',
               overflowY: 'auto'
             }}>

@@ -3,11 +3,6 @@ import AlbumCard from '../components/AlbumCard';
 import SearchBar from '../components/SearchBar';
 import TagBackfillModal from '../components/TagBackfillModal';
 
-/**
- * CollectionPage Component
- *
- * Displays user's vinyl collection with search, sort, and quick stats
- */
 const CollectionPage = ({
   albums,
   loading,
@@ -34,11 +29,10 @@ const CollectionPage = ({
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [selectedGenres, setSelectedGenres] = useState([]);
   const [genresExpanded, setGenresExpanded] = useState(false);
-  const [thumbFilter, setThumbFilter] = useState(null); // null = all, 'up', 'down'
+  const [thumbFilter, setThumbFilter] = useState(null);
   const [showTagBackfill, setShowTagBackfill] = useState(false);
   const sortDropdownRef = useRef(null);
 
-  // Extract unique genres from albums
   const availableGenres = useMemo(() => {
     const genreSet = new Set();
     albums.forEach(album => {
@@ -49,13 +43,11 @@ const CollectionPage = ({
     return Array.from(genreSet).sort();
   }, [albums]);
 
-  // Thumb counts for filter buttons
   const thumbCounts = useMemo(() => ({
     up: albums.filter(a => a.thumb === 'up').length,
     down: albums.filter(a => a.thumb === 'down').length
   }), [albums]);
 
-  // Filter albums by selected genres and thumb filter
   const displayedAlbums = useMemo(() => {
     let result = filteredAndSortedAlbums;
     if (selectedGenres.length > 0) {
@@ -72,249 +64,148 @@ const CollectionPage = ({
 
   const toggleGenre = (genre) => {
     setSelectedGenres(prev =>
-      prev.includes(genre)
-        ? prev.filter(g => g !== genre)
-        : [...prev, genre]
+      prev.includes(genre) ? prev.filter(g => g !== genre) : [...prev, genre]
     );
   };
 
+  const sortLabels = {
+    artist: 'Artist',
+    title: 'Title',
+    year: 'Year',
+    dateAdded: 'Date Added',
+  };
+
   return (
-    <div className="pb-20">
-      {/* Mobile Header - Minimal */}
-      <div className="md:hidden mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm text-gray-400">
-            {loading ? '...' : `${filteredAndSortedAlbums.length} albums`}
+    <div style={{ paddingBottom: 80 }}>
+
+      {/* ── Header ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        {/* Wordmark */}
+        <div>
+          <div className="wordmark">
+            Vinyl<span>.</span>
           </div>
-          {/* Database Status Indicator - Mobile */}
-          <div className="flex items-center gap-2">
-            {authLoading ? (
-              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-            ) : useCloudDatabase && user ? (
-              <div className="w-2 h-2 bg-green-500 rounded-full" title="Cloud sync active"></div>
-            ) : (
-              <div
-                className="w-2 h-2 bg-blue-500 rounded-full cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => {
-                  console.log('Mobile local indicator clicked - opening sign in');
-                  if (onSignIn) onSignIn();
-                }}
-                title="Local storage - Click to sign in"
-              ></div>
-            )}
+          <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 1 }}>
+            {loading ? '…' : `${filteredAndSortedAlbums.length} record${filteredAndSortedAlbums.length !== 1 ? 's' : ''}`}
           </div>
         </div>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <SearchBar
-              value={searchQuery}
-              onChange={onSearchChange}
-              placeholder="Search..."
-            />
-          </div>
+
+        {/* Right controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Stats toggle */}
           <button
             onClick={onToggleStats}
-            className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            title={showStats ? 'Hide Stats' : 'Show Stats'}
+            className="btn-outline"
+            title={showStats ? 'Hide stats' : 'Show stats'}
+            style={{ padding: '6px 10px' }}
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </button>
-        </div>
-      </div>
 
-      {/* Desktop Header - Option 4 Style */}
-      <div className="hidden md:flex items-center justify-between mb-4 gap-4">
-        <h2 className="text-xl font-semibold text-white">
-          Your Collection ({loading ? '...' : `${filteredAndSortedAlbums.length} albums`})
-        </h2>
-
-        <div className="flex items-center gap-2">
-          <div className="w-64">
-            <SearchBar
-              value={searchQuery}
-              onChange={onSearchChange}
-              placeholder="Search your collection..."
-            />
-          </div>
-
-          <div className="relative" ref={sortDropdownRef}>
+          {/* Sort */}
+          <div style={{ position: 'relative' }} ref={sortDropdownRef}>
             <button
               onClick={() => setShowSortDropdown(!showSortDropdown)}
-              className="px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2"
+              className="btn-outline"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+              <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
               </svg>
-              Sort
+              {sortLabels[sortBy]}
+              <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                style={{ opacity: 0.5 }}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
             </button>
 
             {showSortDropdown && (
-              <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10">
-                <div className="py-1">
+              <div className="sort-dropdown">
+                {Object.entries(sortLabels).map(([key, label]) => (
                   <button
+                    key={key}
                     onClick={() => {
-                      onSortChange('artist', sortBy === 'artist' && sortOrder === 'asc' ? 'desc' : 'asc');
+                      onSortChange(key, sortBy === key && sortOrder === 'asc' ? 'desc' : 'asc');
                       setShowSortDropdown(false);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
+                    className={`sort-option ${sortBy === key ? 'sort-option--active' : ''}`}
                   >
-                    <span>Artist</span>
-                    {sortBy === 'artist' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                    {label}
+                    {sortBy === key && (
+                      <span style={{ fontSize: 11 }}>{sortOrder === 'asc' ? '↑' : '↓'}</span>
                     )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      onSortChange('title', sortBy === 'title' && sortOrder === 'asc' ? 'desc' : 'asc');
-                      setShowSortDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                  >
-                    <span>Title</span>
-                    {sortBy === 'title' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      onSortChange('year', sortBy === 'year' && sortOrder === 'asc' ? 'desc' : 'asc');
-                      setShowSortDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                  >
-                    <span>Year</span>
-                    {sortBy === 'year' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => {
-                      onSortChange('dateAdded', sortBy === 'dateAdded' && sortOrder === 'asc' ? 'desc' : 'asc');
-                      setShowSortDropdown(false);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                  >
-                    <span>Date Added</span>
-                    {sortBy === 'dateAdded' && (
-                      <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          <button
-            onClick={onToggleStats}
-            className="px-4 py-2 bg-gray-800 border border-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
-            title={showStats ? 'Hide Stats' : 'Show Stats'}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
-          </button>
-
-          {/* Database Status - Desktop */}
-          <div className="flex items-center gap-2 ml-2">
-            {authLoading ? (
-              <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-            ) : useCloudDatabase && user ? (
-              <div className="flex items-center gap-2 group cursor-pointer" title={user.email}>
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-xs text-gray-400">Cloud</span>
-              </div>
-            ) : (
-              <div
-                className="flex items-center gap-2 cursor-pointer hover:opacity-70 transition-opacity"
-                onClick={() => {
-                  console.log('Desktop local indicator clicked - opening sign in');
-                  if (onSignIn) onSignIn();
-                }}
-                title="Local storage - Click to sign in"
-              >
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="text-xs text-gray-400">Local</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Genre Filter Buttons */}
-      {availableGenres.length > 0 && (
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-sm text-gray-400">Filter:</span>
-            {genresExpanded ? (
-              <div className="flex-1 flex flex-wrap gap-2">
-                <button
-                  onClick={() => setSelectedGenres([])}
-                  className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                    selectedGenres.length === 0
-                      ? 'bg-purple-600 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                  }`}
-                >
-                  All Genres
-                </button>
-                {availableGenres.map(genre => (
-                  <button
-                    key={genre}
-                    onClick={() => toggleGenre(genre)}
-                    className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                      selectedGenres.includes(genre)
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    {genre}
                   </button>
                 ))}
               </div>
-            ) : (
-              <div className="relative flex-1 overflow-hidden">
-                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                  <button
-                    onClick={() => setSelectedGenres([])}
-                    className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
-                      selectedGenres.length === 0
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                    }`}
-                  >
-                    All Genres
-                  </button>
-                  {availableGenres.map(genre => (
-                    <button
-                      key={genre}
-                      onClick={() => toggleGenre(genre)}
-                      className={`px-3 py-1 text-xs rounded-full transition-colors flex-shrink-0 ${
-                        selectedGenres.includes(genre)
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                      }`}
-                    >
-                      {genre}
-                    </button>
-                  ))}
-                </div>
-                <div className="absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-gray-900 pointer-events-none" />
-              </div>
             )}
+          </div>
+
+          {/* DB status dot */}
+          {authLoading ? (
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--color-text-dim)' }} />
+          ) : useCloudDatabase && user ? (
+            <div
+              style={{ width: 7, height: 7, borderRadius: '50%', background: '#5fad79', cursor: 'default' }}
+              title={user.email}
+            />
+          ) : (
+            <div
+              style={{ width: 7, height: 7, borderRadius: '50%', background: '#5080d0', cursor: 'pointer' }}
+              onClick={onSignIn}
+              title="Local — click to sign in"
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── Search ── */}
+      <div style={{ marginBottom: 14 }}>
+        <SearchBar
+          value={searchQuery}
+          onChange={onSearchChange}
+          placeholder="Search your collection…"
+        />
+      </div>
+
+      {/* ── Genre filters ── */}
+      {availableGenres.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div className={`${genresExpanded ? '' : 'scrollbar-hide'}`}
+              style={{
+                flex: 1,
+                display: 'flex',
+                flexWrap: genresExpanded ? 'wrap' : 'nowrap',
+                gap: 5,
+                overflowX: genresExpanded ? 'visible' : 'auto',
+                position: 'relative'
+              }}
+            >
+              <button
+                onClick={() => setSelectedGenres([])}
+                className={`filter-pill ${selectedGenres.length === 0 ? 'filter-pill--active' : ''}`}
+              >
+                All
+              </button>
+              {availableGenres.map(genre => (
+                <button
+                  key={genre}
+                  onClick={() => toggleGenre(genre)}
+                  className={`filter-pill ${selectedGenres.includes(genre) ? 'filter-pill--active' : ''}`}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => setGenresExpanded(e => !e)}
-              className="text-gray-500 hover:text-gray-300 transition-colors flex-shrink-0 p-1"
-              title={genresExpanded ? 'Collapse genres' : 'Expand genres'}
+              style={{ color: 'var(--color-text-dim)', flexShrink: 0, padding: 4 }}
+              title={genresExpanded ? 'Collapse' : 'Expand'}
             >
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className={`w-4 h-4 transition-transform ${genresExpanded ? 'rotate-180' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
+                width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                style={{ transition: 'transform 200ms', transform: genresExpanded ? 'rotate(180deg)' : 'none' }}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
@@ -323,207 +214,138 @@ const CollectionPage = ({
         </div>
       )}
 
-      {/* Thumb Filter */}
+      {/* ── Thumb filter ── */}
       {(thumbCounts.up > 0 || thumbCounts.down > 0) && (
-        <div className="mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-400">Thumbs:</span>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setThumbFilter(null)}
-                className={`px-3 py-1 text-xs rounded-full transition-colors ${
-                  thumbFilter === null
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setThumbFilter(thumbFilter === 'up' ? null : 'up')}
-                className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                  thumbFilter === 'up'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M14 9V5a3 3 0 00-3-3l-4 9v11h11.28a2 2 0 002-1.7l1.38-9a2 2 0 00-2-2.3H14zm-9 11H3a2 2 0 01-2-2v-7a2 2 0 012-2h2" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 14 }}>
+          <span style={{ fontSize: 11, color: 'var(--color-text-dim)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+            Rating:
+          </span>
+          <button
+            onClick={() => setThumbFilter(null)}
+            className={`filter-pill ${thumbFilter === null ? 'filter-pill--active' : ''}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setThumbFilter(thumbFilter === 'up' ? null : 'up')}
+            className={`filter-pill ${thumbFilter === 'up' ? 'filter-pill--active' : ''}`}
+            style={thumbFilter === 'up' ? { borderColor: '#5fad79', color: '#5fad79', background: 'rgba(95,173,121,0.1)' } : {}}
+          >
+            ↑ {thumbCounts.up}
+          </button>
+          <button
+            onClick={() => setThumbFilter(thumbFilter === 'down' ? null : 'down')}
+            className={`filter-pill ${thumbFilter === 'down' ? 'filter-pill--active' : ''}`}
+            style={thumbFilter === 'down' ? { borderColor: '#c0504a', color: '#c0504a', background: 'rgba(192,80,74,0.1)' } : {}}
+          >
+            ↓ {thumbCounts.down}
+          </button>
+        </div>
+      )}
+
+      {/* ── Stats panel ── */}
+      {showStats && stats && (
+        <div style={{
+          marginBottom: 20,
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 4,
+          padding: 20
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--color-text)' }}>
+              Collection Stats
+            </h3>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {onOpenAIAnalysis && (
+                <button onClick={onOpenAIAnalysis} className="btn-outline" style={{ fontSize: 12 }}>
+                  <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  AI Mood
+                </button>
+              )}
+              <button onClick={() => setShowTagBackfill(true)} className="btn-outline" style={{ fontSize: 12 }}>
+                <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
                 </svg>
-                Thumbs Up ({thumbCounts.up})
-              </button>
-              <button
-                onClick={() => setThumbFilter(thumbFilter === 'down' ? null : 'down')}
-                className={`px-3 py-1 text-xs rounded-full transition-colors flex items-center gap-1 ${
-                  thumbFilter === 'down'
-                    ? 'bg-red-600 text-white'
-                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-                }`}
-              >
-                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 15v4a3 3 0 003 3l4-9V2H5.72a2 2 0 00-2 1.7l-1.38 9a2 2 0 002 2.3H10zm9-13h2a2 2 0 012 2v7a2 2 0 01-2 2h-2" />
-                </svg>
-                Thumbs Down ({thumbCounts.down})
+                Tags
               </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Quick Stats */}
-      {stats && selectedGenres.length === 0 && (
-        <div className="mb-4 flex gap-2 text-sm text-gray-400">
-          <span>
-            {stats.totalGenres > 0 && (
-              <>Genres: {stats.topGenres.slice(0, 3).map(g => `${g.genre} (${g.count})`).join(' • ')}</>
-            )}
-          </span>
-        </div>
-      )}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+            {[
+              { label: 'Albums', value: stats.totalAlbums },
+              { label: 'Artists', value: stats.totalArtists },
+              { label: 'Genres', value: stats.totalGenres },
+              { label: 'Avg Year', value: stats.averageYear || '—' },
+            ].map(s => (
+              <div key={s.label} className="stat-card">
+                <div className="stat-card__label">{s.label}</div>
+                <div className="stat-card__value">{s.value}</div>
+              </div>
+            ))}
+          </div>
 
-      {/* Sort Dropdown */}
-      <div className="mb-4 flex justify-end">
-        <div className="relative">
-          <button
-            onClick={() => setShowSortDropdown(!showSortDropdown)}
-            className="px-3 py-1 text-xs bg-gray-800 border border-gray-600 text-gray-300 rounded-full hover:bg-gray-700 transition-colors flex items-center gap-1"
-          >
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
-            </svg>
-            Sort by {sortBy === 'dateAdded' ? 'Date' : sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
-          </button>
-
-          {showSortDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10">
-              <div className="py-1">
-                <button
-                  onClick={() => {
-                    onSortChange('artist', sortBy === 'artist' && sortOrder === 'asc' ? 'desc' : 'asc');
-                    setShowSortDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                >
-                  <span>Artist</span>
-                  {sortBy === 'artist' && (
-                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    onSortChange('title', sortBy === 'title' && sortOrder === 'asc' ? 'desc' : 'asc');
-                    setShowSortDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                >
-                  <span>Title</span>
-                  {sortBy === 'title' && (
-                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    onSortChange('year', sortBy === 'year' && sortOrder === 'asc' ? 'desc' : 'asc');
-                    setShowSortDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                >
-                  <span>Year</span>
-                  {sortBy === 'year' && (
-                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    onSortChange('dateAdded', sortBy === 'dateAdded' && sortOrder === 'asc' ? 'desc' : 'asc');
-                    setShowSortDropdown(false);
-                  }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-white flex items-center justify-between"
-                >
-                  <span>Date Added</span>
-                  {sortBy === 'dateAdded' && (
-                    <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                  )}
-                </button>
+          {stats.topGenres && stats.topGenres.length > 0 && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 8 }}>
+                Top genres
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {stats.topGenres.map(({ genre, count }) => (
+                  <span key={genre} className="genre-tag">
+                    {genre} <span style={{ color: 'var(--color-amber)', marginLeft: 4 }}>{count}</span>
+                  </span>
+                ))}
               </div>
             </div>
           )}
         </div>
-      </div>
-
-      {/* Stats Panel */}
-      {showStats && stats && (
-        <div className="mb-6 bg-gray-800 border border-gray-700 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-white">Collection Statistics</h3>
-            <div className="flex gap-2">
-              {onOpenAIAnalysis && (
-                <button
-                  onClick={onOpenAIAnalysis}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                  title="AI mood analysis for albums missing mood tags"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                  </svg>
-                  AI Mood Analysis
-                </button>
-              )}
-              <button
-                onClick={() => setShowTagBackfill(true)}
-                className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2"
-                title="Fetch Last.fm tags for existing albums"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                </svg>
-                Backfill Genre Tags
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-purple-400">Total Albums</h4>
-              <p className="text-2xl font-bold text-white">{stats.totalAlbums}</p>
-            </div>
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-purple-400">Total Artists</h4>
-              <p className="text-2xl font-bold text-white">{stats.totalArtists}</p>
-            </div>
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-purple-400">Genres</h4>
-              <p className="text-2xl font-bold text-white">{stats.totalGenres}</p>
-            </div>
-            <div className="bg-gray-900 p-4 rounded-lg">
-              <h4 className="text-sm font-medium text-purple-400">Avg Year</h4>
-              <p className="text-2xl font-bold text-white">{stats.averageYear}</p>
-            </div>
-          </div>
-        </div>
       )}
 
-      {/* Album Grid */}
+      {/* ── Album grid ── */}
       {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-          <p className="text-gray-400 mt-2">Loading your collection...</p>
+        <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--color-text-muted)' }}>
+          <div style={{
+            width: 28, height: 28, margin: '0 auto 12px',
+            border: '2px solid var(--color-border2)',
+            borderTopColor: 'var(--color-amber)',
+            borderRadius: '50%',
+            animation: 'spin 0.7s linear infinite'
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <p style={{ fontSize: 13 }}>Loading your collection…</p>
         </div>
       ) : displayedAlbums.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-400 text-lg">
+        <div style={{ textAlign: 'center', padding: '64px 0' }}>
+          <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>🎶</div>
+          <p style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--color-text-muted)', fontStyle: 'italic' }}>
             {searchQuery
-              ? 'No albums found matching your search.'
+              ? 'No albums match your search.'
               : selectedGenres.length > 0
-              ? `No albums found in ${selectedGenres.join(', ')}.`
+              ? `Nothing in ${selectedGenres.join(', ')}.`
               : thumbFilter
-              ? `No albums with thumbs ${thumbFilter}.`
-              : 'Your collection is empty. Add some albums to get started!'}
+              ? `No albums rated thumbs ${thumbFilter}.`
+              : 'Your collection is empty — start adding records.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {displayedAlbums.map((album) => (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 10
+        }}
+          className="album-grid"
+        >
+          <style>{`
+            @media (min-width: 480px)  { .album-grid { grid-template-columns: repeat(3, 1fr) !important; } }
+            @media (min-width: 720px)  { .album-grid { grid-template-columns: repeat(4, 1fr) !important; } }
+            @media (min-width: 1024px) { .album-grid { grid-template-columns: repeat(5, 1fr) !important; gap: 12px !important; } }
+            @media (min-width: 1280px) { .album-grid { grid-template-columns: repeat(6, 1fr) !important; } }
+          `}</style>
+          {displayedAlbums.map((album, i) => (
             <AlbumCard
               key={album.id}
               album={album}
@@ -531,29 +353,22 @@ const CollectionPage = ({
               onEdit={onEditAlbum ? () => onEditAlbum(album) : undefined}
               onDelete={onDeleteAlbum}
               onUpdateAlbum={onUpdateAlbum}
+              style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}
             />
           ))}
         </div>
       )}
 
-      {/* Floating Action Button - Quick Add */}
-      <button
-        onClick={onQuickAdd}
-        className="fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-300 transform hover:scale-110 z-40"
-        title="Quick Add Album"
-      >
-        {/* Vinyl record with plus sign */}
-        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          {/* Outer circle (vinyl) */}
-          <circle cx="12" cy="12" r="9" strokeWidth="2" />
-          {/* Inner circle (label) */}
-          <circle cx="12" cy="12" r="3" strokeWidth="1.5" />
-          {/* Plus sign */}
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v8m-4-4h8" />
+      {/* ── FAB ── */}
+      <button onClick={onQuickAdd} className="fab" title="Quick add album">
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.25" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <circle cx="12" cy="12" r="3" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v8m-4-4h8" />
         </svg>
       </button>
 
-      {/* Tag Backfill Modal */}
+      {/* ── Tag Backfill Modal ── */}
       <TagBackfillModal
         isOpen={showTagBackfill}
         onClose={() => setShowTagBackfill(false)}

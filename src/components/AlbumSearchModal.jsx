@@ -6,19 +6,13 @@ const AlbumSearchModal = ({ onClose, onSelectAlbum, initialSearchQuery = '' }) =
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Prevent body scrolling when modal is open
   useEffect(() => {
-    const originalBodyStyle = document.body.style.overflow;
-    const originalDocumentStyle = document.documentElement.style.overflow;
-
+    const orig = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    document.documentElement.style.overflow = 'hidden';
     document.body.style.position = 'fixed';
     document.body.style.width = '100%';
-
     return () => {
-      document.body.style.overflow = originalBodyStyle;
-      document.documentElement.style.overflow = originalDocumentStyle;
+      document.body.style.overflow = orig;
       document.body.style.position = '';
       document.body.style.width = '';
     };
@@ -26,180 +20,201 @@ const AlbumSearchModal = ({ onClose, onSelectAlbum, initialSearchQuery = '' }) =
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
-
     setIsSearching(true);
     setHasSearched(true);
-
     try {
-      // Use Discogs client directly for album-only search
       const { DiscogsClient } = await import('../services/api/music/index.js');
       const results = await DiscogsClient.searchReleases(searchQuery.trim());
-
-      // Transform results to include source info
-      const transformedResults = results.map(result => ({
-        ...result,
-        source: 'discogs',
-        identificationMethod: 'manual-discogs-search'
-      }));
-
-      setSearchResults(transformedResults);
-    } catch (error) {
-      console.error('Album search failed:', error);
+      setSearchResults(results.map(r => ({ ...r, source: 'discogs', identificationMethod: 'manual-discogs-search' })));
+    } catch (err) {
+      console.error('Album search failed:', err);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
   };
 
-  // Auto-trigger search if initial query provided
   useEffect(() => {
-    if (initialSearchQuery && initialSearchQuery.trim()) {
-      handleSearch();
-    }
+    if (initialSearchQuery?.trim()) handleSearch();
   }, []);
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch();
-    }
+    if (e.key === 'Enter') handleSearch();
   };
 
   return (
-    <div 
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex"
-      style={{touchAction: 'none'}}
+    <div
+      className="modal-backdrop"
+      style={{ touchAction: 'none', alignItems: 'flex-start', paddingTop: 40 }}
       onClick={onClose}
     >
-      <div 
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full m-4 flex flex-col max-h-[calc(100vh-2rem)]"
+      <div
+        className="modal-panel"
         onClick={(e) => e.stopPropagation()}
-        style={{touchAction: 'auto'}}
+        style={{ touchAction: 'auto', maxHeight: 'calc(100vh - 80px)' }}
       >
         {/* Header */}
-        <div className="flex-shrink-0 p-6 border-b border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Find Album by Name</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        <div className="modal-header">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <h2 className="modal-title">Find Album by Name</h2>
+            <button onClick={onClose} style={{ color: 'var(--color-text-dim)' }}>
+              <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          
-          {/* Search Input */}
-          <div className="flex gap-3">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Enter album name (e.g., 'Dark Side of the Moon')"
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              autoFocus
-            />
+
+          {/* Search row */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <svg
+                width="15" height="15" fill="none" stroke="var(--color-text-dim)" strokeWidth="2" viewBox="0 0 24 24"
+                style={{ position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Album name or artist…"
+                autoFocus
+                className="search-input"
+                style={{ paddingLeft: 34, paddingRight: 12 }}
+              />
+            </div>
             <button
               onClick={handleSearch}
               disabled={!searchQuery.trim() || isSearching}
-              className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary"
             >
-              {isSearching ? 'Searching...' : 'Search'}
+              {isSearching ? 'Searching…' : 'Search'}
             </button>
           </div>
-          <p className="text-sm text-gray-500 mt-2">
-            Search Discogs database for vinyl records by album name
+
+          <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 8 }}>
+            Searches the Discogs vinyl database
           </p>
         </div>
 
         {/* Results */}
-        <div 
-          className="flex-1 overflow-y-auto p-6 min-h-0" 
-          style={{
-            WebkitOverflowScrolling: 'touch', 
-            touchAction: 'pan-y',
-            overscrollBehavior: 'contain'
-          }}
+        <div
+          className="modal-body"
+          style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-y', overscrollBehavior: 'contain' }}
         >
           {isSearching && (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-              <span className="ml-3 text-gray-600">Searching Discogs...</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0', gap: 12, color: 'var(--color-text-muted)' }}>
+              <div style={{
+                width: 20, height: 20, border: '2px solid var(--color-border2)',
+                borderTopColor: 'var(--color-amber)', borderRadius: '50%',
+                animation: 'spin 0.7s linear infinite'
+              }} />
+              <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+              Searching Discogs…
             </div>
           )}
 
           {!isSearching && hasSearched && searchResults.length === 0 && (
-            <div className="text-center py-8">
-              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-3-8v0M7 4h10" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No albums found</h3>
-              <p className="text-gray-500">Try a different search term or check spelling</p>
+            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+              <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, color: 'var(--color-text)', marginBottom: 6 }}>
+                No results found
+              </h3>
+              <p style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>Try a different search term or check spelling</p>
             </div>
           )}
 
           {!isSearching && searchResults.length > 0 && (
-            <div className="space-y-3">
-              <p className="text-sm text-gray-600 mb-4">
-                Found {searchResults.length} results from Discogs:
+            <div>
+              <p style={{ fontSize: 11, color: 'var(--color-text-dim)', marginBottom: 12, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                {searchResults.length} results
               </p>
-              {searchResults.map((album, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:bg-gray-50 cursor-pointer transition-colors"
-                  onClick={() => onSelectAlbum(album)}
-                >
-                  <div className="flex items-start space-x-4">
-                    {album.coverImage && (
-                      <img
-                        src={album.coverImage}
-                        alt={album.title}
-                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <h3 className="font-medium text-gray-900">{album.title}</h3>
-                      <p className="text-gray-600">{album.artist}</p>
-                      {album.year && <p className="text-sm text-gray-500">{album.year}</p>}
-                      {album.format && <p className="text-sm text-purple-600">Format: {album.format}</p>}
-                      {album.label && <p className="text-sm text-gray-500">Label: {album.label}</p>}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                {searchResults.map((album, index) => (
+                  <button
+                    key={index}
+                    onClick={() => onSelectAlbum(album)}
+                    style={{
+                      width: '100%',
+                      textAlign: 'left',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      padding: '10px 12px',
+                      borderRadius: 3,
+                      border: '1px solid transparent',
+                      background: 'transparent',
+                      transition: 'background 140ms, border-color 140ms',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = 'var(--color-surface2)';
+                      e.currentTarget.style.borderColor = 'var(--color-border)';
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.borderColor = 'transparent';
+                    }}
+                  >
+                    {/* Thumbnail */}
+                    <div style={{
+                      width: 52, height: 52, flexShrink: 0, borderRadius: 2,
+                      overflow: 'hidden', background: 'var(--color-surface3)',
+                      border: '1px solid var(--color-border)'
+                    }}>
+                      {album.coverImage ? (
+                        <img src={album.coverImage} alt={album.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <svg width="20" height="20" fill="none" stroke="var(--color-border2)" strokeWidth="1.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                          </svg>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                        Discogs
-                      </span>
+
+                    {/* Info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontFamily: 'var(--font-display)',
+                        fontSize: 14, fontWeight: 600,
+                        color: 'var(--color-text)',
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis'
+                      }}>
+                        {album.title}
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--color-text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {album.artist}
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--color-text-dim)', marginTop: 2 }}>
+                        {[album.year, album.label, album.format].filter(Boolean).join(' · ')}
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+
+                    <svg width="14" height="14" fill="none" stroke="var(--color-text-dim)" strokeWidth="2" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
           {!hasSearched && (
-            <div className="text-center py-8">
-              <svg className="w-16 h-16 text-gray-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Search for Albums</h3>
-              <p className="text-gray-500">Enter an album name to search Discogs database</p>
+            <div style={{ textAlign: 'center', padding: '48px 0', color: 'var(--color-text-muted)' }}>
+              <div style={{ fontSize: 40, marginBottom: 12, opacity: 0.4 }}>🎵</div>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: 16, color: 'var(--color-text-muted)' }}>
+                Search to get started
+              </p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 p-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex justify-between items-center">
-            <p className="text-xs text-gray-500">
-              Powered by Discogs - the vinyl marketplace database
-            </p>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 text-gray-600 hover:text-gray-800"
-            >
-              Cancel
-            </button>
-          </div>
+        <div className="modal-footer">
+          <p style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>Powered by Discogs</p>
+          <button onClick={onClose} className="btn-ghost">Cancel</button>
         </div>
       </div>
     </div>
