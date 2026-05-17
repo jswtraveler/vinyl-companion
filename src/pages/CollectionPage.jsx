@@ -171,15 +171,16 @@ const CollectionPage = ({
       {/* ── Genre filters ── */}
       {availableGenres.length > 0 && (
         <div style={{ marginBottom: 10 }}>
+          {/* Pills row — scrollable when collapsed, wrapped when expanded */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <div className={`${genresExpanded ? '' : 'scrollbar-hide'}`}
+            <div
+              className={genresExpanded ? '' : 'scrollbar-hide'}
               style={{
                 flex: 1,
                 display: 'flex',
                 flexWrap: genresExpanded ? 'wrap' : 'nowrap',
                 gap: 5,
                 overflowX: genresExpanded ? 'visible' : 'auto',
-                position: 'relative'
               }}
             >
               <button
@@ -197,19 +198,36 @@ const CollectionPage = ({
                   {genre}
                 </button>
               ))}
+              {/* Collapse button inline at the end when expanded */}
+              {genresExpanded && (
+                <button
+                  onClick={() => setGenresExpanded(false)}
+                  className="filter-pill"
+                  style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                  title="Collapse"
+                >
+                  <svg width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                    style={{ transform: 'rotate(180deg)' }}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                  Less
+                </button>
+              )}
             </div>
-            <button
-              onClick={() => setGenresExpanded(e => !e)}
-              style={{ color: 'var(--color-text-dim)', flexShrink: 0, padding: 4 }}
-              title={genresExpanded ? 'Collapse' : 'Expand'}
-            >
-              <svg
-                width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
-                style={{ transition: 'transform 200ms', transform: genresExpanded ? 'rotate(180deg)' : 'none' }}
+            {/* Expand chevron — only shown when collapsed */}
+            {!genresExpanded && (
+              <button
+                onClick={() => setGenresExpanded(true)}
+                style={{ color: 'var(--color-text-dim)', flexShrink: 0, padding: 4 }}
+                title="Expand all genres"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
+                <svg
+                  width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       )}
