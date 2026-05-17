@@ -1,24 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import ArtistRecommendationSection from '../components/ArtistRecommendationSection';
 
-/**
- * DiscoverPage Component
- *
- * Artist recommendations based on user's vinyl collection
- */
 const DiscoverPage = ({ albums, user, useCloudDatabase }) => {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const actionsMenuRef = useRef(null);
   const [recommendationActions, setRecommendationActions] = useState(null);
 
-  // Close actions menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target)) {
         setShowActionsMenu(false);
       }
     };
-
     if (showActionsMenu) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -26,54 +19,53 @@ const DiscoverPage = ({ albums, user, useCloudDatabase }) => {
   }, [showActionsMenu]);
 
   return (
-    <div className="pb-20">
+    <div style={{ paddingBottom: 80 }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-white">Discover</h2>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 700, color: 'var(--color-text)', marginBottom: 2 }}>
+            Discover
+          </h2>
+          <p style={{ fontSize: 12, color: 'var(--color-text-dim)' }}>
+            Artists you might like, based on your collection
+          </p>
+        </div>
 
         {albums.length >= 5 && recommendationActions && (
-          <div className="relative" ref={actionsMenuRef}>
+          <div style={{ position: 'relative' }} ref={actionsMenuRef}>
             <button
               onClick={() => setShowActionsMenu(!showActionsMenu)}
-              className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded-lg border border-gray-600 transition-colors"
+              className="btn-outline"
+              style={{ padding: '7px 10px' }}
               title="Actions"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+              <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
               </svg>
             </button>
 
             {showActionsMenu && (
-              <div className="absolute right-0 top-full mt-2 bg-gray-800 border border-gray-600 rounded-lg shadow-lg z-10 min-w-[180px]">
+              <div className="sort-dropdown" style={{ minWidth: 190 }}>
                 <button
-                  onClick={() => {
-                    recommendationActions.onRefresh();
-                    setShowActionsMenu(false);
-                  }}
+                  onClick={() => { recommendationActions.onRefresh(); setShowActionsMenu(false); }}
                   disabled={recommendationActions.loading}
-                  className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-700 disabled:opacity-50 rounded-t-lg"
+                  className="sort-option"
                 >
-                  🔄 Refresh Recommendations
+                  Refresh recommendations
                 </button>
                 <button
-                  onClick={() => {
-                    recommendationActions.onFixGenres();
-                    setShowActionsMenu(false);
-                  }}
+                  onClick={() => { recommendationActions.onFixGenres(); setShowActionsMenu(false); }}
                   disabled={recommendationActions.loading || !recommendationActions.hasRecommendations}
-                  className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-700 disabled:opacity-50"
+                  className="sort-option"
                 >
-                  🏷️ Fix Genres
+                  Fix genres
                 </button>
                 <button
-                  onClick={() => {
-                    recommendationActions.onGetImages();
-                    setShowActionsMenu(false);
-                  }}
+                  onClick={() => { recommendationActions.onGetImages(); setShowActionsMenu(false); }}
                   disabled={recommendationActions.loading}
-                  className="w-full px-4 py-2 text-left text-sm text-white hover:bg-gray-700 disabled:opacity-50 rounded-b-lg"
+                  className="sort-option"
                 >
-                  🖼️ Get Images
+                  Get images
                 </button>
               </div>
             )}
@@ -81,7 +73,6 @@ const DiscoverPage = ({ albums, user, useCloudDatabase }) => {
         )}
       </div>
 
-      {/* Artist Recommendations Section */}
       {albums.length > 0 ? (
         <ArtistRecommendationSection
           albums={albums}
@@ -90,13 +81,23 @@ const DiscoverPage = ({ albums, user, useCloudDatabase }) => {
           onActionsReady={setRecommendationActions}
         />
       ) : (
-        <div className="text-center py-12 bg-gray-800 border border-gray-700 rounded-lg">
-          <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+        <div style={{
+          textAlign: 'center',
+          padding: '56px 24px',
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 4
+        }}>
+          <svg width="48" height="48" fill="none" stroke="var(--color-border2)" strokeWidth="1.25" viewBox="0 0 24 24"
+            style={{ margin: '0 auto 16px' }}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
           </svg>
-          <h3 className="text-lg font-semibold text-white mb-2">No Recommendations Yet</h3>
-          <p className="text-gray-400">
-            Add at least 5 albums to your collection to discover new artists based on your taste.
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 18, color: 'var(--color-text)', marginBottom: 8 }}>
+            Nothing to discover yet
+          </h3>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            Add at least 5 albums to your collection and we'll suggest artists based on your taste.
           </p>
         </div>
       )}

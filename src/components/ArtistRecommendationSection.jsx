@@ -20,16 +20,26 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActions
 
   if (!hasEnoughAlbums) {
     return (
-      <div className="mb-6 bg-gray-900 rounded-lg p-6 border border-gray-700">
-        <div className="flex items-center gap-3 mb-2">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          <h3 className="text-lg font-semibold text-white">Check These Artists Out</h3>
+      <div style={{
+        padding: '20px 20px',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 4,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 14
+      }}>
+        <svg width="18" height="18" fill="none" stroke="var(--color-text-dim)" strokeWidth="1.75" viewBox="0 0 24 24" style={{ flexShrink: 0, marginTop: 2 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+        </svg>
+        <div>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, color: 'var(--color-text)', marginBottom: 4 }}>
+            Check These Artists Out
+          </h3>
+          <p style={{ fontSize: 13, color: 'var(--color-text-muted)', lineHeight: 1.5 }}>
+            Add at least 5 albums to discover new artists based on your music taste.
+          </p>
         </div>
-        <p className="text-gray-400 text-sm">
-          Add at least 5 albums to your collection to discover new artists based on your music taste.
-        </p>
       </div>
     );
   }
@@ -37,15 +47,30 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActions
   return (
     <div>
       {loading && (
-        <div className="flex items-center gap-3 text-gray-400 mb-6">
-          <div className="animate-spin w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full"></div>
-          <span className="text-sm">Analyzing your collection and finding artists you might like...</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, color: 'var(--color-text-muted)' }}>
+          <div style={{
+            width: 16, height: 16, flexShrink: 0,
+            border: '2px solid var(--color-border2)',
+            borderTopColor: 'var(--color-amber)',
+            borderRadius: '50%',
+            animation: 'spin 0.7s linear infinite'
+          }} />
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <span style={{ fontSize: 13 }}>Analyzing your collection…</span>
         </div>
       )}
 
       {error && (
-        <div className="text-red-400 text-sm mb-6">
-          ⚠️ {error}
+        <div style={{
+          fontSize: 13,
+          color: '#e0706a',
+          marginBottom: 20,
+          padding: '10px 14px',
+          background: 'rgba(192,80,74,0.08)',
+          border: '1px solid rgba(192,80,74,0.25)',
+          borderRadius: 3
+        }}>
+          {error}
         </div>
       )}
 
@@ -68,8 +93,8 @@ const ArtistRecommendationSection = ({ albums, user, useCloudDatabase, onActions
           ))}
 
           {recommendations.total === 0 && (
-            <div className="text-gray-400 text-sm text-center py-8">
-              No artist recommendations available at this time. Try adding more albums to improve suggestions.
+            <div style={{ fontSize: 13, color: 'var(--color-text-muted)', textAlign: 'center', padding: '40px 0' }}>
+              No recommendations yet — try adding more albums to improve suggestions.
             </div>
           )}
         </div>

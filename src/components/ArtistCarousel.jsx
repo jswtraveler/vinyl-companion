@@ -1,70 +1,64 @@
 import { useRef, useState, useEffect } from 'react';
 import { ListenBrainzClient } from '../services/api/music/ListenBrainzClient.js';
 
-/**
- * ArtistCarousel Component
- * Horizontal scrolling carousel for artist recommendations
- */
 const ArtistCarousel = ({ title, artists, showCount = false, albumCount = null }) => {
   const scrollRef = useRef(null);
   const [listenBrainzClient] = useState(() => new ListenBrainzClient());
 
   const scroll = (direction) => {
     if (scrollRef.current) {
-      const scrollAmount = 300;
-      scrollRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth'
-      });
+      scrollRef.current.scrollBy({ left: direction === 'left' ? -300 : 300, behavior: 'smooth' });
     }
   };
 
-  if (!artists || artists.length === 0) {
-    return null;
-  }
+  if (!artists || artists.length === 0) return null;
 
   return (
-    <div className="mb-8">
-      {/* Section Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-white">
-          {title}
+    <div style={{ marginBottom: 36 }}>
+      {/* Section header */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 600, color: 'var(--color-text)' }}>
+            {title}
+          </h3>
           {showCount && albumCount !== null && (
-            <span className="text-sm text-gray-400 ml-2">({albumCount} albums)</span>
+            <span style={{ fontSize: 11, color: 'var(--color-text-dim)', letterSpacing: '0.04em' }}>
+              {albumCount} album{albumCount !== 1 ? 's' : ''}
+            </span>
           )}
-        </h3>
+        </div>
+
         {artists.length > 3 && (
-          <div className="flex gap-2">
+          <div style={{ display: 'flex', gap: 5 }}>
             <button
               onClick={() => scroll('left')}
-              className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded border border-gray-600 transition-colors"
+              className="btn-outline"
+              style={{ padding: '4px 8px' }}
               aria-label="Scroll left"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
             </button>
             <button
               onClick={() => scroll('right')}
-              className="p-1 bg-gray-800 hover:bg-gray-700 text-gray-400 rounded border border-gray-600 transition-colors"
+              className="btn-outline"
+              style={{ padding: '4px 8px' }}
               aria-label="Scroll right"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
               </svg>
             </button>
           </div>
         )}
       </div>
 
-      {/* Carousel Container */}
+      {/* Carousel */}
       <div
         ref={scrollRef}
-        className="flex gap-4 overflow-x-auto scrollbar-hide scroll-smooth pb-2"
-        style={{
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none'
-        }}
+        className="scrollbar-hide"
+        style={{ display: 'flex', gap: 10, overflowX: 'auto', paddingBottom: 4, scrollBehavior: 'smooth' }}
       >
         {artists.map((artist, index) => (
           <ArtistCard
@@ -78,10 +72,6 @@ const ArtistCarousel = ({ title, artists, showCount = false, albumCount = null }
   );
 };
 
-/**
- * ArtistCard Component
- * Individual artist card for carousel with expandable top albums
- */
 const ArtistCard = ({ artist, listenBrainzClient }) => {
   const [expanded, setExpanded] = useState(false);
   const [topAlbums, setTopAlbums] = useState(null);
@@ -89,10 +79,8 @@ const ArtistCard = ({ artist, listenBrainzClient }) => {
   const [error, setError] = useState(null);
   const cardRef = useRef(null);
 
-  // Auto-center the card when expanded
   useEffect(() => {
     if (expanded && cardRef.current) {
-      // Short delay to let the width transition start
       setTimeout(() => {
         cardRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
       }, 50);
@@ -100,156 +88,203 @@ const ArtistCard = ({ artist, listenBrainzClient }) => {
   }, [expanded]);
 
   const handleToggleExpand = async () => {
-    if (!expanded) {
-      // Expanding - fetch albums if we don't have them
-      if (!topAlbums && artist.mbid) {
-        setLoading(true);
-        setError(null);
-        try {
-          console.log(`🎵 Fetching top albums for ${artist.artist} (${artist.mbid})...`);
-          const albums = await listenBrainzClient.getTopAlbumsForArtist(artist.mbid, 5, true);
-          const formatted = listenBrainzClient.formatTopAlbumsForUI(albums);
-          setTopAlbums(formatted);
-          console.log(`✅ Fetched ${formatted.length} albums for ${artist.artist}`);
-        } catch (err) {
-          console.error(`❌ Failed to fetch albums for ${artist.artist}:`, err);
-          setError('Failed to load albums');
-        } finally {
-          setLoading(false);
-        }
+    if (!expanded && !topAlbums && artist.mbid) {
+      setLoading(true);
+      setError(null);
+      try {
+        const albums = await listenBrainzClient.getTopAlbumsForArtist(artist.mbid, 5, true);
+        setTopAlbums(listenBrainzClient.formatTopAlbumsForUI(albums));
+      } catch (err) {
+        setError('Failed to load albums');
+      } finally {
+        setLoading(false);
       }
     }
     setExpanded(!expanded);
   };
 
+  const hasImage = artist.image && artist.image !== '';
+
   return (
-    <div ref={cardRef} className={`flex-shrink-0 bg-gray-800 rounded-lg p-4 hover:bg-gray-750 transition-all ${
-      expanded ? 'w-80' : 'w-48'
-    }`}>
-      {/* Artist Image */}
-      <div className="w-full aspect-square bg-gray-700 rounded-lg mb-3 flex items-center justify-center overflow-hidden">
-        {artist.image && artist.image !== '' ? (
+    <div
+      ref={cardRef}
+      style={{
+        flexShrink: 0,
+        width: expanded ? 260 : 156,
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: 4,
+        overflow: 'hidden',
+        transition: 'width 250ms ease, border-color 180ms ease',
+      }}
+      onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--color-border2)'}
+      onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--color-border)'}
+    >
+      {/* Artist image */}
+      <div style={{
+        width: '100%',
+        aspectRatio: '1',
+        background: hasImage
+          ? 'var(--color-surface2)'
+          : `repeating-linear-gradient(-45deg, var(--color-surface2), var(--color-surface2) 4px, var(--color-surface) 4px, var(--color-surface) 12px)`,
+        overflow: 'hidden',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        {hasImage ? (
           <img
             src={artist.image}
             alt={artist.artist}
-            className="w-full h-full object-cover"
+            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
             onError={(e) => {
               e.target.style.display = 'none';
-              e.target.parentElement.innerHTML = `
-                <svg class="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              `;
             }}
           />
         ) : (
-          <svg className="w-16 h-16 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          <svg width="40" height="40" fill="none" stroke="var(--color-border2)" strokeWidth="1.25" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
           </svg>
         )}
       </div>
 
-      {/* Artist Info */}
-      <div className="mb-2">
-        <h4 className="text-sm font-medium text-white truncate" title={artist.artist}>
+      {/* Info */}
+      <div style={{ padding: '10px 11px' }}>
+        <h4
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 13,
+            fontWeight: 600,
+            color: 'var(--color-text)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            marginBottom: 2
+          }}
+          title={artist.artist}
+        >
           {artist.artist}
         </h4>
-        <p className="text-xs text-purple-400 font-medium">
-          {artist.score}% match
-        </p>
-      </div>
 
-      {/* Connection Info */}
-      {artist.connections && artist.connections.length > 0 && (
-        <div className="text-xs text-gray-400 mb-2">
-          <p className="truncate" title={artist.connections.map(c => c.sourceArtist).join(', ')}>
-            {artist.connectionCount === 1
-              ? `Similar to ${artist.connections[0].sourceArtist}`
-              : `${artist.connectionCount} connections`}
-          </p>
-        </div>
-      )}
-
-      {/* Expand Button - Only show if artist has MBID */}
-      {artist.mbid && (
-        <button
-          onClick={handleToggleExpand}
-          className="w-full mt-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded border border-gray-600 transition-colors flex items-center justify-center gap-1"
-        >
-          {expanded ? (
-            <>
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-              </svg>
-              Hide albums
-            </>
-          ) : (
-            <>
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6m0 0a2 2 0 012-2h2a2 2 0 012 2v0m-6 0V6m0 13a2 2 0 002 2h2a2 2 0 002-2m0 0V6m0 13v0" />
-              </svg>
-              Show top albums
-            </>
-          )}
-        </button>
-      )}
-
-      {/* Expanded Top Albums Section */}
-      {expanded && (
-        <div className="mt-3 pt-3 border-t border-gray-700">
-          {loading && (
-            <div className="flex items-center justify-center py-4">
-              <div className="animate-spin w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full"></div>
-            </div>
-          )}
-
-          {error && (
-            <div className="text-xs text-red-400 text-center py-2">
-              {error}
-            </div>
-          )}
-
-          {!loading && !error && (!topAlbums || topAlbums.length === 0) && (
-            <div className="text-xs text-gray-500 text-center py-2">
-              No album data available
-            </div>
-          )}
-
-          {!loading && !error && topAlbums && topAlbums.length > 0 && (
-            <TopAlbumsList albums={topAlbums} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <span style={{
+            fontSize: 10,
+            color: 'var(--color-amber)',
+            letterSpacing: '0.05em',
+            fontWeight: 500
+          }}>
+            {artist.score}% match
+          </span>
+          {artist.connections && artist.connections.length > 0 && (
+            <span style={{ fontSize: 10, color: 'var(--color-text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              · {artist.connectionCount === 1
+                ? `similar to ${artist.connections[0].sourceArtist}`
+                : `${artist.connectionCount} connections`}
+            </span>
           )}
         </div>
-      )}
-    </div>
-  );
-};
 
-/**
- * TopAlbumsList Component
- * Displays a list of top albums for an artist
- */
-const TopAlbumsList = ({ albums }) => {
-  return (
-    <div className="space-y-2">
-      <h5 className="text-xs font-semibold text-gray-400 mb-2">Top Albums</h5>
-      {albums.map((album, index) => (
-        <div
-          key={`${album.mbid || album.name}-${index}`}
-          className="flex items-start gap-2 text-xs"
-        >
-          <span className="text-purple-400 font-medium flex-shrink-0">{album.rank}.</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-white font-medium truncate" title={album.name}>
-              {album.name}
-            </p>
-            <p className="text-gray-400 text-xs">
-              {album.displaySubtitle}
-            </p>
+        {artist.mbid && (
+          <button
+            onClick={handleToggleExpand}
+            style={{
+              width: '100%',
+              padding: '5px 0',
+              fontSize: 11,
+              color: expanded ? 'var(--color-amber)' : 'var(--color-text-muted)',
+              background: 'var(--color-surface2)',
+              border: '1px solid var(--color-border)',
+              borderRadius: 2,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              cursor: 'pointer',
+              transition: 'color 140ms, border-color 140ms'
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.borderColor = 'var(--color-border2)';
+              e.currentTarget.style.color = 'var(--color-text)';
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.borderColor = 'var(--color-border)';
+              e.currentTarget.style.color = expanded ? 'var(--color-amber)' : 'var(--color-text-muted)';
+            }}
+          >
+            <svg
+              width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"
+              style={{ transition: 'transform 200ms', transform: expanded ? 'rotate(180deg)' : 'none' }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+            {expanded ? 'Hide albums' : 'Top albums'}
+          </button>
+        )}
+
+        {/* Expanded albums */}
+        {expanded && (
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--color-border)' }}>
+            {loading && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '12px 0' }}>
+                <div style={{
+                  width: 14, height: 14,
+                  border: '2px solid var(--color-border2)',
+                  borderTopColor: 'var(--color-amber)',
+                  borderRadius: '50%',
+                  animation: 'spin 0.7s linear infinite'
+                }} />
+              </div>
+            )}
+
+            {error && (
+              <p style={{ fontSize: 11, color: '#e0706a', textAlign: 'center' }}>{error}</p>
+            )}
+
+            {!loading && !error && (!topAlbums || topAlbums.length === 0) && (
+              <p style={{ fontSize: 11, color: 'var(--color-text-dim)', textAlign: 'center' }}>No album data</p>
+            )}
+
+            {!loading && !error && topAlbums && topAlbums.length > 0 && (
+              <TopAlbumsList albums={topAlbums} />
+            )}
           </div>
-        </div>
-      ))}
+        )}
+      </div>
     </div>
   );
 };
+
+const TopAlbumsList = ({ albums }) => (
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div style={{ fontSize: 10, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--color-text-dim)', marginBottom: 4 }}>
+      Top Albums
+    </div>
+    {albums.map((album, index) => (
+      <div
+        key={`${album.mbid || album.name}-${index}`}
+        style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}
+      >
+        <span style={{ fontSize: 10, color: 'var(--color-amber)', flexShrink: 0, width: 14, textAlign: 'right' }}>
+          {album.rank}.
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 12,
+            color: 'var(--color-text)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }} title={album.name}>
+            {album.name}
+          </p>
+          {album.displaySubtitle && (
+            <p style={{ fontSize: 10, color: 'var(--color-text-dim)' }}>{album.displaySubtitle}</p>
+          )}
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
 export default ArtistCarousel;
