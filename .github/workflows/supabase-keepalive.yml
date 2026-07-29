@@ -2,9 +2,15 @@ name: Supabase Keep-Alive
 
 on:
   schedule:
-    # Run every 5 days at 08:00 UTC to prevent Supabase free-tier pausing (7-day inactivity limit)
-    - cron: '0 8 */5 * *'
+    # Run every 3 days at 08:00 UTC. Supabase free tier pauses after 7 days of
+    # inactivity; a 3-day cadence leaves margin for GitHub occasionally skipping
+    # or delaying scheduled runs on busy infra.
+    - cron: '0 8 */3 * *'
   workflow_dispatch: # Allow manual trigger
+
+# NOTE: GitHub disables scheduled workflows after 60 days with no repository
+# activity (commits/pushes). If you go that long without pushing, re-enable this
+# workflow from the Actions tab, or push any commit to reset the 60-day clock.
 
 jobs:
   ping:
@@ -25,5 +31,8 @@ jobs:
             echo "Supabase keep-alive write successful (HTTP $response)"
           else
             echo "::error::Supabase keep-alive write failed (HTTP $response)"
+            echo "::error::Expected 204. Check that (1) the 'keepalive' table exists"
+            echo "::error::(run database/migrations/add_keepalive_table.sql), and"
+            echo "::error::(2) the SUPABASE_URL and SUPABASE_ANON_KEY repo secrets are set."
             exit 1
           fi
