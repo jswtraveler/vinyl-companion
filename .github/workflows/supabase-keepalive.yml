@@ -43,7 +43,7 @@ jobs:
           fi
 
       - name: Keep repo active (reset GitHub's 60-day cron timer)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Commit keepalive timestamp
         run: |
