@@ -28,8 +28,7 @@ const PlaylistRow = ({
       background: 'var(--color-surface2)',
       border: '1px solid var(--color-border)',
       borderRadius: 4,
-      marginBottom: 8,
-      overflow: 'hidden'
+      marginBottom: 8
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px' }}>
         <div style={{ width: 20, textAlign: 'center', fontSize: 12, color: 'var(--color-text-dim)', flexShrink: 0 }}>
