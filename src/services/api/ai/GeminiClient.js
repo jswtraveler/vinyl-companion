@@ -113,7 +113,7 @@ export class GeminiClient {
     console.log('Gemini API: Generating content...');
 
     try {
-      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
       const response = await fetch(baseUrl, {
         method: 'POST',
         headers: {

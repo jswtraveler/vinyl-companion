@@ -8,7 +8,9 @@ const corsHeaders = {
 }
 
 async function generateContent(prompt: string) {
-  const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
+  // gemini-flash-latest is an alias to the current stable Flash model. The 2.x models
+  // (2.0/2.5-flash) are gated to "new users" and return 404, so use the latest alias.
+  const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent'
 
   const requestBody = {
     contents: [{
