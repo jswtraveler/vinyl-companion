@@ -143,6 +143,27 @@ describe('buildPlaylist', () => {
     expect(r1.albums.map(a => a.id)).not.toEqual(r2.albums.map(a => a.id));
   });
 
+  it('reshuffle (new seed) draws different records from the pool, not just a re-order', () => {
+    // Pool is larger than the target, so different seeds should surface a different SET.
+    const def = { id: 'test', name: 'Test', match: { yearMax: 2100 }, order: 'energy-asc' };
+    const setFor = (seed) =>
+      new Set(buildPlaylist(albums, def, { targetCount: 2, seed }).albums.map(a => a.id));
+    // Across several seeds we should see at least one selection that differs by membership.
+    const base = setFor(1);
+    const differs = [2, 3, 7, 42, 99].some(seed => {
+      const s = setFor(seed);
+      return s.size !== base.size || [...s].some(id => !base.has(id));
+    });
+    expect(differs).toBe(true);
+  });
+
+  it('same seed -> same record selection (stable, not random each call)', () => {
+    const def = { id: 'test', name: 'Test', match: { yearMax: 2100 }, order: 'energy-asc' };
+    const a = buildPlaylist(albums, def, { targetCount: 2, seed: 5 }).albums.map(x => x.id);
+    const b = buildPlaylist(albums, def, { targetCount: 2, seed: 5 }).albums.map(x => x.id);
+    expect(a).toEqual(b);
+  });
+
   it('returns an empty result with a reason when nothing matches', () => {
     const def = { id: 'nomatch', name: 'No Match', match: { moods: ['does_not_exist'] }, order: 'shuffle' };
     const result = buildPlaylist(albums, def, {});

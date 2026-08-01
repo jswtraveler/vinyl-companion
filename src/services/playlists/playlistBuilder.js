@@ -57,21 +57,45 @@ export function orderAlbums(albums, order, seed = 1) {
   }
 }
 
-/** Mulberry32-seeded Fisher-Yates so the same seed -> same order. */
-function seededShuffle(arr, seed) {
-  const a = [...arr];
+/** Mulberry32 PRNG factory — same seed -> same sequence. */
+function mulberry32(seed) {
   let s = seed >>> 0;
-  const rand = () => {
+  return () => {
     s |= 0; s = (s + 0x6D2B79F5) | 0;
     let t = Math.imul(s ^ (s >>> 15), 1 | s);
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
+}
+
+/** Mulberry32-seeded Fisher-Yates so the same seed -> same order. */
+function seededShuffle(arr, seed) {
+  const a = [...arr];
+  const rand = mulberry32(seed);
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [a[i], a[j]] = [a[j], a[i]];
   }
   return a;
+}
+
+/**
+ * Pick `count` albums from a scored candidate pool, biased toward higher scores
+ * but seed-varied so reshuffling surfaces different records (not just a re-order).
+ * With the default seed (1) and a pool no larger than count, this is a stable
+ * score-ranked take; larger pools + new seeds rotate which records appear.
+ */
+function selectCandidates(scored, count, seed) {
+  if (scored.length <= count) return scored.map(x => x.album);
+  const rand = mulberry32(seed);
+  // Weighted sampling without replacement: weight = (score + 1) * random exponent.
+  // Higher-scored albums are favored, but every qualifying record can appear.
+  const pool = scored.map(x => ({
+    album: x.album,
+    key: Math.pow(rand(), 1 / (x.score + 1))   // Efraimidis–Spirakis weighted reservoir key
+  }));
+  pool.sort((a, b) => b.key - a.key);
+  return pool.slice(0, count).map(x => x.album);
 }
 
 /**
@@ -84,24 +108,27 @@ function seededShuffle(arr, seed) {
 export function buildPlaylist(albums, playlistDef, opts = {}) {
   const { targetMinutes = null, targetCount = 6, seed = 1 } = opts;
 
-  const candidates = (albums || [])
+  const scored = (albums || [])
     .filter(a => albumMatchesRule(a, playlistDef.match))
     .map(a => ({ album: a, score: scoreAlbumForRule(a, playlistDef.match) }))
-    .sort((x, y) => y.score - x.score)
-    .map(x => x.album);
+    .sort((x, y) => y.score - x.score);
+  const candidateCount = scored.length;
 
-  // Trim to target BEFORE ordering so ordering applies to the chosen set.
+  // Select which records make the cut BEFORE ordering. Selection is seed-aware so
+  // Reshuffle draws different records from the pool, not just a re-order of the same set.
   let chosen;
   if (targetMinutes) {
+    // Fill toward the minute budget from a seed-varied, score-weighted ordering of the pool.
+    const pool = selectCandidates(scored, scored.length, seed);
     chosen = [];
     let mins = 0;
-    for (const alb of candidates) {
+    for (const alb of pool) {
       if (mins >= targetMinutes && chosen.length >= 2) break;
       chosen.push(alb);
       mins += estimateAlbumMinutes(alb);
     }
   } else {
-    chosen = candidates.slice(0, targetCount);
+    chosen = selectCandidates(scored, targetCount, seed);
   }
 
   const ordered = orderAlbums(chosen, playlistDef.order, seed);
@@ -111,7 +138,7 @@ export function buildPlaylist(albums, playlistDef, opts = {}) {
     moodId: playlistDef.id,
     albums: ordered,
     totalMinutes,
-    reason: buildReason(playlistDef, candidates.length)
+    reason: buildReason(playlistDef, candidateCount)
   };
 }
 
