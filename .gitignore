@@ -38,3 +38,5 @@ uv.lock
 pyproject.toml
 next_session_brief.md
 old_markdown/*
+# Supabase CLI local state
+supabase/.temp/

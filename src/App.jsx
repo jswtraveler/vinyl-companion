@@ -10,11 +10,12 @@ import Database from './services/database/index.js'
 import { MOOD_CATEGORIES } from './utils/moodUtils'
 
 // Custom hooks
-import { useAuthentication, useAlbumCollection, useAlbumIdentification } from './hooks'
+import { useAuthentication, useAlbumCollection, useAlbumIdentification, usePlaylists } from './hooks'
 
 // Page components for tab navigation
 import CollectionPage from './pages/CollectionPage'
 import DiscoverPage from './pages/DiscoverPage'
+import VibesPage from './pages/VibesPage'
 import AddAlbumPage from './pages/AddAlbumPage'
 import BottomTabBar from './components/navigation/BottomTabBar'
 import QuickAddModal from './components/QuickAddModal'
@@ -25,6 +26,7 @@ function App() {
   // Use custom hooks for cleaner component
   const { user, authLoading, useCloudDatabase, handleSignOut } = useAuthentication()
   const { albums, loading, error, setError, loadAlbums, handleSaveAlbum: saveAlbumToDb, handleDeleteAlbum: deleteAlbumFromDb, handleUpdateAlbum } = useAlbumCollection(useCloudDatabase, authLoading)
+  const { playlists, savePlaylist, deletePlaylist } = usePlaylists(useCloudDatabase, authLoading)
   const {
     isIdentifying,
     identificationStage,
@@ -440,6 +442,18 @@ function App() {
             albums={albums}
             user={user}
             useCloudDatabase={useCloudDatabase}
+          />
+        </div>
+
+        <div style={{ display: currentTab === 'vibes' ? 'block' : 'none' }}>
+          <VibesPage
+            albums={albums}
+            user={user}
+            useCloudDatabase={useCloudDatabase}
+            onOpenAIAnalysis={() => setShowAIAnalysis(true)}
+            playlists={playlists}
+            onSavePlaylist={savePlaylist}
+            onDeletePlaylist={deletePlaylist}
           />
         </div>
 

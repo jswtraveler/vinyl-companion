@@ -26,6 +26,17 @@ const BottomTabBar = ({ currentTab, onNavigate }) => {
       )
     },
     {
+      id: 'vibes',
+      label: 'Vibes',
+      icon: (active) => (
+        <svg width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.75" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M3 12h3l2-7 4 14 3-11 2 4h4"
+          />
+        </svg>
+      )
+    },
+    {
       id: 'add',
       label: 'Add',
       icon: (active) => (

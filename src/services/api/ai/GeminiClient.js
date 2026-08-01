@@ -113,7 +113,7 @@ export class GeminiClient {
     console.log('Gemini API: Generating content...');
 
     try {
-      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+      const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
       const response = await fetch(baseUrl, {
         method: 'POST',
         headers: {
@@ -269,7 +269,7 @@ export class GeminiClient {
 
     const moodList = availableMoods.length > 0
       ? availableMoods.map(m => m.label).join(', ')
-      : 'Nostalgic, Energetic, Chill, Upbeat, Melancholic, Road Trip, Late Night, Sunday Morning, Dreamy, Raw, Comfort, Party';
+      : 'Nostalgic, Energetic, Chill, Upbeat, Melancholic, Road Trip, Late Night, Sunday Morning, Dreamy, Raw, Comfort, Party, Epic, Bluesy';
 
     // Process in batches of 10 to avoid rate limits (free tier: 15 req/min)
     const BATCH_SIZE = 10;

@@ -168,6 +168,36 @@ export class DatabaseInterface {
   }
 
   /**
+   * PLAYLIST OPERATIONS
+   */
+
+  /**
+   * Get all saved playlists
+   * @returns {Promise<Array>} Array of saved playlists
+   */
+  async getPlaylists() {
+    throw new Error('getPlaylists must be implemented by provider');
+  }
+
+  /**
+   * Save (create or update) a playlist
+   * @param {Object} playlist - Playlist data { id, name, moodId, albumIds, createdAt, note }
+   * @returns {Promise<Object>} Saved playlist
+   */
+  async savePlaylist(playlist) {
+    throw new Error('savePlaylist must be implemented by provider');
+  }
+
+  /**
+   * Delete a saved playlist
+   * @param {string} id - Playlist ID
+   * @returns {Promise<boolean>} Success status
+   */
+  async deletePlaylist(id) {
+    throw new Error('deletePlaylist must be implemented by provider');
+  }
+
+  /**
    * UTILITY METHODS
    */
 

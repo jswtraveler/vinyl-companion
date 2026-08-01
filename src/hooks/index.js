@@ -8,3 +8,4 @@
 export { useAuthentication } from './useAuthentication.js';
 export { useAlbumCollection } from './useAlbumCollection.js';
 export { useAlbumIdentification } from './useAlbumIdentification.js';
+export { usePlaylists } from './usePlaylists.js';

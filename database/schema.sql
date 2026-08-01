@@ -959,6 +959,46 @@ COMMENT ON COLUMN artist_metadata_cache.spotify_id IS 'Spotify artist ID for API
 COMMENT ON COLUMN artist_metadata_cache.spotify_url IS 'Spotify artist profile URL (external_urls.spotify)';
 
 -- =====================================================
+-- VIBES: SAVED MOOD PLAYLISTS
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS playlists (
+  id TEXT PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  name TEXT NOT NULL,
+  mood_id TEXT,
+  album_ids JSONB DEFAULT '[]'::jsonb,
+  note TEXT DEFAULT '',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_playlists_user_id ON playlists(user_id);
+
+ALTER TABLE playlists ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view their own playlists" ON playlists;
+CREATE POLICY "Users can view their own playlists"
+  ON playlists FOR SELECT
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert their own playlists" ON playlists;
+CREATE POLICY "Users can insert their own playlists"
+  ON playlists FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update their own playlists" ON playlists;
+CREATE POLICY "Users can update their own playlists"
+  ON playlists FOR UPDATE
+  USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete their own playlists" ON playlists;
+CREATE POLICY "Users can delete their own playlists"
+  ON playlists FOR DELETE
+  USING (auth.uid() = user_id);
+
+COMMENT ON TABLE playlists IS 'Saved Vibes mood playlists — ordered lists of album IDs from the user''s own collection.';
+
+-- =====================================================
 -- SCHEMA VERSION
 -- =====================================================
 
@@ -971,6 +1011,10 @@ CREATE TABLE IF NOT EXISTS schema_version (
 
 INSERT INTO schema_version (version, description)
 VALUES (1, 'Initial consolidated schema with all features')
+ON CONFLICT (version) DO NOTHING;
+
+INSERT INTO schema_version (version, description)
+VALUES (2, 'Add playlists table for Vibes mood-playlist feature')
 ON CONFLICT (version) DO NOTHING;
 
 -- =====================================================

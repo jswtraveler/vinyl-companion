@@ -306,6 +306,89 @@ export class SupabaseProvider extends DatabaseInterface {
   }
 
   /**
+   * PLAYLIST OPERATIONS
+   */
+
+  async getPlaylists() {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { data, error } = await supabase
+        .from('playlists')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []).map(p => this._mapPlaylistFromSupabase(p));
+    } catch (error) {
+      console.error('Error fetching playlists:', error);
+      throw error;
+    }
+  }
+
+  async savePlaylist(playlist) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const playlistId = playlist.id || `playlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const toUpsert = {
+        id: playlistId,
+        user_id: user.id,
+        name: playlist.name,
+        mood_id: playlist.moodId ?? null,
+        album_ids: playlist.albumIds || [],
+        note: playlist.note || '',
+        created_at: playlist.createdAt || new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('playlists')
+        .upsert([toUpsert])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('Playlist saved successfully to Supabase:', data.name);
+      return this._mapPlaylistFromSupabase(data);
+    } catch (error) {
+      console.error('Error saving playlist:', error);
+      throw error;
+    }
+  }
+
+  async deletePlaylist(id) {
+    try {
+      const { error } = await supabase
+        .from('playlists')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      console.log('Playlist deleted successfully from Supabase');
+      return true;
+    } catch (error) {
+      console.error('Error deleting playlist:', error);
+      throw error;
+    }
+  }
+
+  _mapPlaylistFromSupabase(data) {
+    if (!data) return null;
+    return {
+      id: data.id,
+      name: data.name,
+      moodId: data.mood_id,
+      albumIds: data.album_ids || [],
+      note: data.note || '',
+      createdAt: data.created_at
+    };
+  }
+
+  /**
    * DATA MIGRATION
    */
 

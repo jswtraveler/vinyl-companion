@@ -8,7 +8,7 @@ const corsHeaders = {
 }
 
 async function generateContent(prompt: string) {
-  const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+  const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'
 
   const requestBody = {
     contents: [{
@@ -54,8 +54,16 @@ async function generateContent(prompt: string) {
   })
 
   if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(`Gemini API error: ${response.status} ${response.statusText}`)
+    // Surface Google's real error so the client can distinguish quota (429),
+    // a retired/invalid model (404), and auth (401/403) instead of a generic failure.
+    let detail = response.statusText
+    try {
+      const errorData = await response.json()
+      detail = errorData?.error?.message || detail
+    } catch (_) { /* body was not JSON */ }
+    const err = new Error(`Gemini API error: ${response.status} ${detail}`)
+    ;(err as Error & { status?: number }).status = response.status
+    throw err
   }
 
   const data = await response.json()
@@ -106,14 +114,16 @@ serve(async (req) => {
   } catch (error) {
     console.error('Gemini proxy error:', error)
 
+    const status = (error as Error & { status?: number }).status || 500
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Unknown error'
+        error: error.message || 'Unknown error',
+        status
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 500
+        status: 200 // keep 200 so supabase-js returns the body instead of a generic FunctionsError
       }
     )
   }

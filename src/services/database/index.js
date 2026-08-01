@@ -191,6 +191,25 @@ class DatabaseFactory {
   }
 
   /**
+   * PLAYLIST OPERATIONS
+   */
+
+  async getPlaylists() {
+    const provider = await this.getProvider();
+    return provider.getPlaylists();
+  }
+
+  async savePlaylist(playlist) {
+    const provider = await this.getProvider();
+    return provider.savePlaylist(playlist);
+  }
+
+  async deletePlaylist(id) {
+    const provider = await this.getProvider();
+    return provider.deletePlaylist(id);
+  }
+
+  /**
    * MIGRATION UTILITIES
    */
 

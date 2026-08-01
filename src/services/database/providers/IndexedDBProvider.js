@@ -9,7 +9,7 @@ import { openDB } from 'idb';
 import { DatabaseInterface } from '../DatabaseInterface.js';
 
 const DB_NAME = 'VinylCollection';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 export class IndexedDBProvider extends DatabaseInterface {
   constructor() {
@@ -49,6 +49,12 @@ export class IndexedDBProvider extends DatabaseInterface {
           // Audio fingerprints store
           if (!db.objectStoreNames.contains('audio')) {
             db.createObjectStore('audio', { keyPath: 'albumId' });
+          }
+
+          // Saved playlists store (added in v2)
+          if (!db.objectStoreNames.contains('playlists')) {
+            const playlistStore = db.createObjectStore('playlists', { keyPath: 'id' });
+            playlistStore.createIndex('createdAt', 'createdAt');
           }
         },
       });
@@ -335,6 +341,64 @@ export class IndexedDBProvider extends DatabaseInterface {
     } catch (error) {
       console.error('Failed to get album image:', error);
       return null;
+    }
+  }
+
+  /**
+   * PLAYLIST OPERATIONS
+   */
+
+  async getPlaylists() {
+    try {
+      const db = await this.init();
+      const playlists = await db.getAll('playlists');
+      return playlists.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } catch (error) {
+      console.error('Failed to get playlists:', error);
+      throw new Error(`Failed to retrieve playlists: ${error.message}`);
+    }
+  }
+
+  async savePlaylist(playlist) {
+    try {
+      if (!playlist || !playlist.name) {
+        throw new Error('Playlist must have a name');
+      }
+
+      const db = await this.init();
+      const tx = db.transaction('playlists', 'readwrite');
+
+      const playlistToSave = {
+        ...playlist,
+        id: playlist.id || `playlist_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        createdAt: playlist.createdAt || new Date().toISOString()
+      };
+
+      await tx.objectStore('playlists').put(playlistToSave);
+      await tx.complete;
+
+      console.log('Playlist saved successfully:', playlistToSave.name);
+      return playlistToSave;
+    } catch (error) {
+      console.error('Failed to save playlist:', error);
+      throw new Error(`Failed to save playlist: ${error.message}`);
+    }
+  }
+
+  async deletePlaylist(id) {
+    try {
+      if (!id) throw new Error('Playlist ID is required');
+
+      const db = await this.init();
+      const tx = db.transaction('playlists', 'readwrite');
+      await tx.objectStore('playlists').delete(id);
+      await tx.complete;
+
+      console.log('Playlist deleted successfully:', id);
+      return true;
+    } catch (error) {
+      console.error('Failed to delete playlist:', error);
+      throw new Error(`Failed to delete playlist: ${error.message}`);
     }
   }
 

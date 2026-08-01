@@ -4,6 +4,7 @@
  */
 
 // Define all available mood categories
+// Tuned for a classic/prog/hard-rock-forward collection with a jazz/blues/soul side.
 export const MOOD_CATEGORIES = [
   // Tier 1 (Core Moods)
   { id: 'nostalgic', label: 'Nostalgic', color: 'bg-amber-500' },
@@ -12,28 +13,39 @@ export const MOOD_CATEGORIES = [
   { id: 'upbeat', label: 'Upbeat', color: 'bg-green-500' },
   { id: 'melancholic', label: 'Melancholic', color: 'bg-purple-500' },
   { id: 'road_trip', label: 'Road Trip', color: 'bg-orange-500' },
-  
+
   // Tier 2 (Situational/Vibe Moods)
   { id: 'late_night', label: 'Late Night', color: 'bg-indigo-500' },
   { id: 'sunday_morning', label: 'Sunday Morning', color: 'bg-yellow-500' },
   { id: 'dreamy', label: 'Dreamy', color: 'bg-pink-500' },
   { id: 'raw', label: 'Raw', color: 'bg-gray-600' },
   { id: 'comfort', label: 'Comfort', color: 'bg-emerald-500' },
-  { id: 'party', label: 'Party', color: 'bg-fuchsia-500' }
+  { id: 'party', label: 'Party', color: 'bg-fuchsia-500' },
+
+  // Tier 3 (Collection-specific — rock/prog/blues)
+  { id: 'epic', label: 'Epic', color: 'bg-violet-600' },      // long-form progressive journeys
+  { id: 'bluesy', label: 'Bluesy', color: 'bg-sky-700' }      // smoky blues / blues-rock / soul
 ];
 
 // Genre to mood mappings (genres can map to multiple moods)
 const GENRE_MOOD_MAP = {
   // Rock and related
   'Rock': ['energetic', 'road_trip', 'comfort', 'nostalgic'],
-  'Classic Rock': ['nostalgic', 'road_trip', 'comfort'],
+  'Classic Rock': ['nostalgic', 'road_trip', 'comfort', 'energetic'],
   'Alternative': ['energetic', 'melancholic', 'raw'],
   'Indie': ['chill', 'melancholic', 'dreamy', 'comfort'],
-  'Punk': ['energetic', 'raw', 'rebellious'],
+  'Punk': ['energetic', 'raw'],
   'Metal': ['energetic', 'raw', 'late_night'],
+  'Heavy Metal': ['energetic', 'raw', 'late_night'],
   'Hard Rock': ['energetic', 'road_trip', 'raw'],
-  'Prog Rock': ['dreamy', 'nostalgic', 'comfort'],
-  'Psychedelic Rock': ['dreamy', 'nostalgic', 'late_night'],
+  'Prog Rock': ['epic', 'dreamy', 'nostalgic', 'comfort'],
+  'Progressive Rock': ['epic', 'dreamy', 'nostalgic', 'comfort'],
+  'Psychedelic Rock': ['dreamy', 'epic', 'nostalgic', 'late_night'],
+  'Psychedelic': ['dreamy', 'epic', 'late_night'],
+  'Blues Rock': ['bluesy', 'raw', 'road_trip', 'energetic'],
+  'Southern Rock': ['road_trip', 'raw', 'comfort', 'nostalgic'],
+  'Folk Rock': ['nostalgic', 'road_trip', 'comfort', 'chill'],
+  'Oldies': ['nostalgic', 'upbeat', 'comfort'],
   
   // Pop and dance
   'Pop': ['upbeat', 'party', 'comfort'],
@@ -51,13 +63,13 @@ const GENRE_MOOD_MAP = {
   
   // Hip Hop and R&B
   'Hip Hop': ['energetic', 'party', 'raw', 'late_night'],
-  'R&B/Soul': ['chill', 'late_night', 'comfort', 'melancholic'],
-  'Soul': ['nostalgic', 'comfort', 'late_night'],
+  'R&B/Soul': ['bluesy', 'chill', 'late_night', 'comfort', 'melancholic'],
+  'Soul': ['bluesy', 'nostalgic', 'comfort', 'late_night'],
   'Motown': ['nostalgic', 'upbeat', 'party', 'comfort'],
   
   // Jazz and Blues
   'Jazz': ['chill', 'late_night', 'sunday_morning', 'comfort', 'nostalgic'],
-  'Blues': ['melancholic', 'raw', 'late_night', 'comfort', 'nostalgic'],
+  'Blues': ['bluesy', 'melancholic', 'raw', 'late_night', 'comfort', 'nostalgic'],
   'Smooth Jazz': ['chill', 'late_night', 'sunday_morning'],
   
   // Folk and Country
@@ -221,11 +233,53 @@ export const getRecommendedAlbumsForMood = (albums, moodId, limit = 10) => {
   return sortedAlbums.slice(0, limit);
 };
 
+// Energy weighting per mood id (0 = calm, 1 = high energy).
+const MOOD_ENERGY = {
+  chill: 0.15, sunday_morning: 0.2, comfort: 0.3, dreamy: 0.25, melancholic: 0.3,
+  bluesy: 0.35, nostalgic: 0.45, late_night: 0.4, epic: 0.5, road_trip: 0.6,
+  upbeat: 0.75, raw: 0.7, energetic: 0.9, party: 0.95
+};
+
+/**
+ * 0-1 energy estimate for an album from its (AI or genre-derived) moods.
+ * @param {Object} album - Album object
+ * @returns {number} Energy score between 0 (calm) and 1 (high energy)
+ */
+export const getAlbumEnergy = (album) => {
+  const moods = getMoodsForAlbum(album);
+  if (!moods.length) return 0.5; // neutral default
+  const vals = moods.map(m => MOOD_ENERGY[m]).filter(v => v != null);
+  if (!vals.length) return 0.5;
+  return vals.reduce((s, v) => s + v, 0) / vals.length;
+};
+
+/**
+ * Estimate an album's runtime in minutes. Uses track durations if present, else a 40-min LP default.
+ * @param {Object} album - Album object
+ * @returns {number} Estimated runtime in minutes
+ */
+export const estimateAlbumMinutes = (album) => {
+  const tracks = album?.tracks || [];
+  const summed = tracks.reduce((sum, t) => {
+    if (!t?.duration) return sum;
+    const [m, s] = String(t.duration).split(':').map(Number);
+    if (Number.isFinite(m)) return sum + m + (Number.isFinite(s) ? s / 60 : 0);
+    return sum;
+  }, 0);
+  if (summed > 0) return Math.round(summed);
+  // Fallback by format
+  if (album?.format === 'Single') return 8;
+  if (album?.format === 'EP') return 20;
+  return 40; // typical LP
+};
+
 export default {
   MOOD_CATEGORIES,
   getMoodsForGenre,
   getMoodsForAlbum,
   filterAlbumsByMood,
   getMoodStatistics,
-  getRecommendedAlbumsForMood
+  getRecommendedAlbumsForMood,
+  getAlbumEnergy,
+  estimateAlbumMinutes
 };

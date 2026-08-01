@@ -13,7 +13,9 @@ export class MockProvider extends DatabaseInterface {
     this.albums = [];
     this.cache = new Map();
     this.images = new Map();
+    this.playlists = [];
     this.nextId = 1;
+    this.nextPlaylistId = 1;
   }
 
   /**
@@ -186,6 +188,47 @@ export class MockProvider extends DatabaseInterface {
   }
 
   /**
+   * PLAYLIST OPERATIONS
+   */
+
+  async getPlaylists() {
+    return [...this.playlists].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }
+
+  async savePlaylist(playlist) {
+    if (!playlist || !playlist.name) {
+      throw new Error('Playlist must have a name');
+    }
+
+    const existingIndex = playlist.id ? this.playlists.findIndex(p => p.id === playlist.id) : -1;
+    const saved = {
+      ...playlist,
+      id: playlist.id || `mock_playlist_${this.nextPlaylistId++}`,
+      createdAt: playlist.createdAt || new Date().toISOString()
+    };
+
+    if (existingIndex !== -1) {
+      this.playlists[existingIndex] = saved;
+    } else {
+      this.playlists.push(saved);
+    }
+
+    console.log('Mock playlist saved:', saved.name);
+    return saved;
+  }
+
+  async deletePlaylist(id) {
+    const index = this.playlists.findIndex(p => p.id === id);
+    if (index === -1) {
+      throw new Error('Playlist not found');
+    }
+
+    this.playlists.splice(index, 1);
+    console.log('Mock playlist deleted');
+    return true;
+  }
+
+  /**
    * DATA MIGRATION
    */
 
@@ -233,7 +276,9 @@ export class MockProvider extends DatabaseInterface {
     this.albums = [];
     this.cache.clear();
     this.images.clear();
+    this.playlists = [];
     this.nextId = 1;
+    this.nextPlaylistId = 1;
   }
 
   /**
