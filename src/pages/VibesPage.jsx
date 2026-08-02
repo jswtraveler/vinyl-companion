@@ -142,6 +142,9 @@ const VibesPage = ({ albums, onOpenAIAnalysis, playlists, onSavePlaylist, onDele
               onOpenAlbum={handleOpenAlbum}
               onOpenAIAnalysis={matchCounts[activeMood.id] === 0 ? onOpenAIAnalysis : undefined}
               onSave={onSavePlaylist ? handleSave : undefined}
+              sessionSizeOptions={SESSION_SIZES}
+              activeSessionSizeId={sessionSizeId}
+              onSessionSizeChange={setSessionSizeId}
             />
           </div>
         </div>

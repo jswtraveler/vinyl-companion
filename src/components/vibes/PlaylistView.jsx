@@ -6,8 +6,13 @@ import PlaylistRow from './PlaylistRow.jsx';
 /**
  * Panel showing a generated playlist for a mood.
  * Given `{ mood, albums, sessionSize, onClose, onOpenAlbum, onOpenAIAnalysis }`.
+ * `sessionSizeOptions` + `onSessionSizeChange` are optional — when both are given,
+ * a size picker is shown so the playlist can be resized without leaving the view.
  */
-const PlaylistView = ({ mood, albums, sessionSize, onClose, onOpenAlbum, onOpenAIAnalysis, onSave }) => {
+const PlaylistView = ({
+  mood, albums, sessionSize, onClose, onOpenAlbum, onOpenAIAnalysis, onSave,
+  sessionSizeOptions, activeSessionSizeId, onSessionSizeChange
+}) => {
   const [seed, setSeed] = useState(1);
   const [manualAlbums, setManualAlbums] = useState(null); // overrides generated order once user edits
 
@@ -92,6 +97,28 @@ const PlaylistView = ({ mood, albums, sessionSize, onClose, onOpenAlbum, onOpenA
           </svg>
         </button>
       </div>
+
+      {sessionSizeOptions && onSessionSizeChange && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+          {sessionSizeOptions.map(size => {
+            const active = size.id === activeSessionSizeId;
+            return (
+              <button
+                key={size.id}
+                onClick={() => onSessionSizeChange(size.id)}
+                className="btn-outline"
+                style={active ? {
+                  borderColor: 'var(--color-amber-dim)',
+                  color: 'var(--color-amber)',
+                  background: 'var(--color-surface2)'
+                } : undefined}
+              >
+                {size.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {playlistAlbums.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
