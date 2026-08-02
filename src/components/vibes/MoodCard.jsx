@@ -10,8 +10,7 @@ const MoodCard = ({ playlist, count, onClick }) => {
     <button
       onClick={onClick}
       style={{
-        flexShrink: 0,
-        width: 160,
+        width: '100%',
         minHeight: 150,
         textAlign: 'left',
         background: 'var(--color-surface2)',

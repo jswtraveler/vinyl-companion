@@ -105,13 +105,15 @@ const VibesPage = ({ albums, onOpenAIAnalysis, playlists, onSavePlaylist, onDele
         })}
       </div>
 
-      {/* Mood shelf */}
+      {/* Mood grid — scrolls independently, session-size row above stays put */}
       <div style={{
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: 12,
-        overflowX: 'auto',
-        paddingBottom: 8,
-        marginBottom: 8
+        maxHeight: '60vh',
+        overflowY: 'auto',
+        paddingBottom: 4,
+        marginBottom: 20
       }}>
         {MOOD_PLAYLISTS.map(playlist => (
           <MoodCard
@@ -124,15 +126,25 @@ const VibesPage = ({ albums, onOpenAIAnalysis, playlists, onSavePlaylist, onDele
       </div>
 
       {activeMood && (
-        <PlaylistView
-          mood={activeMood}
-          albums={albums}
-          sessionSize={sessionSize}
-          onClose={() => setActiveMoodId(null)}
-          onOpenAlbum={handleOpenAlbum}
-          onOpenAIAnalysis={matchCounts[activeMood.id] === 0 ? onOpenAIAnalysis : undefined}
-          onSave={onSavePlaylist ? handleSave : undefined}
-        />
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
+          }}
+          onClick={(e) => { if (e.target === e.currentTarget) setActiveMoodId(null); }}
+        >
+          <div style={{ width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
+            <PlaylistView
+              mood={activeMood}
+              albums={albums}
+              sessionSize={sessionSize}
+              onClose={() => setActiveMoodId(null)}
+              onOpenAlbum={handleOpenAlbum}
+              onOpenAIAnalysis={matchCounts[activeMood.id] === 0 ? onOpenAIAnalysis : undefined}
+              onSave={onSavePlaylist ? handleSave : undefined}
+            />
+          </div>
+        </div>
       )}
 
       {/* Saved playlists */}
@@ -175,19 +187,29 @@ const VibesPage = ({ albums, onOpenAIAnalysis, playlists, onSavePlaylist, onDele
       )}
 
       {openSavedPlaylist && (
-        <PlaylistView
-          mood={{
-            id: openSavedPlaylist.playlist.moodId || 'saved',
-            name: openSavedPlaylist.playlist.name,
-            emoji: '💿',
-            match: getMoodPlaylistById(openSavedPlaylist.playlist.moodId)?.match || {},
-            order: 'chronological'
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 50,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16
           }}
-          albums={openSavedPlaylist.albums}
-          sessionSize={{ targetCount: openSavedPlaylist.albums.length, targetMinutes: null }}
-          onClose={() => setOpenSavedPlaylist(null)}
-          onOpenAlbum={handleOpenAlbum}
-        />
+          onClick={(e) => { if (e.target === e.currentTarget) setOpenSavedPlaylist(null); }}
+        >
+          <div style={{ width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto' }}>
+            <PlaylistView
+              mood={{
+                id: openSavedPlaylist.playlist.moodId || 'saved',
+                name: openSavedPlaylist.playlist.name,
+                emoji: '💿',
+                match: getMoodPlaylistById(openSavedPlaylist.playlist.moodId)?.match || {},
+                order: 'chronological'
+              }}
+              albums={openSavedPlaylist.albums}
+              sessionSize={{ targetCount: openSavedPlaylist.albums.length, targetMinutes: null }}
+              onClose={() => setOpenSavedPlaylist(null)}
+              onOpenAlbum={handleOpenAlbum}
+            />
+          </div>
+        </div>
       )}
 
       {viewingAlbum && (

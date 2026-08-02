@@ -134,11 +134,16 @@ export function buildPlaylist(albums, playlistDef, opts = {}) {
   const ordered = orderAlbums(chosen, playlistDef.order, seed);
   const totalMinutes = ordered.reduce((sum, a) => sum + estimateAlbumMinutes(a), 0);
 
+  // Reshuffle only changes anything when there's a larger pool to rotate candidates from
+  // (order strategies other than 'shuffle' ignore the seed once the set is fixed).
+  const canReshuffle = candidateCount > chosen.length;
+
   return {
     moodId: playlistDef.id,
     albums: ordered,
     totalMinutes,
-    reason: buildReason(playlistDef, candidateCount)
+    reason: buildReason(playlistDef, candidateCount),
+    canReshuffle
   };
 }
 

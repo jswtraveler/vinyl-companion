@@ -94,14 +94,26 @@ const PlaylistView = ({ mood, albums, sessionSize, onClose, onOpenAlbum, onOpenA
       </div>
 
       {playlistAlbums.length > 0 && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <button onClick={handleReshuffle} className="btn-outline">
-            Reshuffle
-          </button>
-          {onSave && (
-            <button onClick={() => onSave({ mood, albums: playlistAlbums })} className="btn-outline">
-              Save
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 14 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={handleReshuffle}
+              className="btn-outline"
+              disabled={!manualAlbums && !generated.canReshuffle}
+              title={!generated.canReshuffle ? 'Not enough matching records to rotate this playlist' : undefined}
+            >
+              Reshuffle
             </button>
+            {onSave && (
+              <button onClick={() => onSave({ mood, albums: playlistAlbums })} className="btn-outline">
+                Save
+              </button>
+            )}
+          </div>
+          {!generated.canReshuffle && (
+            <p style={{ fontSize: 11, color: 'var(--color-text-dim)' }}>
+              Not enough matching records to rotate this playlist yet.
+            </p>
           )}
         </div>
       )}
