@@ -39,7 +39,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Loud and unapologetic',
     emoji: '🔊',
     color: '#c8433a',
-    match: { moods: ['energetic', 'raw'], genres: ['Hard Rock', 'Heavy Metal', 'Metal'] },
+    match: { moods: ['energetic', 'raw'], genres: ['Hard Rock', 'Heavy Metal', 'Metal'], requireAll: true },
     order: 'energy-desc'
   },
   {
@@ -48,7 +48,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Windows down, miles to go',
     emoji: '🛣️',
     color: '#d98a3d',
-    match: { moods: ['road_trip'], genres: ['Rock', 'Classic Rock', 'Blues Rock'] },
+    match: { moods: ['road_trip'], genres: ['Rock', 'Classic Rock', 'Blues Rock'], requireAll: true },
     order: 'energy-desc'
   },
   {
@@ -84,7 +84,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'The reliable favorites',
     emoji: '📻',
     color: '#c8863a',
-    match: { genres: ['Classic Rock', 'Rock'], moods: ['nostalgic', 'upbeat'] },
+    match: { genres: ['Classic Rock', 'Rock'], moods: ['nostalgic', 'upbeat'], requireAll: true },
     order: 'shuffle'
   },
   {
@@ -93,7 +93,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Swirling, technicolor sound',
     emoji: '🍄',
     color: '#b03fa0',
-    match: { moods: ['dreamy', 'epic'], genres: ['Psychedelic Rock', 'Psychedelic'] },
+    match: { moods: ['epic'], genres: ['Psychedelic Rock', 'Psychedelic'] },
     order: 'shuffle'
   },
   {
@@ -102,7 +102,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Coffee, sunlight, brushes on snare',
     emoji: '🎷',
     color: '#3f7c9c',
-    match: { genres: ['Jazz'], moods: ['chill', 'sunday_morning'] },
+    match: { genres: ['Jazz'], moods: ['sunday_morning'] },
     order: 'shuffle'
   },
   {
@@ -111,7 +111,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Unpolished and driving',
     emoji: '⚡',
     color: '#c8433a',
-    match: { moods: ['raw', 'energetic'], genres: ['Hard Rock', 'Blues Rock', 'Punk'] },
+    match: { moods: ['raw', 'energetic'], genres: ['Hard Rock', 'Blues Rock', 'Punk'], requireAll: true },
     order: 'energy-desc'
   },
   {
@@ -138,7 +138,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Sunshine in record form',
     emoji: '☀️',
     color: '#d9b23d',
-    match: { moods: ['upbeat', 'comfort'], genres: ['Soul', 'Oldies', 'Pop'] },
+    match: { moods: ['upbeat', 'comfort'], genres: ['Soul', 'Oldies', 'Pop'], requireAll: true },
     order: 'shuffle'
   },
   {
@@ -147,7 +147,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Album tracks, not the singles',
     emoji: '🕯️',
     color: '#4c4438',
-    match: { moods: ['late_night', 'raw'], genres: ['Progressive Rock', 'Blues', 'Jazz'] },
+    match: { moods: ['late_night', 'raw'], genres: ['Progressive Rock', 'Blues', 'Jazz'], requireAll: true },
     order: 'shuffle'
   },
   {
@@ -156,7 +156,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Get the room moving',
     emoji: '🪩',
     color: '#c83aa0',
-    match: { moods: ['party', 'upbeat', 'energetic'], genres: ['Funk', 'Soul', 'Pop'] },
+    match: { moods: ['party', 'upbeat', 'energetic'], genres: ['Funk', 'Soul', 'Pop'], requireAll: true },
     order: 'energy-desc'
   },
   {
@@ -174,7 +174,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Openers that fill the room',
     emoji: '💿',
     color: '#7c5cbf',
-    match: { moods: ['epic'], genres: ['Progressive Rock', 'Rock'] },
+    match: { genres: ['Progressive Rock'] },
     order: 'energy-desc'
   },
   {
@@ -183,7 +183,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Smooth and unhurried',
     emoji: '🍸',
     color: '#3f7c9c',
-    match: { moods: ['bluesy', 'late_night'], genres: ['Soul', 'R&B', 'Blues'] },
+    match: { moods: ['bluesy', 'late_night'], genres: ['Soul', 'R&B', 'Blues'], requireAll: true },
     order: 'energy-asc'
   },
   {
@@ -201,7 +201,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Morning jolt, no coffee needed',
     emoji: '📢',
     color: '#c8433a',
-    match: { moods: ['energetic'], genres: ['Rock', 'Hard Rock'] },
+    match: { moods: ['energetic'], genres: ['Rock', 'Hard Rock'], requireAll: true },
     order: 'energy-desc'
   },
   {
@@ -210,7 +210,7 @@ export const MOOD_PLAYLISTS = [
     subtitle: 'Acoustic, close, familiar',
     emoji: '🔥',
     color: '#b3763f',
-    match: { moods: ['comfort', 'nostalgic'], genres: ['Folk', 'Folk Rock'] },
+    match: { moods: ['sunday_morning'], genres: ['Folk', 'Folk Rock'] },
     order: 'shuffle'
   }
 ];

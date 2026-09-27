@@ -114,7 +114,7 @@ export const getMoodsForAlbum = (album) => {
   let aiMoods = [];
   if (album.moods && Array.isArray(album.moods)) {
     // Normalize AI moods to lowercase to match MOOD_CATEGORIES IDs
-    aiMoods = album.moods.map(mood => mood.toLowerCase());
+    aiMoods = album.moods.map(mood => mood.toLowerCase().replace(/\s+/g, '_'));
   }
 
   // If we have AI-generated moods, use them
